@@ -1,0 +1,59 @@
+# UltraThink Privacy Rules
+# Files matching these patterns are blocked by the privacy hook.
+# Uses gitignore-like syntax.
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+!.env.template
+
+# Cryptographic keys
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+# Credentials and tokens
+**/credentials*
+**/secrets*
+**/tokens*
+**/.auth*
+**/service-account*.json
+
+# SSH and cloud config
+~/.ssh/
+~/.aws/
+~/.gcloud/
+~/.azure/
+~/.kube/config
+
+# Database dumps with potential PII
+*.sql.gz
+*.dump
+**/backups/*.sql
+
+# IDE and OS secrets
+.idea/dataSources*
+.vscode/settings.json
+
+# Application secrets
+**/config/production.json
+**/config/secrets.json
+**/vault/**
+
+# Token-expensive directories (no value in AI context)
+node_modules/
+.next/
+dist/
+*.lock
+*.snap
+coverage/
+
+# Allow overrides (safe templates and examples)
+!.env.example
+!.env.template
+!**/config/example.json
+!**/credentials.example.*

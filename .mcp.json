@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "vfs": {
+      "command": "vfs",
+      "args": ["mcp"],
+      "env": {}
+    }
+  }
+}

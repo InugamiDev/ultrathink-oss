@@ -1,0 +1,38 @@
+{
+  "name": "ultrathink",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Claude Workflow OS — 4-layer skill mesh, persistent memory, privacy hooks, and observability dashboard",
+  "workspaces": [
+    "dashboard",
+    "memory"
+  ],
+  "scripts": {
+    "setup": "./scripts/setup.sh",
+    "dashboard": "./scripts/dashboard.sh",
+    "dashboard:dev": "cd dashboard && npm run dev",
+    "dashboard:build": "cd dashboard && npm run build",
+    "migrate": "./scripts/migrate.sh",
+    "migrate:run": "cd memory && npx tsx scripts/migrate.ts",
+    "seed": "cd memory && npx tsx scripts/seed.ts",
+    "compact": "cd memory && npx tsx scripts/compact.ts",
+    "lint": "eslint .",
+    "format": "prettier --write '**/*.{ts,tsx,js}'",
+    "format:check": "prettier --check '**/*.{ts,tsx,js}'",
+    "test": "vitest run",
+    "typecheck": "cd dashboard && tsc --noEmit"
+  },
+  "author": "InuVerse",
+  "license": "MIT",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.0.3",
+    "prettier": "^3.8.1",
+    "typescript-eslint": "^8.56.1",
+    "vitest": "^4.0.18"
+  },
+  "dependencies": {
+    "postgres": "^3.4.8"
+  }
+}

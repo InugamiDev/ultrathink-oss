@@ -1,0 +1,71 @@
+{
+  "sections": [
+    {
+      "title": "Getting Started",
+      "slug": "getting-started",
+      "pages": [
+        { "slug": "quickstart", "title": "Quickstart" },
+        { "slug": "installation", "title": "Installation" },
+        { "slug": "configuration", "title": "Configuration" },
+        { "slug": "self-hosting", "title": "Self-Hosting" }
+      ]
+    },
+    {
+      "title": "Architecture",
+      "slug": "architecture",
+      "pages": [
+        { "slug": "overview", "title": "Overview" },
+        { "slug": "hook-lifecycle", "title": "Hook Lifecycle" },
+        { "slug": "database-schema", "title": "Database Schema" },
+        { "slug": "project-structure", "title": "Project Structure" }
+      ]
+    },
+    {
+      "title": "Features",
+      "slug": "features",
+      "pages": [
+        { "slug": "skill-mesh", "title": "Skill Mesh" },
+        { "slug": "memory", "title": "Memory System" },
+        { "slug": "hooks", "title": "Hook System" },
+        { "slug": "dashboard", "title": "Dashboard" },
+        { "slug": "statusline", "title": "Statusline" },
+        { "slug": "privacy", "title": "Privacy & Security" }
+      ]
+    },
+    {
+      "title": "Guides",
+      "slug": "guides",
+      "pages": [
+        { "slug": "create-skill", "title": "Create a Skill" },
+        { "slug": "create-hook", "title": "Create a Hook" },
+        { "slug": "link-skills", "title": "Link Skills Together" },
+        { "slug": "add-command", "title": "Add a Command" },
+        { "slug": "extend-memory", "title": "Extend Memory" },
+        { "slug": "kanban-workflow", "title": "Kanban Workflow" },
+        { "slug": "troubleshooting", "title": "Troubleshooting" }
+      ]
+    },
+    {
+      "title": "Reference",
+      "slug": "reference",
+      "pages": [
+        { "slug": "skills-catalog", "title": "Skills Catalog" },
+        { "slug": "agents-catalog", "title": "Agents Catalog" },
+        { "slug": "cli-commands", "title": "CLI Commands" },
+        { "slug": "ck-json", "title": "Configuration (ck.json)" },
+        { "slug": "memory-schema", "title": "Memory Schema" },
+        { "slug": "coding-levels", "title": "Coding Levels" }
+      ]
+    },
+    {
+      "title": "Contributing",
+      "slug": "contributing",
+      "pages": [
+        { "slug": "overview", "title": "How to Contribute" },
+        { "slug": "code-standards", "title": "Code Standards" },
+        { "slug": "pr-process", "title": "PR Process" },
+        { "slug": "acknowledgments", "title": "Acknowledgments" }
+      ]
+    }
+  ]
+}

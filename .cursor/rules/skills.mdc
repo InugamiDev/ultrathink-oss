@@ -1,0 +1,18 @@
+---
+description: UltraThink skill system — read matching SKILL.md files for task guidance
+globs:
+alwaysApply: true
+---
+
+# Skill System
+
+When working on a task, check if any skill in `.claude/skills/` matches.
+Skills contain step-by-step workflows, best practices, and constraints.
+
+To find relevant skills:
+1. Look at the task keywords
+2. Check `.claude/skills/_registry.json` for matching triggers
+3. Read the matching `SKILL.md` file
+4. Follow its workflow
+
+Key skills: gsd (task execution), react, nextjs, tailwindcss, debug, test, plan, research-loop, ui-design-pipeline

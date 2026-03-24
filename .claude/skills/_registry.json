@@ -1,0 +1,3570 @@
+{
+  "image-pipeline": {
+    "name": "image-pipeline",
+    "description": "Autonomous image generation pipeline — TinyFish, Gemini-API, Playwright backends for batch asset creation via Gemini",
+    "layer": "domain",
+    "category": "ai-ml",
+    "triggers": [
+      "image pipeline",
+      "generate image",
+      "generate illustration",
+      "asset pipeline",
+      "create illustration",
+      "create asset",
+      "tinyfish",
+      "gemini image",
+      "batch image",
+      "image generation",
+      "nano banana"
+    ],
+    "linksTo": [
+      "ai-agents",
+      "nextjs",
+      "api-designer"
+    ],
+    "linkedFrom": [
+      "ai-multimodal"
+    ],
+    "riskLevel": "medium",
+    "path": "skills/image-pipeline/SKILL.md"
+  },
+  "ai-agents": {
+    "name": "ai-agents",
+    "description": "AI agent architecture, tool use, memory systems, multi-agent orchestration, and safety patterns",
+    "layer": "domain",
+    "category": "ai-ml",
+    "triggers": [
+      "ai agent",
+      "agent architecture",
+      "tool use",
+      "agent memory",
+      "multi-agent",
+      "agent orchestration",
+      "agentic workflow",
+      "ReAct pattern"
+    ],
+    "linksTo": [
+      "prompt-engineering",
+      "rag",
+      "error-handling",
+      "logging"
+    ],
+    "linkedFrom": [
+      "cook",
+      "plan",
+      "research"
+    ],
+    "riskLevel": "medium",
+    "path": "skills/ai-agents/SKILL.md"
+  },
+  "ai-multimodal": {
+    "name": "ai-multimodal",
+    "description": "Image/vision analysis, generation prompt crafting, and multimodal AI workflow orchestration",
+    "layer": "utility",
+    "category": "ai-tools",
+    "triggers": [
+      "analyze this image",
+      "describe this screenshot",
+      "generate an image",
+      "vision analysis",
+      "image prompt",
+      "multimodal",
+      "read this diagram"
+    ],
+    "linksTo": [
+      "ui-ux-pro",
+      "media-processing",
+      "chrome-devtools"
+    ],
+    "linkedFrom": [
+      "orchestrator",
+      "planner"
+    ],
+    "riskLevel": "low",
+    "path": "skills/ai-multimodal/SKILL.md"
+  },
+  "animation": {
+    "name": "animation",
+    "description": "Frontend animation patterns — Framer Motion, CSS animations, GSAP, scroll-driven animations, and motion design principles",
+    "layer": "domain",
+    "category": "frontend",
+    "triggers": [
+      "animation",
+      "framer motion",
+      "GSAP",
+      "css animation",
+      "transition",
+      "scroll animation",
+      "motion",
+      "keyframes",
+      "spring animation",
+      "page transition",
+      "micro-interaction"
+    ],
+    "linksTo": [
+      "react",
+      "css-architecture",
+      "threejs",
+      "tailwindcss"
+    ],
+    "linkedFrom": [
+      "code-writer",
+      "ui-designer"
+    ],
+    "riskLevel": "low",
+    "path": "skills/animation/SKILL.md"
+  },
+  "api-designer": {
+    "name": "api-designer",
+    "description": "REST and GraphQL API design with OpenAPI specifications, versioning strategies, pagination, and error contracts",
+    "layer": "utility",
+    "category": "development",
+    "triggers": [
+      "design API",
+      "REST API",
+      "GraphQL schema",
+      "OpenAPI spec",
+      "API endpoint",
+      "API versioning",
+      "pagination",
+      "API error handling"
+    ],
+    "linksTo": [
+      "data-modeling",
+      "error-handling",
+      "graphql",
+      "mermaid"
+    ],
+    "linkedFrom": [
+      "plan",
+      "cook",
+      "ecommerce",
+      "microservices"
+    ],
+    "riskLevel": "low",
+    "path": "skills/api-designer/SKILL.md"
+  },
+  "audit": {
+    "name": "audit",
+    "description": "Full codebase audit orchestrator covering security, code quality, performance, and accessibility analysis with prioritized findings.",
+    "layer": "orchestrator",
+    "category": "orchestration",
+    "triggers": [
+      "/audit",
+      "audit this codebase",
+      "full code audit",
+      "security audit",
+      "quality audit",
+      "review the whole project"
+    ],
+    "linksTo": [
+      "scout",
+      "code-review",
+      "test",
+      "optimize",
+      "research",
+      "debug",
+      "fix",
+      "refactor",
+      "sequential-thinking",
+      "mermaid",
+      "docs-writer",
+      "plan"
+    ],
+    "linkedFrom": [
+      "team",
+      "ship"
+    ],
+    "riskLevel": "low",
+    "path": "skills/audit/SKILL.md"
+  },
+  "authentication": {
+    "name": "authentication",
+    "description": "Authentication patterns including JWT, sessions, OAuth 2.0, OIDC, passkeys, RBAC, and multi-factor authentication",
+    "layer": "domain",
+    "category": "security",
+    "triggers": [
+      "authentication",
+      "auth",
+      "jwt",
+      "session",
+      "oauth",
+      "oidc",
+      "passkey",
+      "rbac",
+      "login",
+      "signup",
+      "mfa",
+      "two factor"
+    ],
+    "linksTo": [
+      "[better-auth, encryption, owasp, nextjs]"
+    ],
+    "linkedFrom": [
+      "[api-designer, code-review, security-scanner]"
+    ],
+    "riskLevel": "medium",
+    "path": "skills/authentication/SKILL.md"
+  },
+  "aws": {
+    "name": "aws",
+    "description": "AWS services including Lambda, S3, DynamoDB, CloudFormation, CDK, IAM, and serverless architecture patterns",
+    "layer": "domain",
+    "category": "devops",
+    "triggers": [
+      "aws",
+      "lambda",
+      "s3",
+      "dynamodb",
+      "cloudformation",
+      "cdk",
+      "api gateway",
+      "ecs",
+      "fargate",
+      "sqs",
+      "sns"
+    ],
+    "linksTo": [
+      "[terraform, kubernetes, monitoring, docker, cicd]"
+    ],
+    "linkedFrom": [
+      "[ship, plan, infrastructure]"
+    ],
+    "riskLevel": "medium",
+    "path": "skills/aws/SKILL.md"
+  },
+  "better-auth": {
+    "name": "better-auth",
+    "description": "Better-Auth library integration for authentication with social providers, sessions, RBAC, and organization management",
+    "layer": "domain",
+    "category": "security",
+    "triggers": [
+      "better-auth",
+      "better auth",
+      "betterauth"
+    ],
+    "linksTo": [
+      "[authentication, nextjs, drizzle, prisma]"
+    ],
+    "linkedFrom": [
+      "[authentication, code-review]"
+    ],
+    "riskLevel": "medium",
+    "path": "skills/better-auth/SKILL.md"
+  },
+  "billing": {
+    "name": "billing",
+    "description": "Subscription billing, usage metering, invoicing, plan management, and payment lifecycle",
+    "layer": "domain",
+    "category": "payments",
+    "triggers": [
+      "billing",
+      "subscription",
+      "pricing plans",
+      "usage metering",
+      "invoicing",
+      "subscription billing",
+      "plan management",
+      "upgrade downgrade"
+    ],
+    "linksTo": [
+      "stripe",
+      "api-designer",
+      "data-modeling",
+      "error-handling"
+    ],
+    "linkedFrom": [
+      "ecommerce",
+      "cook",
+      "plan"
+    ],
+    "riskLevel": "high",
+    "path": "skills/billing/SKILL.md"
+  },
+  "bootstrap": {
+    "name": "bootstrap",
+    "description": "New project scaffolding orchestrator that sets up a complete project from scratch with the right stack, structure, configuration, and initial code.",
+    "layer": "orchestrator",
+    "category": "orchestration",
+    "triggers": [
+      "/bootstrap",
+      "bootstrap a new project",
+      "scaffold a new app",
+      "start a new project",
+      "create a new project",
+      "init project"
+    ],
+    "linksTo": [
+      "plan",
+      "research",
+      "scout",
+      "brainstorm",
+      "sequential-thinking",
+      "git-workflow",
+      "commit-crafter",
+      "docs-writer",
+      "mermaid"
+    ],
+    "linkedFrom": [
+      "team"
+    ],
+    "riskLevel": "low",
+    "path": "skills/bootstrap/SKILL.md"
+  },
+  "brainstorm": {
+    "name": "brainstorm",
+    "description": "Structured ideation with constraint mapping, divergent exploration, and convergent selection",
+    "layer": "hub",
+    "category": "workflow",
+    "triggers": [
+      "/brainstorm",
+      "brainstorm ideas",
+      "what are the options",
+      "how could we approach this",
+      "explore alternatives",
+      "think of ways to"
+    ],
+    "linksTo": [
+      "plan",
+      "research",
+      "scout"
+    ],
+    "linkedFrom": [
+      "plan",
+      "cook",
+      "team"
+    ],
+    "riskLevel": "low",
+    "path": "skills/brainstorm/SKILL.md"
+  },
+  "build-resolver": {
+    "name": "build-resolver",
+    "description": "Minimal-diff build error fixer — gets builds green with the smallest possible changes",
+    "layer": "utility",
+    "category": "quality",
+    "triggers": [
+      "build error",
+      "build failed",
+      "tsc error",
+      "type error",
+      "build fix",
+      "compilation error",
+      "build broken"
+    ],
+    "linksTo": [
+      "fix",
+      "typescript-frontend",
+      "quality-gate"
+    ],
+    "linkedFrom": [
+      "debug",
+      "cook",
+      "ship"
+    ],
+    "riskLevel": "low",
+    "path": "skills/build-resolver/SKILL.md"
+  },
+  "caching": {
+    "name": "caching",
+    "description": "Design and implement caching strategies across all layers — in-memory, distributed (Redis/Memcached), CDN, HTTP cache headers, and application-level memoization",
+    "layer": "utility",
+    "category": "performance",
+    "triggers": [
+      "cache this",
+      "add caching",
+      "caching strategy",
+      "redis cache",
+      "CDN caching",
+      "HTTP cache headers",
+      "memoize",
+      "cache invalidation"
+    ],
+    "linksTo": [
+      "api-designer",
+      "data-modeling",
+      "performance-profiler"
+    ],
+    "linkedFrom": [
+      "optimize",
+      "ship"
+    ],
+    "riskLevel": "low",
+    "path": "skills/caching/SKILL.md"
+  },
+  "changelog-writer": {
+    "name": "changelog-writer",
+    "description": "Generate structured changelogs from git commits, PRs, and tags following Keep a Changelog conventions",
+    "layer": "utility",
+    "category": "documentation",
+    "triggers": [
+      "write changelog",
+      "generate changelog",
+      "what changed",
+      "release notes",
+      "update CHANGELOG"
+    ],
+    "linksTo": [
+      "commit-crafter",
+      "pr-writer",
+      "git-workflow"
+    ],
+    "linkedFrom": [
+      "ship",
+      "git-workflow"
+    ],
+    "riskLevel": "low",
+    "path": "skills/changelog-writer/SKILL.md"
+  },
+  "chrome-devtools": {
+    "name": "chrome-devtools",
+    "description": "Browser automation, debugging, performance profiling, and DevTools-driven diagnostics via Playwright",
+    "layer": "utility",
+    "category": "tooling",
+    "triggers": [
+      "open browser",
+      "inspect page",
+      "debug in browser",
+      "performance profile",
+      "lighthouse audit",
+      "network requests",
+      "console errors",
+      "test in browser"
+    ],
+    "linksTo": [
+      "ui-ux-pro",
+      "ai-multimodal",
+      "error-handling"
+    ],
+    "linkedFrom": [
+      "orchestrator",
+      "planner"
+    ],
+    "riskLevel": "low",
+    "path": "skills/chrome-devtools/SKILL.md"
+  },
+  "cicd": {
+    "name": "cicd",
+    "description": "GitHub Actions, GitLab CI, pipeline optimization, deployment automation, and CI/CD best practices",
+    "layer": "domain",
+    "category": "devops",
+    "triggers": [
+      "ci/cd",
+      "cicd",
+      "github actions",
+      "gitlab ci",
+      "pipeline",
+      "workflow",
+      "continuous integration",
+      "continuous deployment"
+    ],
+    "linksTo": [
+      "[docker, kubernetes, terraform, vercel, monitoring]"
+    ],
+    "linkedFrom": [
+      "[ship, code-review, test]"
+    ],
+    "riskLevel": "medium",
+    "path": "skills/cicd/SKILL.md"
+  },
+  "cloudflare": {
+    "name": "cloudflare",
+    "description": "Cloudflare Workers, Pages, D1, R2, KV, Durable Objects, DNS, and edge computing patterns",
+    "layer": "domain",
+    "category": "devops",
+    "triggers": [
+      "cloudflare",
+      "workers",
+      "cloudflare pages",
+      "d1",
+      "r2",
+      "kv",
+      "durable objects",
+      "edge function",
+      "wrangler"
+    ],
+    "linksTo": [
+      "[nginx, terraform, monitoring, authentication]"
+    ],
+    "linkedFrom": [
+      "[ship, optimize, caching]"
+    ],
+    "riskLevel": "low",
+    "path": "skills/cloudflare/SKILL.md"
+  },
+  "code-explainer": {
+    "name": "code-explainer",
+    "description": "Explain code at configurable depth levels — from high-level overview to line-by-line analysis with algorithm complexity and design pattern identification",
+    "layer": "utility",
+    "category": "education",
+    "triggers": [
+      "explain this code",
+      "what does this do",
+      "how does this work",
+      "walk me through",
+      "code walkthrough",
+      "explain like I'm",
+      "ELI5 this code",
+      "deep dive"
+    ],
+    "linksTo": [
+      "docs-writer",
+      "code-review",
+      "mermaid"
+    ],
+    "linkedFrom": [
+      "onboard",
+      "debug",
+      "code-review"
+    ],
+    "riskLevel": "low",
+    "path": "skills/code-explainer/SKILL.md"
+  },
+  "code-review": {
+    "name": "code-review",
+    "description": "Multi-pass code review covering logic correctness, security, performance, style, and maintainability",
+    "layer": "hub",
+    "category": "workflow",
+    "triggers": [
+      "/code-review",
+      "review this code",
+      "check this code",
+      "review my changes",
+      "is this code good"
+    ],
+    "linksTo": [
+      "fix",
+      "refactor",
+      "test",
+      "scout",
+      "optimize"
+    ],
+    "linkedFrom": [
+      "cook",
+      "team",
+      "ship",
+      "fix",
+      "refactor"
+    ],
+    "riskLevel": "low",
+    "path": "skills/code-review/SKILL.md"
+  },
+  "commit-crafter": {
+    "name": "commit-crafter",
+    "description": "Generate well-structured conventional commit messages from staged changes with appropriate type, scope, and description",
+    "layer": "utility",
+    "category": "developer-workflow",
+    "triggers": [
+      "commit message",
+      "write commit",
+      "conventional commit",
+      "how should I commit this",
+      "craft commit"
+    ],
+    "linksTo": [
+      "changelog-writer",
+      "pr-writer",
+      "git-workflow"
+    ],
+    "linkedFrom": [
+      "ship",
+      "git-workflow",
+      "code-review"
+    ],
+    "riskLevel": "low",
+    "path": "skills/commit-crafter/SKILL.md"
+  },
+  "context-engineering": {
+    "name": "context-engineering",
+    "description": "Context window optimization, token budget management, and information compression for AI-assisted workflows",
+    "layer": "utility",
+    "category": "meta",
+    "triggers": [
+      "context window",
+      "token limit",
+      "too much context",
+      "compress this",
+      "summarize for context",
+      "optimize prompt",
+      "context budget"
+    ],
+    "linksTo": [
+      "sequential-thinking",
+      "docs-seeker",
+      "repomix"
+    ],
+    "linkedFrom": [
+      "orchestrator",
+      "planner"
+    ],
+    "riskLevel": "low",
+    "path": "skills/context-engineering/SKILL.md"
+  },
+  "cook": {
+    "name": "cook",
+    "description": "End-to-end feature builder that orchestrates the full lifecycle from planning through research, scouting, coding, testing, review, and shipping a feature.",
+    "layer": "orchestrator",
+    "category": "orchestration",
+    "triggers": [
+      "/cook",
+      "cook a feature",
+      "build this feature end to end",
+      "implement this feature completely",
+      "full feature build"
+    ],
+    "linksTo": [
+      "plan",
+      "research",
+      "scout",
+      "code-review",
+      "test",
+      "fix",
+      "refactor",
+      "optimize",
+      "sequential-thinking",
+      "git-workflow",
+      "commit-crafter",
+      "pr-writer",
+      "changelog-writer",
+      "docs-writer"
+    ],
+    "linkedFrom": [
+      "team",
+      "kanban"
+    ],
+    "riskLevel": "medium",
+    "path": "skills/cook/SKILL.md"
+  },
+  "css-architecture": {
+    "name": "css-architecture",
+    "description": "CSS architecture patterns — CSS modules, CSS-in-JS, cascade layers, container queries, logical properties, and scalable styling strategies",
+    "layer": "domain",
+    "category": "frontend",
+    "triggers": [
+      "css module",
+      "css architecture",
+      "cascade layer",
+      "container query",
+      "CSS-in-JS",
+      "styled-components",
+      "css custom properties",
+      "css variables",
+      "css scope",
+      "css nesting",
+      "logical properties",
+      "@layer"
+    ],
+    "linksTo": [
+      "tailwindcss",
+      "design-systems",
+      "animation"
+    ],
+    "linkedFrom": [
+      "code-writer",
+      "architect"
+    ],
+    "riskLevel": "low",
+    "path": "skills/css-architecture/SKILL.md"
+  },
+  "dashboard": {
+    "name": "dashboard",
+    "description": "Start the UltraThink dashboard web UI",
+    "layer": "domain",
+    "category": "specialist",
+    "triggers": [],
+    "linksTo": [],
+    "linkedFrom": [],
+    "riskLevel": "low",
+    "path": "skills/dashboard/SKILL.md"
+  },
+  "data-modeling": {
+    "name": "data-modeling",
+    "description": "Database schema design, normalization to BCNF, entity-relationship modeling, indexing strategies, and migration planning",
+    "layer": "utility",
+    "category": "development",
+    "triggers": [
+      "database schema",
+      "data model",
+      "ER diagram",
+      "normalize",
+      "database design",
+      "migration",
+      "indexing strategy",
+      "schema design"
+    ],
+    "linksTo": [
+      "api-designer",
+      "mermaid",
+      "error-handling"
+    ],
+    "linkedFrom": [
+      "orchestrator",
+      "planner",
+      "code-architect"
+    ],
+    "riskLevel": "medium",
+    "path": "skills/data-modeling/SKILL.md"
+  },
+  "debug": {
+    "name": "debug",
+    "description": "Systematic debugging using hypothesis-driven investigation with test, narrow, and resolve loops",
+    "layer": "hub",
+    "category": "workflow",
+    "triggers": [
+      "/debug",
+      "debug this",
+      "why is this broken",
+      "find the bug",
+      "this is not working",
+      "something is wrong with"
+    ],
+    "linksTo": [
+      "fix",
+      "scout",
+      "test",
+      "code-review"
+    ],
+    "linkedFrom": [
+      "cook",
+      "team",
+      "ship"
+    ],
+    "riskLevel": "low",
+    "path": "skills/debug/SKILL.md"
+  },
+  "dependency-analyzer": {
+    "name": "dependency-analyzer",
+    "description": "Dependency tree analysis, version conflict resolution, update planning, and bundle size optimization",
+    "layer": "utility",
+    "category": "devtools",
+    "triggers": [
+      "dependency",
+      "dependencies",
+      "package update",
+      "bundle size",
+      "dependency tree",
+      "version conflict",
+      "npm audit",
+      "outdated packages"
+    ],
+    "linksTo": [
+      "security-scanner",
+      "optimize",
+      "cicd"
+    ],
+    "linkedFrom": [
+      "audit",
+      "ship",
+      "code-review"
+    ],
+    "riskLevel": "low",
+    "path": "skills/dependency-analyzer/SKILL.md"
+  },
+  "design-systems": {
+    "name": "design-systems",
+    "description": "Component library architecture, design tokens, Storybook, theming, documentation, and scalable design system patterns",
+    "layer": "domain",
+    "category": "frontend",
+    "triggers": [
+      "design system",
+      "component library",
+      "design token",
+      "storybook",
+      "theme",
+      "token system",
+      "UI library",
+      "component architecture",
+      "variant",
+      "primitive component"
+    ],
+    "linksTo": [
+      "tailwindcss",
+      "css-architecture",
+      "react",
+      "typescript-frontend"
+    ],
+    "linkedFrom": [
+      "architect",
+      "code-writer",
+      "ui-designer"
+    ],
+    "riskLevel": "low",
+    "path": "skills/design-systems/SKILL.md"
+  },
+  "django": {
+    "name": "django",
+    "description": "Django ORM patterns, Django REST Framework, middleware, signals, async views, and production-grade application architecture",
+    "layer": "domain",
+    "category": "backend",
+    "triggers": [
+      "django",
+      "django rest framework",
+      "drf",
+      "django orm",
+      "django models",
+      "django middleware",
+      "django signals"
+    ],
+    "linksTo": [
+      "python",
+      "postgresql",
+      "redis",
+      "message-queues",
+      "microservices"
+    ],
+    "linkedFrom": [
+      "error-handling",
+      "authentication",
+      "testing"
+    ],
+    "riskLevel": "low",
+    "path": "skills/django/SKILL.md"
+  },
+  "docker": {
+    "name": "docker",
+    "description": "Dockerfile optimization, multi-stage builds, Docker Compose orchestration, image security, and container best practices",
+    "layer": "domain",
+    "category": "devops",
+    "triggers": [
+      "docker",
+      "dockerfile",
+      "container",
+      "docker compose",
+      "multi-stage build",
+      "container image",
+      "docker build"
+    ],
+    "linksTo": [
+      "[kubernetes, cicd, monitoring, nginx]"
+    ],
+    "linkedFrom": [
+      "[code-review, optimize, ship]"
+    ],
+    "riskLevel": "medium",
+    "path": "skills/docker/SKILL.md"
+  },
+  "docs-seeker": {
+    "name": "docs-seeker",
+    "description": "Documentation discovery, retrieval, and synthesis across local files, APIs, and external sources",
+    "layer": "utility",
+    "category": "knowledge",
+    "triggers": [
+      "find documentation",
+      "how does this library work",
+      "what does this API do",
+      "look up the docs",
+      "find examples for",
+      "reference for"
+    ],
+    "linksTo": [
+      "context-engineering",
+      "repomix"
+    ],
+    "linkedFrom": [
+      "orchestrator",
+      "planner",
+      "code-architect"
+    ],
+    "riskLevel": "low",
+    "path": "skills/docs-seeker/SKILL.md"
+  },
+  "docs-writer": {
+    "name": "docs-writer",
+    "description": "Generate clear, structured technical documentation — API docs, architecture docs, guides, runbooks, and inline code documentation",
+    "layer": "utility",
+    "category": "documentation",
+    "triggers": [
+      "write docs",
+      "document this",
+      "API documentation",
+      "write a guide",
+      "architecture doc",
+      "runbook",
+      "JSDoc",
+      "docstring",
+      "README"
+    ],
+    "linksTo": [
+      "code-explainer",
+      "api-designer",
+      "mermaid"
+    ],
+    "linkedFrom": [
+      "ship",
+      "onboard",
+      "code-review"
+    ],
+    "riskLevel": "low",
+    "path": "skills/docs-writer/SKILL.md"
+  },
+  "drizzle": {
+    "name": "drizzle",
+    "description": "Drizzle ORM type-safe queries, schema definitions, migrations, relations, transactions, and performance patterns",
+    "layer": "domain",
+    "category": "database",
+    "triggers": [
+      "drizzle",
+      "drizzle orm",
+      "drizzle kit",
+      "drizzle schema",
+      "drizzle query"
+    ],
+    "linksTo": [
+      "postgresql",
+      "nodejs",
+      "graphql",
+      "microservices"
+    ],
+    "linkedFrom": [
+      "error-handling",
+      "testing"
+    ],
+    "riskLevel": "low",
+    "path": "skills/drizzle/SKILL.md"
+  },
+  "ecommerce": {
+    "name": "ecommerce",
+    "description": "E-commerce architecture patterns including cart, inventory, pricing, checkout, and order management",
+    "layer": "domain",
+    "category": "payments",
+    "triggers": [
+      "ecommerce",
+      "e-commerce",
+      "online store",
+      "shopping cart",
+      "checkout flow",
+      "inventory management",
+      "product catalog",
+      "order management"
+    ],
+    "linksTo": [
+      "stripe",
+      "shopify",
+      "api-designer",
+      "data-modeling",
+      "redis"
+    ],
+    "linkedFrom": [
+      "cook",
+      "plan",
+      "shopify"
+    ],
+    "riskLevel": "medium",
+    "path": "skills/ecommerce/SKILL.md"
+  },
+  "encryption": {
+    "name": "encryption",
+    "description": "Encryption patterns, key management, hashing, digital signatures, TLS, and secure data storage",
+    "layer": "domain",
+    "category": "security",
+    "triggers": [
+      "encryption",
+      "encrypt",
+      "decrypt",
+      "hashing",
+      "key management",
+      "cryptography",
+      "hmac",
+      "aes",
+      "rsa",
+      "digital signature"
+    ],
+    "linksTo": [
+      "[authentication, owasp, aws]"
+    ],
+    "linkedFrom": [
+      "[authentication, security-scanner, code-review]"
+    ],
+    "riskLevel": "medium",
+    "path": "skills/encryption/SKILL.md"
+  },
+  "error-handling": {
+    "name": "error-handling",
+    "description": "Error handling patterns, retry strategies, circuit breakers, graceful degradation, and user-facing error communication",
+    "layer": "utility",
+    "category": "development",
+    "triggers": [
+      "error handling",
+      "retry strategy",
+      "circuit breaker",
+      "graceful degradation",
+      "error boundary",
+      "fault tolerance",
+      "exception handling"
+    ],
+    "linksTo": [
+      "logging",
+      "api-designer",
+      "ui-ux-pro"
+    ],
+    "linkedFrom": [
+      "orchestrator",
+      "planner",
+      "code-architect"
+    ],
+    "riskLevel": "low",
+    "path": "skills/error-handling/SKILL.md"
+  },
+  "fastapi": {
+    "name": "fastapi",
+    "description": "FastAPI patterns, Pydantic v2 integration, dependency injection, middleware, background tasks, and production deployment",
+    "layer": "domain",
+    "category": "backend",
+    "triggers": [
+      "fastapi",
+      "fast api",
+      "pydantic",
+      "uvicorn",
+      "starlette",
+      "python api"
+    ],
+    "linksTo": [
+      "python",
+      "postgresql",
+      "mongodb",
+      "redis",
+      "websockets",
+      "microservices"
+    ],
+    "linkedFrom": [
+      "error-handling",
+      "authentication",
+      "testing"
+    ],
+    "riskLevel": "low",
+    "path": "skills/fastapi/SKILL.md"
+  },
+  "fix": {
+    "name": "fix",
+    "description": "Apply targeted, verified fixes with minimal blast radius and rollback safety",
+    "layer": "hub",
+    "category": "workflow",
+    "triggers": [
+      "/fix",
+      "fix this",
+      "apply the fix",
+      "patch this",
+      "correct this"
+    ],
+    "linksTo": [
+      "test",
+      "code-review",
+      "debug"
+    ],
+    "linkedFrom": [
+      "debug",
+      "cook",
+      "team",
+      "ship"
+    ],
+    "riskLevel": "medium",
+    "path": "skills/fix/SKILL.md"
+  },
+  "forms": {
+    "name": "forms",
+    "description": "Form validation, multi-step forms, React Hook Form with Zod, server actions, and accessible form patterns",
+    "layer": "domain",
+    "category": "frontend",
+    "triggers": [
+      "form",
+      "form validation",
+      "multi-step form",
+      "react hook form",
+      "zod schema",
+      "form builder",
+      "input validation"
+    ],
+    "linksTo": [
+      "react",
+      "nextjs",
+      "tailwindcss",
+      "ui-ux-pro",
+      "api-designer"
+    ],
+    "linkedFrom": [
+      "cook",
+      "react",
+      "nextjs"
+    ],
+    "riskLevel": "low",
+    "path": "skills/forms/SKILL.md"
+  },
+  "git-workflow": {
+    "name": "git-workflow",
+    "description": "Git operations, branching strategies, conflict resolution, commit conventions, and repository maintenance",
+    "layer": "utility",
+    "category": "tooling",
+    "triggers": [
+      "git workflow",
+      "branching strategy",
+      "merge conflict",
+      "rebase",
+      "commit message",
+      "git history",
+      "cherry pick",
+      "release branch"
+    ],
+    "linksTo": [
+      "error-handling",
+      "logging"
+    ],
+    "linkedFrom": [
+      "orchestrator",
+      "planner"
+    ],
+    "riskLevel": "medium",
+    "path": "skills/git-workflow/SKILL.md"
+  },
+  "golang": {
+    "name": "golang",
+    "description": "Go patterns, concurrency with goroutines/channels, error handling, interfaces, and production-grade service architecture",
+    "layer": "domain",
+    "category": "backend",
+    "triggers": [
+      "golang",
+      "go lang",
+      "goroutine",
+      "go concurrency",
+      "go interface",
+      "go error handling"
+    ],
+    "linksTo": [
+      "microservices",
+      "postgresql",
+      "redis",
+      "message-queues",
+      "graphql",
+      "websockets"
+    ],
+    "linkedFrom": [
+      "error-handling",
+      "logging",
+      "testing"
+    ],
+    "riskLevel": "low",
+    "path": "skills/golang/SKILL.md"
+  },
+  "graphql": {
+    "name": "graphql",
+    "description": "GraphQL schema design, resolver patterns, subscriptions, DataLoader batching, federation, and security best practices",
+    "layer": "domain",
+    "category": "backend",
+    "triggers": [
+      "graphql",
+      "gql",
+      "schema design",
+      "resolvers",
+      "graphql subscriptions",
+      "apollo",
+      "graphql federation"
+    ],
+    "linksTo": [
+      "nodejs",
+      "python",
+      "websockets",
+      "redis",
+      "postgresql",
+      "microservices"
+    ],
+    "linkedFrom": [
+      "error-handling",
+      "authentication",
+      "caching"
+    ],
+    "riskLevel": "low",
+    "path": "skills/graphql/SKILL.md"
+  },
+  "gsd": {
+    "name": "gsd",
+    "description": "Get Shit Done — spec-driven development with fresh-context agents, wave execution, and goal-backward verification",
+    "layer": "orchestrator",
+    "category": "workflow",
+    "triggers": [
+      "get shit done",
+      "gsd",
+      "build this feature",
+      "implement this",
+      "ship this",
+      "let's build",
+      "make it happen",
+      "full implementation"
+    ],
+    "linksTo": [
+      "gsd-plan",
+      "gsd-execute",
+      "gsd-verify",
+      "gsd-quick",
+      "plan",
+      "cook",
+      "team"
+    ],
+    "linkedFrom": [
+      "cook",
+      "ship"
+    ],
+    "riskLevel": "high",
+    "path": "skills/gsd/SKILL.md"
+  },
+  "gsd-execute": {
+    "name": "gsd-execute",
+    "description": "Wave-based parallel execution — spawn fresh-context agents per plan with atomic commits",
+    "layer": "hub",
+    "category": "workflow",
+    "triggers": [
+      "gsd execute",
+      "execute phase",
+      "run the plans",
+      "execute wave",
+      "start building"
+    ],
+    "linksTo": [
+      "build-resolver",
+      "fix",
+      "gsd-verify"
+    ],
+    "linkedFrom": [
+      "gsd",
+      "gsd-plan"
+    ],
+    "riskLevel": "high",
+    "path": "skills/gsd-execute/SKILL.md"
+  },
+  "gsd-plan": {
+    "name": "gsd-plan",
+    "description": "Spec-driven planning — create XML-structured plans with must_haves, wave assignments, and deviation rules",
+    "layer": "hub",
+    "category": "workflow",
+    "triggers": [
+      "gsd plan",
+      "plan phase",
+      "create execution plan",
+      "spec driven plan",
+      "plan with must haves"
+    ],
+    "linksTo": [
+      "scout",
+      "research",
+      "plan",
+      "gsd-execute"
+    ],
+    "linkedFrom": [
+      "gsd",
+      "cook"
+    ],
+    "riskLevel": "low",
+    "path": "skills/gsd-plan/SKILL.md"
+  },
+  "gsd-quick": {
+    "name": "gsd-quick",
+    "description": "GSD Quick — lightweight ad-hoc tasks with spec-driven guarantees, no ceremony",
+    "layer": "utility",
+    "category": "workflow",
+    "triggers": [
+      "quick task",
+      "just do it",
+      "quick fix",
+      "gsd quick",
+      "quick build",
+      "fast implementation"
+    ],
+    "linksTo": [
+      "gsd",
+      "fix",
+      "quality-gate",
+      "verify"
+    ],
+    "linkedFrom": [
+      "gsd"
+    ],
+    "riskLevel": "medium",
+    "path": "skills/gsd-quick/SKILL.md"
+  },
+  "gsd-verify": {
+    "name": "gsd-verify",
+    "description": "Goal-backward verification — verify from must-haves backward to artifacts, detect stubs and regressions",
+    "layer": "hub",
+    "category": "workflow",
+    "triggers": [
+      "gsd verify",
+      "verify work",
+      "goal backward",
+      "check must haves",
+      "verify implementation"
+    ],
+    "linksTo": [
+      "verify",
+      "quality-gate",
+      "test",
+      "build-resolver"
+    ],
+    "linkedFrom": [
+      "gsd",
+      "gsd-execute"
+    ],
+    "riskLevel": "low",
+    "path": "skills/gsd-verify/SKILL.md"
+  },
+  "json-transformer": {
+    "name": "json-transformer",
+    "description": "Transform, validate, convert, and restructure data between JSON, YAML, TOML, CSV, and XML formats with schema validation",
+    "layer": "utility",
+    "category": "data-processing",
+    "triggers": [
+      "transform json",
+      "convert json",
+      "json to yaml",
+      "yaml to json",
+      "validate json",
+      "json schema",
+      "restructure data",
+      "flatten json",
+      "merge json",
+      "transform data"
+    ],
+    "linksTo": [
+      "regex-builder",
+      "api-designer",
+      "data-modeling"
+    ],
+    "linkedFrom": [
+      "shell-scripting",
+      "migration-planner"
+    ],
+    "riskLevel": "low",
+    "path": "skills/json-transformer/SKILL.md"
+  },
+  "kanban": {
+    "name": "kanban",
+    "description": "Task board management -- create, update, and track work items across workflow stages",
+    "layer": "hub",
+    "category": "workflow",
+    "triggers": [
+      "/kanban",
+      "show the board",
+      "update task status",
+      "what is in progress",
+      "move task to done",
+      "add a task",
+      "show backlog"
+    ],
+    "linksTo": [
+      "plan",
+      "plan-archive"
+    ],
+    "linkedFrom": [
+      "plan",
+      "cook",
+      "team",
+      "ship"
+    ],
+    "riskLevel": "low",
+    "path": "skills/kanban/SKILL.md"
+  },
+  "kubernetes": {
+    "name": "kubernetes",
+    "description": "Kubernetes manifests, Helm charts, scaling strategies, service mesh, and cluster management",
+    "layer": "domain",
+    "category": "devops",
+    "triggers": [
+      "kubernetes",
+      "k8s",
+      "helm",
+      "kubectl",
+      "pod",
+      "deployment manifest",
+      "cluster",
+      "ingress"
+    ],
+    "linksTo": [
+      "[docker, monitoring, terraform, nginx, cicd]"
+    ],
+    "linkedFrom": [
+      "[ship, optimize, infrastructure]"
+    ],
+    "riskLevel": "medium",
+    "path": "skills/kubernetes/SKILL.md"
+  },
+  "learn-pattern": {
+    "name": "learn-pattern",
+    "description": "Extract reusable patterns from the current session and store as memories",
+    "layer": "utility",
+    "category": "learning",
+    "triggers": [
+      "learn from this",
+      "extract pattern",
+      "remember this pattern",
+      "save what we learned",
+      "learn",
+      "what did we learn"
+    ],
+    "linksTo": [
+      "debug",
+      "fix",
+      "refactor",
+      "sequential-thinking"
+    ],
+    "linkedFrom": [
+      "cook",
+      "audit",
+      "team"
+    ],
+    "riskLevel": "low",
+    "path": "skills/learn-pattern/SKILL.md"
+  },
+  "linux-admin": {
+    "name": "linux-admin",
+    "description": "Linux server management, systemd, networking, troubleshooting, security hardening, and performance tuning",
+    "layer": "domain",
+    "category": "devops",
+    "triggers": [
+      "linux",
+      "server admin",
+      "systemd",
+      "ssh",
+      "iptables",
+      "firewall",
+      "server setup",
+      "ubuntu",
+      "debian",
+      "centos"
+    ],
+    "linksTo": [
+      "[docker, nginx, monitoring, terraform]"
+    ],
+    "linkedFrom": [
+      "[ship, debug, infrastructure]"
+    ],
+    "riskLevel": "medium",
+    "path": "skills/linux-admin/SKILL.md"
+  },
+  "logging": {
+    "name": "logging",
+    "description": "Structured logging, log levels, observability patterns, distributed tracing, and monitoring integration",
+    "layer": "utility",
+    "category": "development",
+    "triggers": [
+      "add logging",
+      "structured logging",
+      "log levels",
+      "observability",
+      "distributed tracing",
+      "monitoring",
+      "debug logging",
+      "audit trail"
+    ],
+    "linksTo": [
+      "error-handling",
+      "api-designer"
+    ],
+    "linkedFrom": [
+      "orchestrator",
+      "planner",
+      "code-architect"
+    ],
+    "riskLevel": "low",
+    "path": "skills/logging/SKILL.md"
+  },
+  "media-processing": {
+    "name": "media-processing",
+    "description": "Image, video, and audio processing using FFmpeg, ImageMagick, Sharp, and web-optimized media pipelines",
+    "layer": "utility",
+    "category": "tooling",
+    "triggers": [
+      "convert image",
+      "resize image",
+      "compress video",
+      "process media",
+      "ffmpeg",
+      "imagemagick",
+      "optimize images",
+      "generate thumbnails",
+      "audio processing"
+    ],
+    "linksTo": [
+      "ai-multimodal",
+      "ui-ux-pro"
+    ],
+    "linkedFrom": [
+      "orchestrator",
+      "planner"
+    ],
+    "riskLevel": "low",
+    "path": "skills/media-processing/SKILL.md"
+  },
+  "mermaid": {
+    "name": "mermaid",
+    "description": "Diagram generation using Mermaid syntax — flowcharts, sequence diagrams, ER diagrams, class diagrams, state machines, and more",
+    "layer": "utility",
+    "category": "visualization",
+    "triggers": [
+      "draw a diagram",
+      "create a flowchart",
+      "sequence diagram",
+      "ER diagram",
+      "class diagram",
+      "state diagram",
+      "visualize this",
+      "mermaid"
+    ],
+    "linksTo": [
+      "data-modeling",
+      "api-designer",
+      "ai-multimodal"
+    ],
+    "linkedFrom": [
+      "orchestrator",
+      "planner",
+      "code-architect"
+    ],
+    "riskLevel": "low",
+    "path": "skills/mermaid/SKILL.md"
+  },
+  "message-queues": {
+    "name": "message-queues",
+    "description": "Message queue patterns with RabbitMQ, Redis Streams, BullMQ, dead letter queues, exactly-once delivery, and event-driven architectures",
+    "layer": "domain",
+    "category": "backend",
+    "triggers": [
+      "message queue",
+      "rabbitmq",
+      "redis streams",
+      "bullmq",
+      "bull",
+      "event driven",
+      "pub sub",
+      "dead letter queue",
+      "job queue",
+      "task queue",
+      "background jobs"
+    ],
+    "linksTo": [
+      "redis",
+      "microservices",
+      "nodejs",
+      "python",
+      "golang"
+    ],
+    "linkedFrom": [
+      "error-handling",
+      "logging",
+      "monitoring"
+    ],
+    "riskLevel": "low",
+    "path": "skills/message-queues/SKILL.md"
+  },
+  "microservices": {
+    "name": "microservices",
+    "description": "Service decomposition, inter-service communication, saga patterns, service mesh, API gateway, and distributed systems patterns",
+    "layer": "domain",
+    "category": "backend",
+    "triggers": [
+      "microservices",
+      "micro services",
+      "service mesh",
+      "api gateway",
+      "saga pattern",
+      "service decomposition",
+      "distributed system",
+      "cqrs",
+      "event sourcing"
+    ],
+    "linksTo": [
+      "message-queues",
+      "redis",
+      "postgresql",
+      "graphql",
+      "golang",
+      "nodejs",
+      "rust"
+    ],
+    "linkedFrom": [
+      "error-handling",
+      "logging",
+      "monitoring"
+    ],
+    "riskLevel": "low",
+    "path": "skills/microservices/SKILL.md"
+  },
+  "migrate": {
+    "name": "migrate",
+    "description": "Migration orchestrator that safely plans, executes, and verifies codebase or infrastructure migrations with rollback capabilities.",
+    "layer": "orchestrator",
+    "category": "orchestration",
+    "triggers": [
+      "/migrate",
+      "migrate this",
+      "migration plan",
+      "upgrade to",
+      "move from X to Y",
+      "convert from X to Y"
+    ],
+    "linksTo": [
+      "plan",
+      "plan-validate",
+      "plan-archive",
+      "scout",
+      "research",
+      "test",
+      "fix",
+      "debug",
+      "refactor",
+      "code-review",
+      "optimize",
+      "sequential-thinking",
+      "git-workflow",
+      "commit-crafter",
+      "docs-writer",
+      "mermaid"
+    ],
+    "linkedFrom": [
+      "team"
+    ],
+    "riskLevel": "high",
+    "path": "skills/migrate/SKILL.md"
+  },
+  "migration-planner": {
+    "name": "migration-planner",
+    "description": "Database and API migration planning with zero-downtime strategies, rollback procedures, and data transformation",
+    "layer": "utility",
+    "category": "development",
+    "triggers": [
+      "migration plan",
+      "database migration",
+      "schema migration",
+      "API migration",
+      "zero downtime migration",
+      "data migration",
+      "breaking change"
+    ],
+    "linksTo": [
+      "data-modeling",
+      "postgresql",
+      "drizzle",
+      "prisma",
+      "api-designer"
+    ],
+    "linkedFrom": [
+      "plan",
+      "data-modeling",
+      "ship"
+    ],
+    "riskLevel": "high",
+    "path": "skills/migration-planner/SKILL.md"
+  },
+  "ml-ops": {
+    "name": "ml-ops",
+    "description": "Model deployment, versioning, monitoring, A/B testing, feature stores, and ML pipeline orchestration",
+    "layer": "domain",
+    "category": "ai-ml",
+    "triggers": [
+      "MLOps",
+      "model deployment",
+      "model monitoring",
+      "model versioning",
+      "A/B testing models",
+      "feature store",
+      "ML pipeline",
+      "model serving"
+    ],
+    "linksTo": [
+      "docker",
+      "kubernetes",
+      "monitoring",
+      "cicd",
+      "logging"
+    ],
+    "linkedFrom": [
+      "ai-agents",
+      "rag",
+      "plan"
+    ],
+    "riskLevel": "medium",
+    "path": "skills/ml-ops/SKILL.md"
+  },
+  "mongodb": {
+    "name": "mongodb",
+    "description": "MongoDB schema design, aggregation pipelines, indexing strategies, change streams, transactions, and production optimization",
+    "layer": "domain",
+    "category": "database",
+    "triggers": [
+      "mongodb",
+      "mongo",
+      "mongoose",
+      "nosql",
+      "document database",
+      "aggregation pipeline"
+    ],
+    "linksTo": [
+      "nodejs",
+      "python",
+      "fastapi",
+      "redis",
+      "microservices"
+    ],
+    "linkedFrom": [
+      "error-handling",
+      "monitoring"
+    ],
+    "riskLevel": "low",
+    "path": "skills/mongodb/SKILL.md"
+  },
+  "monitoring": {
+    "name": "monitoring",
+    "description": "Prometheus, Grafana, alerting, SLOs, structured logging, distributed tracing, and observability patterns",
+    "layer": "domain",
+    "category": "devops",
+    "triggers": [
+      "monitoring",
+      "prometheus",
+      "grafana",
+      "alerting",
+      "slo",
+      "observability",
+      "metrics",
+      "tracing",
+      "logging"
+    ],
+    "linksTo": [
+      "[kubernetes, docker, aws, nginx, cicd]"
+    ],
+    "linkedFrom": [
+      "[ship, optimize, debug]"
+    ],
+    "riskLevel": "low",
+    "path": "skills/monitoring/SKILL.md"
+  },
+  "nextjs": {
+    "name": "nextjs",
+    "description": "Next.js App Router, React Server Components, data fetching, caching, middleware, and deployment patterns",
+    "layer": "domain",
+    "category": "frontend",
+    "triggers": [
+      "next.js",
+      "nextjs",
+      "app router",
+      "server component",
+      "RSC",
+      "server action",
+      "next/image",
+      "next/link",
+      "middleware",
+      "generateStaticParams",
+      "revalidate"
+    ],
+    "linksTo": [
+      "react",
+      "typescript-frontend",
+      "tailwindcss",
+      "forms",
+      "state-management"
+    ],
+    "linkedFrom": [
+      "code-writer",
+      "code-reviewer",
+      "architect"
+    ],
+    "riskLevel": "low",
+    "path": "skills/nextjs/SKILL.md"
+  },
+  "nginx": {
+    "name": "nginx",
+    "description": "Nginx configuration, reverse proxy, load balancing, SSL/TLS, caching, rate limiting, and security hardening",
+    "layer": "domain",
+    "category": "devops",
+    "triggers": [
+      "nginx",
+      "reverse proxy",
+      "load balancer",
+      "nginx config",
+      "proxy pass",
+      "ssl termination"
+    ],
+    "linksTo": [
+      "[docker, kubernetes, monitoring, linux-admin, cloudflare]"
+    ],
+    "linkedFrom": [
+      "[ship, optimize, infrastructure]"
+    ],
+    "riskLevel": "medium",
+    "path": "skills/nginx/SKILL.md"
+  },
+  "nodejs": {
+    "name": "nodejs",
+    "description": "Node.js runtime patterns, streams, worker threads, clustering, event loop optimization, and production-grade server architecture",
+    "layer": "domain",
+    "category": "backend",
+    "triggers": [
+      "node.js",
+      "nodejs",
+      "express",
+      "worker threads",
+      "node streams",
+      "clustering",
+      "event loop",
+      "node performance"
+    ],
+    "linksTo": [
+      "websockets",
+      "message-queues",
+      "microservices",
+      "graphql",
+      "prisma",
+      "drizzle",
+      "redis"
+    ],
+    "linkedFrom": [
+      "error-handling",
+      "logging",
+      "testing"
+    ],
+    "riskLevel": "low",
+    "path": "skills/nodejs/SKILL.md"
+  },
+  "onboard": {
+    "name": "onboard",
+    "description": "Codebase onboarding orchestrator that scans, documents, summarizes, and teaches a codebase to new developers or to the AI agent itself.",
+    "layer": "orchestrator",
+    "category": "orchestration",
+    "triggers": [
+      "/onboard",
+      "onboard me to this codebase",
+      "explain this codebase",
+      "walk me through this project",
+      "learn this codebase",
+      "what does this project do"
+    ],
+    "linksTo": [
+      "scout",
+      "research",
+      "sequential-thinking",
+      "mermaid",
+      "docs-writer",
+      "plan",
+      "brainstorm"
+    ],
+    "linkedFrom": [
+      "team",
+      "audit"
+    ],
+    "riskLevel": "low",
+    "path": "skills/onboard/SKILL.md"
+  },
+  "optimize": {
+    "name": "optimize",
+    "description": "Performance optimization workflow -- profile, identify bottlenecks, apply targeted improvements, verify gains",
+    "layer": "hub",
+    "category": "workflow",
+    "triggers": [
+      "/optimize",
+      "optimize this",
+      "make this faster",
+      "improve performance",
+      "reduce load time",
+      "this is too slow"
+    ],
+    "linksTo": [
+      "scout",
+      "test",
+      "code-review",
+      "refactor"
+    ],
+    "linkedFrom": [
+      "cook",
+      "team",
+      "ship"
+    ],
+    "riskLevel": "medium",
+    "path": "skills/optimize/SKILL.md"
+  },
+  "owasp": {
+    "name": "owasp",
+    "description": "OWASP Top 10 prevention, security headers, CSP, input validation, XSS/CSRF/SQLi protection",
+    "layer": "domain",
+    "category": "security",
+    "triggers": [
+      "owasp",
+      "security headers",
+      "csp",
+      "content security policy",
+      "xss",
+      "csrf",
+      "sql injection",
+      "web security",
+      "vulnerability",
+      "security audit"
+    ],
+    "linksTo": [
+      "[authentication, encryption, nginx, nextjs]"
+    ],
+    "linkedFrom": [
+      "[code-review, security-scanner, audit]"
+    ],
+    "riskLevel": "low",
+    "path": "skills/owasp/SKILL.md"
+  },
+  "performance-profiler": {
+    "name": "performance-profiler",
+    "description": "Profile, benchmark, and identify performance bottlenecks in applications — CPU, memory, network, rendering, and database query performance",
+    "layer": "utility",
+    "category": "performance",
+    "triggers": [
+      "profile this",
+      "why is this slow",
+      "benchmark",
+      "performance bottleneck",
+      "optimize performance",
+      "memory leak",
+      "slow query",
+      "render performance",
+      "bundle size"
+    ],
+    "linksTo": [
+      "caching",
+      "optimize",
+      "data-modeling"
+    ],
+    "linkedFrom": [
+      "optimize",
+      "ship",
+      "code-review"
+    ],
+    "riskLevel": "low",
+    "path": "skills/performance-profiler/SKILL.md"
+  },
+  "plan": {
+    "name": "plan",
+    "description": "Create phased implementation plans with risks, assumptions, milestones, and verification criteria",
+    "layer": "hub",
+    "category": "workflow",
+    "triggers": [
+      "/plan",
+      "create a plan",
+      "plan this out",
+      "make an implementation plan",
+      "how should we build this"
+    ],
+    "linksTo": [
+      "plan-validate",
+      "scout",
+      "research",
+      "brainstorm"
+    ],
+    "linkedFrom": [
+      "cook",
+      "team",
+      "ship"
+    ],
+    "riskLevel": "low",
+    "path": "skills/plan/SKILL.md"
+  },
+  "plan-archive": {
+    "name": "plan-archive",
+    "description": "Archive completed plans, extract lessons learned, and write journey journals to long-term memory",
+    "layer": "hub",
+    "category": "workflow",
+    "triggers": [
+      "/plan-archive",
+      "archive this plan",
+      "plan is done",
+      "wrap up the plan",
+      "write a retrospective"
+    ],
+    "linksTo": [
+      "kanban",
+      "research"
+    ],
+    "linkedFrom": [
+      "plan",
+      "cook",
+      "team",
+      "ship"
+    ],
+    "riskLevel": "low",
+    "path": "skills/plan-archive/SKILL.md"
+  },
+  "plan-validate": {
+    "name": "plan-validate",
+    "description": "Validate implementation plans against intent using reverse-questioning, assumption stress-testing, and gap analysis",
+    "layer": "hub",
+    "category": "workflow",
+    "triggers": [
+      "/plan-validate",
+      "validate this plan",
+      "stress test the plan",
+      "check the plan",
+      "review the plan"
+    ],
+    "linksTo": [
+      "plan",
+      "research",
+      "scout"
+    ],
+    "linkedFrom": [
+      "plan",
+      "cook",
+      "team",
+      "ship"
+    ],
+    "riskLevel": "low",
+    "path": "skills/plan-validate/SKILL.md"
+  },
+  "postgresql": {
+    "name": "postgresql",
+    "description": "PostgreSQL optimization, indexing strategies, CTEs, window functions, extensions (pg_trgm, PostGIS), partitioning, and production tuning",
+    "layer": "domain",
+    "category": "database",
+    "triggers": [
+      "postgresql",
+      "postgres",
+      "pg",
+      "sql optimization",
+      "database indexing",
+      "cte",
+      "window function",
+      "database partitioning"
+    ],
+    "linksTo": [
+      "prisma",
+      "drizzle",
+      "supabase",
+      "django",
+      "fastapi",
+      "nodejs",
+      "golang"
+    ],
+    "linkedFrom": [
+      "error-handling",
+      "monitoring"
+    ],
+    "riskLevel": "low",
+    "path": "skills/postgresql/SKILL.md"
+  },
+  "pr-writer": {
+    "name": "pr-writer",
+    "description": "Generate comprehensive pull request descriptions with summary, context, testing plan, and review guidance",
+    "layer": "utility",
+    "category": "developer-workflow",
+    "triggers": [
+      "write PR",
+      "PR description",
+      "pull request",
+      "create PR",
+      "describe this PR"
+    ],
+    "linksTo": [
+      "commit-crafter",
+      "changelog-writer",
+      "code-review",
+      "git-workflow"
+    ],
+    "linkedFrom": [
+      "ship",
+      "git-workflow"
+    ],
+    "riskLevel": "low",
+    "path": "skills/pr-writer/SKILL.md"
+  },
+  "preview": {
+    "name": "preview",
+    "description": "Render, summarize, and present markdown documents and structured content in multiple output modes",
+    "layer": "hub",
+    "category": "workflow",
+    "triggers": [
+      "/preview",
+      "preview this",
+      "show me the doc",
+      "render this markdown",
+      "summarize this document",
+      "present this"
+    ],
+    "linksTo": [
+      "research",
+      "scout"
+    ],
+    "linkedFrom": [
+      "cook",
+      "team",
+      "ship",
+      "plan",
+      "plan-archive"
+    ],
+    "riskLevel": "low",
+    "path": "skills/preview/SKILL.md"
+  },
+  "prisma": {
+    "name": "prisma",
+    "description": "Prisma ORM patterns, schema design, migrations, relations, transactions, raw queries, and production optimization",
+    "layer": "domain",
+    "category": "database",
+    "triggers": [
+      "prisma",
+      "prisma client",
+      "prisma schema",
+      "prisma migrate",
+      "prisma relations"
+    ],
+    "linksTo": [
+      "postgresql",
+      "nodejs",
+      "graphql",
+      "microservices"
+    ],
+    "linkedFrom": [
+      "error-handling",
+      "testing"
+    ],
+    "riskLevel": "low",
+    "path": "skills/prisma/SKILL.md"
+  },
+  "problem-solving": {
+    "name": "problem-solving",
+    "description": "Structured problem decomposition frameworks including root cause analysis, decision matrices, and solution evaluation",
+    "layer": "utility",
+    "category": "reasoning",
+    "triggers": [
+      "solve this problem",
+      "root cause",
+      "decision matrix",
+      "trade-off analysis",
+      "how should I approach",
+      "evaluate options",
+      "compare solutions"
+    ],
+    "linksTo": [
+      "sequential-thinking",
+      "data-modeling",
+      "api-designer",
+      "error-handling"
+    ],
+    "linkedFrom": [
+      "orchestrator",
+      "planner",
+      "code-architect"
+    ],
+    "riskLevel": "low",
+    "path": "skills/problem-solving/SKILL.md"
+  },
+  "prompt-engineering": {
+    "name": "prompt-engineering",
+    "description": "Prompt design, chain-of-thought, few-shot learning, system prompts, and structured output patterns",
+    "layer": "domain",
+    "category": "ai-ml",
+    "triggers": [
+      "prompt engineering",
+      "prompt design",
+      "system prompt",
+      "few-shot",
+      "chain of thought",
+      "prompt template",
+      "LLM prompt"
+    ],
+    "linksTo": [
+      "ai-agents",
+      "rag",
+      "research"
+    ],
+    "linkedFrom": [
+      "ai-agents",
+      "cook",
+      "plan"
+    ],
+    "riskLevel": "low",
+    "path": "skills/prompt-engineering/SKILL.md"
+  },
+  "pwa": {
+    "name": "pwa",
+    "description": "Progressive Web Apps with service workers, web app manifest, offline-first architecture, and push notifications",
+    "layer": "domain",
+    "category": "mobile",
+    "triggers": [
+      "PWA",
+      "progressive web app",
+      "service worker",
+      "offline first",
+      "web app manifest",
+      "install prompt",
+      "workbox",
+      "cache strategy"
+    ],
+    "linksTo": [
+      "react",
+      "nextjs",
+      "caching",
+      "performance-profiler"
+    ],
+    "linkedFrom": [
+      "cook",
+      "plan",
+      "nextjs"
+    ],
+    "riskLevel": "low",
+    "path": "skills/pwa/SKILL.md"
+  },
+  "python": {
+    "name": "python",
+    "description": "Python best practices, type hints, async programming, packaging, virtual environments, and production patterns",
+    "layer": "domain",
+    "category": "backend",
+    "triggers": [
+      "python",
+      "pip",
+      "poetry",
+      "asyncio",
+      "type hints",
+      "pydantic",
+      "python packaging"
+    ],
+    "linksTo": [
+      "fastapi",
+      "django",
+      "message-queues",
+      "microservices",
+      "postgresql",
+      "mongodb",
+      "redis"
+    ],
+    "linkedFrom": [
+      "error-handling",
+      "logging",
+      "testing"
+    ],
+    "riskLevel": "low",
+    "path": "skills/python/SKILL.md"
+  },
+  "quality-gate": {
+    "name": "quality-gate",
+    "description": "Lightweight post-edit verification pipeline — format, lint, typecheck, test in one pass",
+    "layer": "utility",
+    "category": "quality",
+    "triggers": [
+      "quality gate",
+      "quality check",
+      "run checks",
+      "lint and test",
+      "pre-commit check",
+      "verify changes",
+      "check my code"
+    ],
+    "linksTo": [
+      "code-review",
+      "test",
+      "fix",
+      "audit"
+    ],
+    "linkedFrom": [
+      "cook",
+      "ship",
+      "verify"
+    ],
+    "riskLevel": "low",
+    "path": "skills/quality-gate/SKILL.md"
+  },
+  "rag": {
+    "name": "rag",
+    "description": "RAG pipelines including document chunking, embedding, vector search, retrieval strategies, and reranking",
+    "layer": "domain",
+    "category": "ai-ml",
+    "triggers": [
+      "RAG",
+      "retrieval augmented generation",
+      "vector search",
+      "embeddings",
+      "chunking",
+      "knowledge base",
+      "semantic search",
+      "reranking"
+    ],
+    "linksTo": [
+      "ai-agents",
+      "prompt-engineering",
+      "postgresql",
+      "redis"
+    ],
+    "linkedFrom": [
+      "ai-agents",
+      "cook",
+      "research"
+    ],
+    "riskLevel": "low",
+    "path": "skills/rag/SKILL.md"
+  },
+  "react": {
+    "name": "react",
+    "description": "React patterns, hooks, state management, performance optimization, and component architecture for production applications",
+    "layer": "domain",
+    "category": "frontend",
+    "triggers": [
+      "react component",
+      "react hook",
+      "react performance",
+      "react pattern",
+      "useState",
+      "useEffect",
+      "react render",
+      "JSX",
+      "react context",
+      "react memo"
+    ],
+    "linksTo": [
+      "state-management",
+      "forms",
+      "animation",
+      "typescript-frontend",
+      "design-systems"
+    ],
+    "linkedFrom": [
+      "code-writer",
+      "code-reviewer",
+      "refactorer"
+    ],
+    "riskLevel": "low",
+    "path": "skills/react/SKILL.md"
+  },
+  "react-native": {
+    "name": "react-native",
+    "description": "React Native and Expo development patterns, navigation, native modules, and cross-platform optimization",
+    "layer": "domain",
+    "category": "mobile",
+    "triggers": [
+      "react native",
+      "expo",
+      "mobile app",
+      "react native navigation",
+      "native module",
+      "cross-platform mobile",
+      "expo router"
+    ],
+    "linksTo": [
+      "react",
+      "typescript-frontend",
+      "state-management",
+      "forms"
+    ],
+    "linkedFrom": [
+      "cook",
+      "plan",
+      "react"
+    ],
+    "riskLevel": "low",
+    "path": "skills/react-native/SKILL.md"
+  },
+  "redis": {
+    "name": "redis",
+    "description": "Redis data structures, caching patterns, pub/sub, rate limiting, and session management",
+    "layer": "domain",
+    "category": "database",
+    "triggers": [
+      "redis",
+      "caching",
+      "rate limiting",
+      "pub/sub",
+      "session store",
+      "redis cache",
+      "distributed lock"
+    ],
+    "linksTo": [
+      "caching",
+      "nodejs",
+      "microservices",
+      "message-queues"
+    ],
+    "linkedFrom": [
+      "caching",
+      "authentication",
+      "ecommerce"
+    ],
+    "riskLevel": "low",
+    "path": "skills/redis/SKILL.md"
+  },
+  "refactor": {
+    "name": "refactor",
+    "description": "Safe, incremental code refactoring with verification checkpoints and rollback safety",
+    "layer": "hub",
+    "category": "workflow",
+    "triggers": [
+      "/refactor",
+      "refactor this",
+      "clean up this code",
+      "restructure this",
+      "extract this",
+      "simplify this"
+    ],
+    "linksTo": [
+      "test",
+      "code-review",
+      "scout",
+      "debug"
+    ],
+    "linkedFrom": [
+      "cook",
+      "team",
+      "ship",
+      "optimize"
+    ],
+    "riskLevel": "medium",
+    "path": "skills/refactor/SKILL.md"
+  },
+  "regex-builder": {
+    "name": "regex-builder",
+    "description": "Construct, test, explain, and debug regular expressions with clear documentation and edge case handling",
+    "layer": "utility",
+    "category": "text-processing",
+    "triggers": [
+      "regex for",
+      "regular expression",
+      "match pattern",
+      "explain this regex",
+      "regex help",
+      "validate format",
+      "parse this string"
+    ],
+    "linksTo": [
+      "json-transformer",
+      "code-explainer",
+      "testing-patterns"
+    ],
+    "linkedFrom": [
+      "shell-scripting",
+      "security-scanner"
+    ],
+    "riskLevel": "low",
+    "path": "skills/regex-builder/SKILL.md"
+  },
+  "repomix": {
+    "name": "repomix",
+    "description": "Repository packaging, structure analysis, and codebase summarization for efficient AI consumption",
+    "layer": "utility",
+    "category": "tooling",
+    "triggers": [
+      "analyze this repo",
+      "repository structure",
+      "codebase overview",
+      "pack this repo",
+      "project structure",
+      "understand this codebase"
+    ],
+    "linksTo": [
+      "context-engineering",
+      "docs-seeker",
+      "data-modeling"
+    ],
+    "linkedFrom": [
+      "orchestrator",
+      "planner",
+      "code-architect"
+    ],
+    "riskLevel": "low",
+    "path": "skills/repomix/SKILL.md"
+  },
+  "research": {
+    "name": "research",
+    "description": "Deep research with multi-source gathering, source evaluation, contradiction detection, and structured synthesis",
+    "layer": "hub",
+    "category": "workflow",
+    "triggers": [
+      "/research",
+      "research this",
+      "look into",
+      "find out about",
+      "what is the best way to",
+      "compare options for",
+      "investigate"
+    ],
+    "linksTo": [
+      "plan",
+      "brainstorm",
+      "scout"
+    ],
+    "linkedFrom": [
+      "plan",
+      "brainstorm",
+      "cook",
+      "team",
+      "ship",
+      "debug",
+      "optimize"
+    ],
+    "riskLevel": "low",
+    "path": "skills/research/SKILL.md"
+  },
+  "rust": {
+    "name": "rust",
+    "description": "Rust ownership model, async programming with Tokio, web frameworks (Axum/Actix), error handling, and systems programming patterns",
+    "layer": "domain",
+    "category": "backend",
+    "triggers": [
+      "rust",
+      "cargo",
+      "tokio",
+      "axum",
+      "actix",
+      "ownership",
+      "borrow checker",
+      "rust web"
+    ],
+    "linksTo": [
+      "microservices",
+      "postgresql",
+      "redis",
+      "websockets",
+      "message-queues"
+    ],
+    "linkedFrom": [
+      "error-handling",
+      "testing"
+    ],
+    "riskLevel": "low",
+    "path": "skills/rust/SKILL.md"
+  },
+  "scout": {
+    "name": "scout",
+    "description": "Codebase reconnaissance and exploration -- map structure, find patterns, understand architecture",
+    "layer": "hub",
+    "category": "workflow",
+    "triggers": [
+      "/scout",
+      "explore the codebase",
+      "what does this codebase look like",
+      "map the architecture",
+      "find where X is",
+      "how is this structured"
+    ],
+    "linksTo": [
+      "research",
+      "debug",
+      "code-review"
+    ],
+    "linkedFrom": [
+      "plan",
+      "cook",
+      "team",
+      "ship",
+      "refactor",
+      "optimize",
+      "debug"
+    ],
+    "riskLevel": "low",
+    "path": "skills/scout/SKILL.md"
+  },
+  "security-scanner": {
+    "name": "security-scanner",
+    "description": "Perform OWASP Top 10 checks, dependency vulnerability audits, secret scanning, and security hardening recommendations",
+    "layer": "utility",
+    "category": "security",
+    "triggers": [
+      "security scan",
+      "security audit",
+      "check for vulnerabilities",
+      "OWASP check",
+      "secret scan",
+      "dependency audit",
+      "is this secure",
+      "harden this"
+    ],
+    "linksTo": [
+      "error-handling",
+      "code-review",
+      "api-designer"
+    ],
+    "linkedFrom": [
+      "ship",
+      "code-review",
+      "audit"
+    ],
+    "riskLevel": "low",
+    "path": "skills/security-scanner/SKILL.md"
+  },
+  "sequential-thinking": {
+    "name": "sequential-thinking",
+    "description": "Step-by-step reasoning engine for complex, multi-stage problems requiring deliberate chain-of-thought decomposition",
+    "layer": "utility",
+    "category": "reasoning",
+    "triggers": [
+      "think step by step",
+      "break this down",
+      "reason through this",
+      "walk me through",
+      "complex problem",
+      "multi-step analysis"
+    ],
+    "linksTo": [
+      "problem-solving",
+      "data-modeling",
+      "error-handling"
+    ],
+    "linkedFrom": [
+      "orchestrator",
+      "planner",
+      "code-architect"
+    ],
+    "riskLevel": "low",
+    "path": "skills/sequential-thinking/SKILL.md"
+  },
+  "shell-scripting": {
+    "name": "shell-scripting",
+    "description": "Bash/Zsh script generation, debugging, POSIX compliance, and automation patterns",
+    "layer": "utility",
+    "category": "devtools",
+    "triggers": [
+      "shell script",
+      "bash script",
+      "zsh script",
+      "write a script",
+      "automate with bash",
+      "cron job",
+      "makefile"
+    ],
+    "linksTo": [
+      "linux-admin",
+      "docker",
+      "cicd",
+      "git-workflow"
+    ],
+    "linkedFrom": [
+      "cook",
+      "ship",
+      "cicd"
+    ],
+    "riskLevel": "medium",
+    "path": "skills/shell-scripting/SKILL.md"
+  },
+  "ship": {
+    "name": "ship",
+    "description": "Release orchestrator that drives code from development through testing, review, changelog generation, and deployment.",
+    "layer": "orchestrator",
+    "category": "orchestration",
+    "triggers": [
+      "/ship",
+      "ship it",
+      "release this",
+      "deploy this",
+      "prepare a release",
+      "cut a release"
+    ],
+    "linksTo": [
+      "test",
+      "code-review",
+      "fix",
+      "debug",
+      "optimize",
+      "changelog-writer",
+      "commit-crafter",
+      "pr-writer",
+      "git-workflow",
+      "docs-writer",
+      "preview"
+    ],
+    "linkedFrom": [
+      "cook",
+      "team"
+    ],
+    "riskLevel": "high",
+    "path": "skills/ship/SKILL.md"
+  },
+  "shopify": {
+    "name": "shopify",
+    "description": "Shopify Storefront API, Admin API, Liquid templates, custom app development, and headless commerce",
+    "layer": "domain",
+    "category": "payments",
+    "triggers": [
+      "shopify",
+      "shopify api",
+      "liquid template",
+      "shopify app",
+      "storefront api",
+      "shopify hydrogen"
+    ],
+    "linksTo": [
+      "[ecommerce, stripe, react, nextjs]"
+    ],
+    "linkedFrom": [
+      "[ecommerce, ship]"
+    ],
+    "riskLevel": "low",
+    "path": "skills/shopify/SKILL.md"
+  },
+  "skill-creator": {
+    "name": "skill-creator",
+    "description": "Meta-skill for creating, validating, and maintaining UltraThink skill definitions",
+    "layer": "utility",
+    "category": "meta",
+    "triggers": [
+      "create skill",
+      "new skill",
+      "add skill",
+      "skill template",
+      "define skill"
+    ],
+    "linksTo": [
+      "research",
+      "plan"
+    ],
+    "linkedFrom": [
+      "team",
+      "cook"
+    ],
+    "riskLevel": "low",
+    "path": "skills/skill-creator/SKILL.md"
+  },
+  "state-management": {
+    "name": "state-management",
+    "description": "Client-side state management with Zustand, Jotai, Redux Toolkit, and URL state patterns",
+    "layer": "domain",
+    "category": "frontend",
+    "triggers": [
+      "state management",
+      "zustand",
+      "jotai",
+      "redux",
+      "global state",
+      "client state",
+      "signals"
+    ],
+    "linksTo": [
+      "react",
+      "nextjs",
+      "forms"
+    ],
+    "linkedFrom": [
+      "cook",
+      "react",
+      "nextjs"
+    ],
+    "riskLevel": "low",
+    "path": "skills/state-management/SKILL.md"
+  },
+  "stripe": {
+    "name": "stripe",
+    "description": "Stripe integration including Checkout, subscriptions, webhooks, Connect, payment intents, and billing portal",
+    "layer": "domain",
+    "category": "payments",
+    "triggers": [
+      "stripe",
+      "payment",
+      "checkout",
+      "subscription",
+      "stripe webhook",
+      "payment intent",
+      "stripe connect",
+      "billing portal"
+    ],
+    "linksTo": [
+      "[billing, ecommerce, authentication, encryption]"
+    ],
+    "linkedFrom": [
+      "[ecommerce, billing, ship]"
+    ],
+    "riskLevel": "medium",
+    "path": "skills/stripe/SKILL.md"
+  },
+  "supabase": {
+    "name": "supabase",
+    "description": "Supabase Auth, Realtime subscriptions, Edge Functions, Row Level Security, and Storage",
+    "layer": "domain",
+    "category": "database",
+    "triggers": [
+      "supabase",
+      "supabase auth",
+      "supabase realtime",
+      "edge functions",
+      "row level security",
+      "RLS",
+      "supabase storage"
+    ],
+    "linksTo": [
+      "postgresql",
+      "authentication",
+      "nextjs",
+      "react"
+    ],
+    "linkedFrom": [
+      "cook",
+      "authentication",
+      "data-modeling"
+    ],
+    "riskLevel": "medium",
+    "path": "skills/supabase/SKILL.md"
+  },
+  "svelte": {
+    "name": "svelte",
+    "description": "SvelteKit development patterns — runes, component architecture, server-side rendering, form actions, and reactive state",
+    "layer": "domain",
+    "category": "frontend",
+    "triggers": [
+      "svelte",
+      "sveltekit",
+      "svelte component",
+      "svelte rune",
+      "$state",
+      "$derived",
+      "$effect",
+      "+page.svelte",
+      "+server.ts",
+      "svelte action"
+    ],
+    "linksTo": [
+      "typescript-frontend",
+      "css-architecture",
+      "animation",
+      "forms"
+    ],
+    "linkedFrom": [
+      "code-writer",
+      "architect"
+    ],
+    "riskLevel": "low",
+    "path": "skills/svelte/SKILL.md"
+  },
+  "tailwindcss": {
+    "name": "tailwindcss",
+    "description": "Tailwind CSS utilities, custom configuration, design tokens, responsive design, and component styling patterns",
+    "layer": "domain",
+    "category": "frontend",
+    "triggers": [
+      "tailwind",
+      "tailwindcss",
+      "utility class",
+      "design token",
+      "responsive design",
+      "dark mode",
+      "tailwind config",
+      "cn() function",
+      "clsx",
+      "cva"
+    ],
+    "linksTo": [
+      "design-systems",
+      "css-architecture",
+      "animation",
+      "react"
+    ],
+    "linkedFrom": [
+      "code-writer",
+      "ui-designer"
+    ],
+    "riskLevel": "low",
+    "path": "skills/tailwindcss/SKILL.md"
+  },
+  "team": {
+    "name": "team",
+    "description": "Multi-agent team coordinator that breaks complex tasks into parallel or sequential workstreams, delegates to specialized skills, and merges results.",
+    "layer": "orchestrator",
+    "category": "orchestration",
+    "triggers": [
+      "/team",
+      "coordinate a team",
+      "parallelize this work",
+      "split this into workstreams",
+      "multi-agent build"
+    ],
+    "linksTo": [
+      "cook",
+      "plan",
+      "scout",
+      "research",
+      "brainstorm",
+      "code-review",
+      "test",
+      "fix",
+      "refactor",
+      "optimize",
+      "debug",
+      "kanban",
+      "sequential-thinking",
+      "mermaid",
+      "docs-writer"
+    ],
+    "linkedFrom": [
+      "kanban"
+    ],
+    "riskLevel": "high",
+    "path": "skills/team/SKILL.md"
+  },
+  "terraform": {
+    "name": "terraform",
+    "description": "Infrastructure as Code with Terraform, module design, state management, provider patterns, and drift detection",
+    "layer": "domain",
+    "category": "devops",
+    "triggers": [
+      "terraform",
+      "infrastructure as code",
+      "iac",
+      "hcl",
+      "terraform module",
+      "tf state",
+      "terraform plan"
+    ],
+    "linksTo": [
+      "[aws, cloudflare, kubernetes, monitoring, cicd]"
+    ],
+    "linkedFrom": [
+      "[ship, plan, infrastructure]"
+    ],
+    "riskLevel": "medium",
+    "path": "skills/terraform/SKILL.md"
+  },
+  "test": {
+    "name": "test",
+    "description": "Test planning, generation, and execution -- unit, integration, and end-to-end testing workflows",
+    "layer": "hub",
+    "category": "workflow",
+    "triggers": [
+      "/test",
+      "write tests",
+      "test this",
+      "add test coverage",
+      "run the tests",
+      "check if tests pass"
+    ],
+    "linksTo": [
+      "scout",
+      "debug",
+      "fix",
+      "code-review"
+    ],
+    "linkedFrom": [
+      "fix",
+      "refactor",
+      "optimize",
+      "cook",
+      "team",
+      "ship"
+    ],
+    "riskLevel": "low",
+    "path": "skills/test/SKILL.md"
+  },
+  "test-ui": {
+    "name": "test-ui",
+    "description": "Multi-viewport UI testing with screenshots, visual regression detection, and accessibility audits",
+    "layer": "hub",
+    "category": "workflow",
+    "triggers": [
+      "/test-ui",
+      "test the UI",
+      "check the interface",
+      "visual test",
+      "screenshot test",
+      "check responsive",
+      "accessibility audit"
+    ],
+    "linksTo": [
+      "fix",
+      "code-review",
+      "scout"
+    ],
+    "linkedFrom": [
+      "cook",
+      "team",
+      "ship"
+    ],
+    "riskLevel": "low",
+    "path": "skills/test-ui/SKILL.md"
+  },
+  "testing-patterns": {
+    "name": "testing-patterns",
+    "description": "Design and implement test suites using unit, integration, e2e, and property-based testing patterns with framework-appropriate tooling",
+    "layer": "utility",
+    "category": "quality-assurance",
+    "triggers": [
+      "test this",
+      "write tests",
+      "testing strategy",
+      "unit test",
+      "integration test",
+      "e2e test",
+      "property-based test",
+      "test coverage",
+      "test patterns"
+    ],
+    "linksTo": [
+      "code-explainer",
+      "debug",
+      "performance-profiler"
+    ],
+    "linkedFrom": [
+      "code-review",
+      "ship",
+      "fix"
+    ],
+    "riskLevel": "low",
+    "path": "skills/testing-patterns/SKILL.md"
+  },
+  "threejs": {
+    "name": "threejs",
+    "description": "Three.js and React Three Fiber (R3F) 3D development — scene setup, lighting, materials, physics, performance, and interactive 3D experiences",
+    "layer": "domain",
+    "category": "frontend",
+    "triggers": [
+      "three.js",
+      "threejs",
+      "3d",
+      "react three fiber",
+      "R3F",
+      "WebGL",
+      "3D scene",
+      "shader",
+      "GLSL",
+      "drei",
+      "3D model",
+      "GLTF"
+    ],
+    "linksTo": [
+      "react",
+      "animation",
+      "typescript-frontend"
+    ],
+    "linkedFrom": [
+      "code-writer",
+      "ui-designer"
+    ],
+    "riskLevel": "low",
+    "path": "skills/threejs/SKILL.md"
+  },
+  "typescript-frontend": {
+    "name": "typescript-frontend",
+    "description": "TypeScript for frontend development — generics, utility types, type-safe APIs, component typing, and developer experience patterns",
+    "layer": "domain",
+    "category": "frontend",
+    "triggers": [
+      "typescript frontend",
+      "react types",
+      "generic component",
+      "type safe",
+      "type inference",
+      "discriminated union",
+      "typescript DX",
+      "as const",
+      "satisfies",
+      "zod schema"
+    ],
+    "linksTo": [
+      "react",
+      "nextjs",
+      "forms",
+      "state-management"
+    ],
+    "linkedFrom": [
+      "code-writer",
+      "code-reviewer",
+      "refactorer"
+    ],
+    "riskLevel": "low",
+    "path": "skills/typescript-frontend/SKILL.md"
+  },
+  "ui-ux-pro": {
+    "name": "ui-ux-pro",
+    "description": "UI/UX best practices, accessibility compliance, design system guidance, and interaction design patterns",
+    "layer": "utility",
+    "category": "design",
+    "triggers": [
+      "UI review",
+      "UX improvement",
+      "accessibility audit",
+      "design system",
+      "responsive design",
+      "component design",
+      "user interface",
+      "WCAG compliance"
+    ],
+    "linksTo": [
+      "ai-multimodal",
+      "chrome-devtools",
+      "media-processing"
+    ],
+    "linkedFrom": [
+      "orchestrator",
+      "planner",
+      "code-architect"
+    ],
+    "riskLevel": "low",
+    "path": "skills/ui-ux-pro/SKILL.md"
+  },
+  "ut": {
+    "name": "ut",
+    "description": "Show UltraThink system status, available skills, hooks, and configuration",
+    "layer": "domain",
+    "category": "specialist",
+    "triggers": [],
+    "linksTo": [],
+    "linkedFrom": [],
+    "riskLevel": "low",
+    "path": "skills/ut/SKILL.md"
+  },
+  "ut-chain": {
+    "name": "ut-chain",
+    "description": "Compose and execute a chain of UltraThink skills for a task",
+    "layer": "domain",
+    "category": "specialist",
+    "triggers": [],
+    "linksTo": [],
+    "linkedFrom": [],
+    "riskLevel": "low",
+    "path": "skills/ut-chain/SKILL.md"
+  },
+  "ut-cook": {
+    "name": "ut-cook",
+    "description": "End-to-end feature builder — plan, research, scout, code, test, review, ship",
+    "layer": "domain",
+    "category": "specialist",
+    "triggers": [],
+    "linksTo": [],
+    "linkedFrom": [],
+    "riskLevel": "low",
+    "path": "skills/ut-cook/SKILL.md"
+  },
+  "ut-hooks": {
+    "name": "ut-hooks",
+    "description": "View UltraThink hook event log and privacy audit trail",
+    "layer": "domain",
+    "category": "specialist",
+    "triggers": [],
+    "linksTo": [],
+    "linkedFrom": [],
+    "riskLevel": "low",
+    "path": "skills/ut-hooks/SKILL.md"
+  },
+  "ut-init": {
+    "name": "ut-init",
+    "description": "Initialize UltraThink capabilities in the current project directory",
+    "layer": "domain",
+    "category": "specialist",
+    "triggers": [],
+    "linksTo": [],
+    "linkedFrom": [],
+    "riskLevel": "low",
+    "path": "skills/ut-init/SKILL.md"
+  },
+  "ut-memory": {
+    "name": "ut-memory",
+    "description": "Browse and search UltraThink memory entries in the Neon database",
+    "layer": "domain",
+    "category": "specialist",
+    "triggers": [],
+    "linksTo": [],
+    "linkedFrom": [],
+    "riskLevel": "low",
+    "path": "skills/ut-memory/SKILL.md"
+  },
+  "ut-review": {
+    "name": "ut-review",
+    "description": "Multi-pass code review using UltraThink code-review and security-scanner skills",
+    "layer": "domain",
+    "category": "specialist",
+    "triggers": [],
+    "linksTo": [],
+    "linkedFrom": [],
+    "riskLevel": "low",
+    "path": "skills/ut-review/SKILL.md"
+  },
+  "ut-ship": {
+    "name": "ut-ship",
+    "description": "Ship workflow — test, review, changelog, commit, and prepare for deploy",
+    "layer": "domain",
+    "category": "specialist",
+    "triggers": [],
+    "linksTo": [],
+    "linkedFrom": [],
+    "riskLevel": "low",
+    "path": "skills/ut-ship/SKILL.md"
+  },
+  "ut-skills": {
+    "name": "ut-skills",
+    "description": "Search and browse UltraThink skills by name, layer, or category",
+    "layer": "domain",
+    "category": "specialist",
+    "triggers": [],
+    "linksTo": [],
+    "linkedFrom": [],
+    "riskLevel": "low",
+    "path": "skills/ut-skills/SKILL.md"
+  },
+  "vercel": {
+    "name": "vercel",
+    "description": "Vercel deployment, Edge Config, KV, Cron Jobs, Middleware, and platform-specific optimization",
+    "layer": "domain",
+    "category": "devops",
+    "triggers": [
+      "vercel",
+      "vercel deploy",
+      "edge config",
+      "vercel kv",
+      "vercel cron",
+      "vercel middleware",
+      "vercel.json"
+    ],
+    "linksTo": [
+      "[cicd, monitoring, cloudflare, nextjs]"
+    ],
+    "linkedFrom": [
+      "[ship, optimize, plan]"
+    ],
+    "riskLevel": "low",
+    "path": "skills/vercel/SKILL.md"
+  },
+  "vercel-react-best-practices": {
+    "name": "vercel-react-best-practices",
+    "description": "React and Next.js performance optimization guidelines from Vercel Engineering. This skill should be used when writing, reviewing, or refactoring React/Next.js code to ensure optimal performance patterns. Triggers on tasks involving React components, Next.js pages, data fetching, bundle optimization, or performance improvements.",
+    "layer": "domain",
+    "category": "specialist",
+    "triggers": [],
+    "linksTo": [],
+    "linkedFrom": [],
+    "riskLevel": "low",
+    "path": "skills/vercel-react-best-practices/SKILL.md"
+  },
+  "verify": {
+    "name": "verify",
+    "description": "Full pre-PR verification pipeline — build, typecheck, lint, test, secrets, git status",
+    "layer": "utility",
+    "category": "quality",
+    "triggers": [
+      "verify",
+      "verification",
+      "ready for pr",
+      "pre-pr check",
+      "is it ready",
+      "check everything",
+      "run all checks"
+    ],
+    "linksTo": [
+      "quality-gate",
+      "test",
+      "code-review",
+      "security-scanner",
+      "build-resolver"
+    ],
+    "linkedFrom": [
+      "cook",
+      "ship",
+      "plan-validate"
+    ],
+    "riskLevel": "low",
+    "path": "skills/verify/SKILL.md"
+  },
+  "vue": {
+    "name": "vue",
+    "description": "Vue 3 Composition API, Nuxt patterns, reactivity system, component architecture, and production development practices",
+    "layer": "domain",
+    "category": "frontend",
+    "triggers": [
+      "vue",
+      "vue 3",
+      "nuxt",
+      "composition api",
+      "vue component",
+      "ref()",
+      "reactive()",
+      "computed()",
+      "defineProps",
+      "pinia",
+      "vue router"
+    ],
+    "linksTo": [
+      "typescript-frontend",
+      "css-architecture",
+      "forms",
+      "state-management"
+    ],
+    "linkedFrom": [
+      "code-writer",
+      "architect"
+    ],
+    "riskLevel": "low",
+    "path": "skills/vue/SKILL.md"
+  },
+  "web-design-guidelines": {
+    "name": "web-design-guidelines",
+    "description": "Review UI code for Web Interface Guidelines compliance. Use when asked to \"review my UI\", \"check accessibility\", \"audit design\", \"review UX\", or \"check my site against best practices\".",
+    "layer": "domain",
+    "category": "specialist",
+    "triggers": [],
+    "linksTo": [],
+    "linkedFrom": [],
+    "riskLevel": "low",
+    "path": "skills/web-design-guidelines/SKILL.md"
+  },
+  "websockets": {
+    "name": "websockets",
+    "description": "Real-time communication patterns, WebSocket lifecycle management, scaling strategies, and protocol design",
+    "layer": "domain",
+    "category": "backend",
+    "triggers": [
+      "websocket",
+      "websockets",
+      "real-time",
+      "realtime",
+      "socket.io",
+      "server-sent events",
+      "sse",
+      "live updates"
+    ],
+    "linksTo": [
+      "nodejs",
+      "redis",
+      "message-queues",
+      "microservices",
+      "graphql"
+    ],
+    "linkedFrom": [
+      "authentication",
+      "error-handling"
+    ],
+    "riskLevel": "low",
+    "path": "skills/websockets/SKILL.md"
+  },
+  "test-driven-development": {
+    "name": "test-driven-development",
+    "description": "RED-GREEN-REFACTOR TDD enforcement. Write tests first, then make them pass, then refactor.",
+    "layer": "hub",
+    "category": "testing",
+    "triggers": [
+      "tdd",
+      "test driven",
+      "test first",
+      "red green refactor",
+      "write test",
+      "add test",
+      "test coverage",
+      "failing test",
+      "unit test",
+      "spec"
+    ],
+    "linksTo": [
+      "systematic-debugging",
+      "verification-before-completion"
+    ],
+    "riskLevel": "low",
+    "path": null
+  },
+  "systematic-debugging": {
+    "name": "systematic-debugging",
+    "description": "Four-phase root-cause debugging: reproduce → isolate → identify → fix. No guessing.",
+    "layer": "hub",
+    "category": "debugging",
+    "triggers": [
+      "debug",
+      "bug",
+      "error",
+      "broken",
+      "crash",
+      "fix",
+      "failing",
+      "issue",
+      "root cause",
+      "stack trace",
+      "diagnose",
+      "not working",
+      "unexpected"
+    ],
+    "linksTo": [
+      "test-driven-development"
+    ],
+    "riskLevel": "low",
+    "path": null
+  },
+  "brainstorming": {
+    "name": "brainstorming",
+    "description": "Socratic design exploration before coding. Requirements → constraints → approaches → tradeoffs.",
+    "layer": "orchestrator",
+    "category": "planning",
+    "triggers": [
+      "brainstorm",
+      "design",
+      "approach",
+      "explore options",
+      "ideas",
+      "how should",
+      "best way to",
+      "architecture",
+      "tradeoff",
+      "pros and cons"
+    ],
+    "linksTo": [
+      "writing-plans",
+      "sequential-thinking"
+    ],
+    "riskLevel": "low",
+    "path": null
+  },
+  "writing-plans": {
+    "name": "writing-plans",
+    "description": "Decompose work into 2-5 minute tasks with exact file paths. Structured plan documents.",
+    "layer": "hub",
+    "category": "planning",
+    "triggers": [
+      "write plan",
+      "create plan",
+      "plan out",
+      "break down",
+      "decompose",
+      "task list",
+      "implementation plan",
+      "step by step",
+      "roadmap"
+    ],
+    "linksTo": [
+      "executing-plans",
+      "brainstorming"
+    ],
+    "riskLevel": "low",
+    "path": null
+  },
+  "executing-plans": {
+    "name": "executing-plans",
+    "description": "Batch plan execution with human checkpoints. Work through plan tasks systematically.",
+    "layer": "hub",
+    "category": "workflow",
+    "triggers": [
+      "execute plan",
+      "follow plan",
+      "work through",
+      "next step",
+      "continue plan",
+      "implement plan",
+      "batch execute"
+    ],
+    "linksTo": [
+      "writing-plans",
+      "verification-before-completion"
+    ],
+    "riskLevel": "low",
+    "path": null
+  },
+  "dispatching-parallel-agents": {
+    "name": "dispatching-parallel-agents",
+    "description": "Orchestrate concurrent subagent workflows for parallel task execution.",
+    "layer": "orchestrator",
+    "category": "workflow",
+    "triggers": [
+      "parallel",
+      "concurrent",
+      "subagent",
+      "spawn agent",
+      "multi agent",
+      "parallel work",
+      "fan out",
+      "distribute work"
+    ],
+    "riskLevel": "low",
+    "path": null
+  },
+  "subagent-driven-development": {
+    "name": "subagent-driven-development",
+    "description": "Two-stage review: spec compliance then code quality. Subagents write, main agent reviews.",
+    "layer": "orchestrator",
+    "category": "workflow",
+    "triggers": [
+      "subagent",
+      "agent review",
+      "code review",
+      "two stage",
+      "spec compliance",
+      "quality review",
+      "delegate",
+      "agent driven"
+    ],
+    "linksTo": [
+      "requesting-code-review",
+      "dispatching-parallel-agents"
+    ],
+    "riskLevel": "low",
+    "path": null
+  },
+  "requesting-code-review": {
+    "name": "requesting-code-review",
+    "description": "Pre-review compliance checking before submitting code for review.",
+    "layer": "utility",
+    "category": "code-quality",
+    "triggers": [
+      "code review",
+      "review code",
+      "pr review",
+      "pull request",
+      "review my",
+      "check code",
+      "review before",
+      "ready for review"
+    ],
+    "linksTo": [
+      "receiving-code-review"
+    ],
+    "riskLevel": "low",
+    "path": null
+  },
+  "receiving-code-review": {
+    "name": "receiving-code-review",
+    "description": "Integrate feedback from code reviews systematically.",
+    "layer": "utility",
+    "category": "code-quality",
+    "triggers": [
+      "review feedback",
+      "address feedback",
+      "fix review",
+      "review comments",
+      "incorporate feedback",
+      "review changes"
+    ],
+    "riskLevel": "low",
+    "path": null
+  },
+  "verification-before-completion": {
+    "name": "verification-before-completion",
+    "description": "Post-implementation validation. Verify everything works before marking done.",
+    "layer": "utility",
+    "category": "quality",
+    "triggers": [
+      "verify",
+      "validate",
+      "check work",
+      "make sure",
+      "double check",
+      "confirm working",
+      "smoke test",
+      "sanity check",
+      "done check"
+    ],
+    "linksTo": [
+      "test-driven-development"
+    ],
+    "riskLevel": "low",
+    "path": null
+  },
+  "using-git-worktrees": {
+    "name": "using-git-worktrees",
+    "description": "Isolated parallel branches with workspace management for safe experimentation.",
+    "layer": "utility",
+    "category": "workflow",
+    "triggers": [
+      "worktree",
+      "git worktree",
+      "parallel branch",
+      "isolated branch",
+      "experiment branch",
+      "safe branch"
+    ],
+    "linksTo": [
+      "finishing-a-development-branch"
+    ],
+    "riskLevel": "low",
+    "path": null
+  },
+  "finishing-a-development-branch": {
+    "name": "finishing-a-development-branch",
+    "description": "Merge/PR/discard decision workflow for completed feature branches.",
+    "layer": "utility",
+    "category": "workflow",
+    "triggers": [
+      "finish branch",
+      "merge branch",
+      "ready to merge",
+      "branch done",
+      "create pr",
+      "submit pr",
+      "cleanup branch"
+    ],
+    "linksTo": [
+      "requesting-code-review"
+    ],
+    "riskLevel": "low",
+    "path": null
+  }
+}

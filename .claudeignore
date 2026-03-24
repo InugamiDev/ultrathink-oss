@@ -1,0 +1,60 @@
+# ─── UltraThink .claudeignore ─────────────────────────────────────
+# Prevent Claude from reading these files into context window.
+# Every file read costs tokens — exclude anything not needed for active work.
+
+# Build artifacts & caches
+node_modules/
+.next/
+dist/
+out/
+.turbo/
+.cache/
+*.tsbuildinfo
+
+# Package manager locks (large, rarely relevant)
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+bun.lockb
+
+# Reports & logs (read on demand only)
+reports/
+*.log
+
+# Test snapshots & fixtures (large, read on demand)
+**/__snapshots__/
+**/*.snap
+
+# Large static assets
+public/
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.ico
+*.woff
+*.woff2
+*.ttf
+*.eot
+
+# Git internals
+.git/
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Environment files (sensitive + not needed in context)
+.env
+.env.local
+.env.production
+
+# Dashboard build output
+dashboard/.next/
+dashboard/node_modules/
+
+# Temporary UltraThink files
+/tmp/ultrathink-*

@@ -1,0 +1,14 @@
+---
+description: Dashboard development rules
+globs: dashboard/**
+alwaysApply: false
+---
+
+# Dashboard Rules
+
+- Next.js 15 App Router with React 19
+- Tailwind CSS v4 (CSS-first config, @theme directive)
+- CSS custom properties for all design tokens (--color-*, --space-*)
+- No external component libraries — custom components only
+- API routes read from Neon Postgres or local filesystem
+- Port 3333
