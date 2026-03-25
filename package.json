@@ -21,7 +21,9 @@
     "format": "prettier --write '**/*.{ts,tsx,js}'",
     "format:check": "prettier --check '**/*.{ts,tsx,js}'",
     "test": "vitest run",
-    "typecheck": "cd dashboard && tsc --noEmit"
+    "typecheck": "cd dashboard && tsc --noEmit",
+    "gemini:auth": "npx tsx scripts/gemini-browser/auth.ts",
+    "gemini:generate": "npx tsx scripts/gemini-browser/generate.ts"
   },
   "author": "InuVerse",
   "license": "MIT",
