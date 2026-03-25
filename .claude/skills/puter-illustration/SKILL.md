@@ -1,6 +1,6 @@
 ---
 name: puter-illustration
-description: Zero-setup AI illustration generation via Puter.js — Gemini-powered, free, no API key needed. Generate project illustrations from the CLI or dashboard.
+description: AI illustration generation via Puter.js SDK — Gemini-powered, free tier with rate limits. Generate project illustrations from the CLI or dashboard.
 layer: domain
 category: ai-ml
 triggers:
@@ -33,14 +33,20 @@ riskLevel: low
 memoryReadPolicy: never
 memoryWritePolicy: never
 sideEffects:
-  - Calls Puter.js REST API (https://api.puter.com/ai/txt2img)
+  - Calls Puter.js API via SDK (https://api.puter.com/drivers/call)
   - Creates image files in project directory
 ---
 
 # Puter.js Illustration Generator
 
-Zero-setup, free AI image generation powered by Gemini models via [Puter.js](https://github.com/HeyPuter/puter).
-No API key. No Google account. No cookies. Just works.
+AI image generation powered by Gemini models via [Puter.js](https://github.com/HeyPuter/puter).
+Free tier available — no Google account needed. Requires one-time browser auth for Node.js usage.
+
+## Important: How Puter.js Actually Works
+
+- **Browser**: Zero-setup. Include `<script src="https://js.puter.com/v2/">` and call `puter.ai.txt2img()`. Auth is automatic.
+- **Node.js / CLI**: Requires the `@heyputer/puter.js` npm package + a one-time browser login to get an auth token. The direct REST API (`/ai/txt2img`) returns 403 from server-side — you **must** use the SDK.
+- **Rate limits**: Free tier has credit limits. Pro model (`gemini-3-pro-image-preview`) costs more credits and may exhaust the free tier after 1-2 images. Flash model (`gemini-3.1-flash-image-preview`) is cheaper but lower quality.
 
 ## When to Use
 
@@ -48,77 +54,72 @@ No API key. No Google account. No cookies. Just works.
 - Create empty state illustrations, error page art, onboarding visuals
 - Produce spot illustrations for documentation or blog posts
 - Quick mockup assets during design iterations
-- Any time a user needs images and has no API keys configured
+- Any time a user needs images and has no paid API keys configured
 
 ## Available Models
 
-| Model ID | Name | Quality | Speed |
-|----------|------|---------|-------|
-| `gemini-3.1-flash-image-preview` | Nano Banana 2 | Good | Fast |
-| `gemini-3-pro-image-preview` | Nano Banana Pro | Best | Slower |
-| `gemini-2.5-flash-image` | Nano Banana (original) | Good | Fast |
+| Model ID | Quality | Speed | Free Tier Cost |
+|----------|---------|-------|----------------|
+| `gemini-3.1-flash-image-preview` | Good | Fast | Low (many images) |
+| `gemini-3-pro-image-preview` | Best | Slower | High (1-2 images) |
+| `gemini-2.5-flash-image` | Good | Fast | Low (many images) |
 
 Default: `gemini-3.1-flash-image-preview`
 
-## Method 1: Direct API Call (CLI / Scripts)
+## Method 1: Node.js SDK (CLI / Scripts) — Recommended
 
-For quick, one-off generation from within Claude Code or any Node.js script:
+The `@heyputer/puter.js` npm package handles auth and API calls correctly in Node.js.
 
-```typescript
-// Generate a single illustration
-const response = await fetch("https://api.puter.com/ai/txt2img", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    prompt: "Minimal isometric illustration of data nodes connected by glowing lines, navy and amber palette, clean vector style, no text, 1024x1024",
-    model: "gemini-3.1-flash-image-preview",
-  }),
-});
+### One-time setup
 
-const buffer = Buffer.from(await response.arrayBuffer());
-writeFileSync("public/illustrations/hero.png", buffer);
+```bash
+npm install @heyputer/puter.js
 ```
 
-### Quick Generation Script
+### One-time auth (opens browser)
 
-Create a one-off generation script when the user needs illustrations:
+```javascript
+const { getAuthToken } = require("@heyputer/puter.js/src/init.cjs");
+const token = await getAuthToken(); // Opens browser → log in → redirects back with token
+console.log(token); // Save this JWT for reuse
+```
 
-```typescript
-import { writeFileSync, mkdirSync } from "fs";
-import { join } from "path";
+Or manually: start a local HTTP server, open `https://puter.com/?action=authme&redirectURL=http://localhost:<port>`, and extract `?token=` from the redirect.
 
-interface GenerationRequest {
-  name: string;
-  prompt: string;
-  model?: string;
-}
+### Generate images
 
-async function generateIllustrations(
-  requests: GenerationRequest[],
-  outputDir: string = "public/illustrations"
-) {
+```javascript
+const { init } = require("@heyputer/puter.js/src/init.cjs");
+const { writeFileSync, mkdirSync } = require("fs");
+const { join } = require("path");
+
+const puter = init(process.env.PUTER_TOKEN); // Your saved auth token
+
+async function generateIllustrations(requests, outputDir = "public/illustrations") {
   mkdirSync(outputDir, { recursive: true });
 
   for (const req of requests) {
     console.log(`Generating: ${req.name}...`);
-    const res = await fetch("https://api.puter.com/ai/txt2img", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        prompt: req.prompt,
+    try {
+      const result = await puter.ai.txt2img(req.prompt, {
         model: req.model || "gemini-3.1-flash-image-preview",
-      }),
-    });
+      });
 
-    if (!res.ok) {
-      console.error(`Failed ${req.name}: ${res.status} ${res.statusText}`);
-      continue;
+      if (result?.src?.startsWith("data:image")) {
+        const base64 = result.src.split(",")[1];
+        const buffer = Buffer.from(base64, "base64");
+        const path = join(outputDir, `${req.name}.png`);
+        writeFileSync(path, buffer);
+        console.log(`Saved: ${path} (${buffer.length} bytes)`);
+      }
+    } catch (err) {
+      const msg = err?.message || JSON.stringify(err);
+      if (msg.includes("insufficient_funds")) {
+        console.error(`Rate limited on ${req.name} — free tier credits exhausted. Wait or use Flash model.`);
+      } else {
+        console.error(`Failed ${req.name}: ${msg}`);
+      }
     }
-
-    const buffer = Buffer.from(await res.arrayBuffer());
-    const path = join(outputDir, `${req.name}.png`);
-    writeFileSync(path, buffer);
-    console.log(`Saved: ${path} (${buffer.length} bytes)`);
   }
 }
 
@@ -126,22 +127,33 @@ async function generateIllustrations(
 await generateIllustrations([
   {
     name: "hero",
-    prompt: "Minimal flat illustration of an AI brain with circuit patterns, deep navy (#1a1a2e) and amber (#f59e0b), white background, no text, 1024x1024",
+    prompt: "Minimal flat illustration of an AI brain with circuit patterns, deep navy (#0f172a) and amber (#f59e0b), white background, NO TEXT, NO WORDS, NO LETTERS, 1024x1024",
   },
   {
     name: "empty-state",
-    prompt: "Simple line drawing of an empty inbox, light gray lines, centered composition, 512x512",
-  },
-  {
-    name: "error-404",
-    prompt: "Playful isometric illustration of a broken link chain, purple and orange palette, clean vector, no text, 800x600",
+    prompt: "Simple line drawing of an empty inbox, light gray lines, centered composition, NO TEXT, 512x512",
   },
 ]);
 ```
 
-## Method 2: Browser/Frontend (Puter.js SDK)
+### How the SDK works internally
 
-For generating images in client-side code or dashboards:
+The SDK calls `POST https://api.puter.com/drivers/call` with:
+```json
+{
+  "interface": "puter-image-generation",
+  "driver": "ai-image",
+  "method": "generate",
+  "args": { "prompt": "..." },
+  "auth_token": "<your-jwt>"
+}
+```
+
+The response is processed through an XHR polyfill and returns an object with a `.src` property containing a `data:image/png;base64,...` data URL. In Node.js, `globalThis.Image` is undefined so it returns a plain `Object` with `.src` set — not an `HTMLImageElement`.
+
+## Method 2: Browser/Frontend (Puter.js CDN)
+
+For generating images in client-side code or dashboards. Truly zero-setup — no auth needed.
 
 ```html
 <script src="https://js.puter.com/v2/"></script>
@@ -214,14 +226,14 @@ Suitable as [USE CASE] for [CONTEXT]. [DIMENSIONS].
 ```
 Minimal isometric illustration of a workflow engine with connected nodes and data streams,
 using 3 colors: deep navy (#1a1a2e), amber (#f59e0b), and white (#ffffff).
-Clean vector style, no gradients, thick consistent stroke weight, no text.
+Clean vector style, no gradients, thick consistent stroke weight, NO TEXT, NO WORDS, NO LETTERS.
 Suitable as a hero illustration for a developer tool landing page. 1024x1024.
 ```
 
 ```
 Flat geometric pattern of interlocking hexagons with subtle depth,
 using 2 colors: slate (#334155) and emerald (#10b981).
-Minimal line art, no fills, no text, no photorealism.
+Minimal line art, no fills, NO TEXT, NO WORDS, no photorealism.
 Suitable as a section background for a SaaS dashboard. 1920x400.
 ```
 
@@ -230,45 +242,33 @@ Suitable as a section background for a SaaS dashboard. 1920x400.
 1. **Specify exact style**: isometric, flat, line art, 3D, watercolor, etc.
 2. **Include hex colors** from your design system — don't let the model guess
 3. **State dimensions**: 1024x1024 (square), 1920x1080 (hero), 512x512 (icon)
-4. **Say what NOT to include**: "no text", "no gradients", "no photorealism"
+4. **Say what NOT to include**: Use ALL CAPS for "NO TEXT, NO WORDS, NO LETTERS" — the model ignores lowercase "no text" frequently
 5. **Describe composition**: centered, asymmetric, full-bleed, contained
-6. **Reference real styles** if helpful: "in the style of Kurzgesagt", "like Stripe's illustrations"
+6. **Use Pro model for logos**: Flash model often adds unwanted text artifacts. Pro model (`gemini-3-pro-image-preview`) follows "no text" constraints much better but costs more credits.
+
+## Rate Limits & Costs
+
+| Tier | Flash Model | Pro Model |
+|------|------------|-----------|
+| Free (temp account) | ~10-20 images | ~1-2 images |
+| Free (registered) | Higher limits | ~5-10 images |
+| Puter Plus | Unlimited | High limits |
+
+When you hit `insufficient_funds`:
+- Switch from Pro to Flash model
+- Wait for credit refresh (typically resets daily)
+- Register a Puter account for higher limits (free)
+- Consider Puter Plus for heavy usage
 
 ## Error Handling
 
-| Status | Meaning | Action |
-|--------|---------|--------|
-| 200 | Success | Image returned as binary |
-| 400 | Bad request | Check prompt format |
-| 429 | Rate limited | Wait 30s and retry |
-| 500 | Server error | Retry once, then fallback |
+| Error | Meaning | Action |
+|-------|---------|--------|
+| Success (result.src exists) | Image returned as data URL | Decode base64, save to file |
+| `insufficient_funds` | Free tier credits exhausted | Switch to Flash model or wait |
+| `auth_canceled` | No auth token | Run `getAuthToken()` to authenticate |
+| 403 Forbidden | Direct API call without SDK | Use the SDK, not raw fetch |
 | Network error | Puter API down | Use visual-render skill as fallback |
-
-### Retry Logic
-
-```typescript
-async function generateWithRetry(prompt: string, maxRetries = 2): Promise<Buffer> {
-  for (let i = 0; i <= maxRetries; i++) {
-    try {
-      const res = await fetch("https://api.puter.com/ai/txt2img", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, model: "gemini-3.1-flash-image-preview" }),
-      });
-      if (res.status === 429) {
-        await new Promise(r => setTimeout(r, 30_000));
-        continue;
-      }
-      if (!res.ok) throw new Error(`Puter API ${res.status}`);
-      return Buffer.from(await res.arrayBuffer());
-    } catch (err) {
-      if (i === maxRetries) throw err;
-      await new Promise(r => setTimeout(r, 5_000));
-    }
-  }
-  throw new Error("Max retries exceeded");
-}
-```
 
 ## Integration with UI Design Pipeline
 
@@ -282,4 +282,5 @@ uses Puter.js as the **first backend** to try. The prompt should include:
 ## Credits
 
 Puter.js is an open-source project by [HeyPuter](https://github.com/HeyPuter/puter) — MIT License.
-Image generation is powered by Google Gemini models accessed through Puter's free API.
+Image generation is powered by Google Gemini models accessed through Puter's API.
+Free tier has rate limits — not unlimited. See [Puter pricing](https://puter.com) for details.

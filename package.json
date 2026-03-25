@@ -33,6 +33,7 @@
     "vitest": "^4.0.18"
   },
   "dependencies": {
+    "@heyputer/puter.js": "^2.2.14",
     "postgres": "^3.4.8"
   }
 }

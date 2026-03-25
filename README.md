@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/ultrathink-banner.png" alt="UltraThink" width="600" />
+  <img src="docs/assets/ultrathink-logo-1.png" alt="UltraThink" width="600" />
 </p>
 
 <h1 align="center">UltraThink</h1>
