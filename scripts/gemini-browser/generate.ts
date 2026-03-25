@@ -215,6 +215,19 @@ async function extractImages(page: Page): Promise<string[]> {
   });
 }
 
+/** Get the full-resolution URL for a Google image CDN URL */
+function getFullResUrl(src: string): string {
+  // Google's lh3.googleusercontent.com serves resized previews by default.
+  // Appending =s0 returns the original full-resolution image.
+  // Other useful suffixes: =w2048 (specific width), =h2048 (specific height)
+  if (src.includes("googleusercontent.com")) {
+    // Strip any existing size params and request original
+    const base = src.replace(/=[swh]\d+.*$/, "").replace(/=s\d+.*$/, "");
+    return `${base}=s0`;
+  }
+  return src;
+}
+
 /** Download an image from URL or data URI and return as Buffer */
 async function downloadImage(page: Page, src: string): Promise<Buffer> {
   if (src.startsWith("data:image")) {
@@ -222,11 +235,22 @@ async function downloadImage(page: Page, src: string): Promise<Buffer> {
     return Buffer.from(base64, "base64");
   }
 
+  // Request full resolution from Google's CDN
+  const fullResSrc = getFullResUrl(src);
+  console.log(`  Downloading full-res: ${fullResSrc.substring(0, 100)}...`);
+
   // Use Playwright's request API (carries auth cookies from the browser context)
   try {
-    const response = await page.context().request.get(src);
+    const response = await page.context().request.get(fullResSrc);
     if (response.ok()) {
       return Buffer.from(await response.body());
+    }
+    // If full-res fails, try original URL
+    if (fullResSrc !== src) {
+      const fallback = await page.context().request.get(src);
+      if (fallback.ok()) {
+        return Buffer.from(await fallback.body());
+      }
     }
   } catch {
     // Fallback: try converting the img element to canvas to extract pixels
