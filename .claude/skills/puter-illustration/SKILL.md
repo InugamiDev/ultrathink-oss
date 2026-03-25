@@ -66,25 +66,52 @@ Free tier available — no Google account needed. Requires one-time browser auth
 
 Default: `gemini-3.1-flash-image-preview`
 
-## Method 1: Node.js SDK (CLI / Scripts) — Recommended
+## Authentication & Accounts
 
-The `@heyputer/puter.js` npm package handles auth and API calls correctly in Node.js.
+Puter.js uses token-based auth. You can use it anonymously (temporary account, lower limits) or with your own registered account (higher limits).
 
-### One-time setup
+### Option A: Anonymous / Temporary (default)
+
+If you skip auth, Puter creates a temporary account automatically. This works but has the lowest rate limits.
+
+### Option B: Register a Free Account (recommended)
+
+1. Go to [puter.com](https://puter.com) and create a free account
+2. Run the auth flow below to get your token
+3. Save the token as `PUTER_TOKEN` in your `.env` file
+
+Registered accounts get significantly higher rate limits at no cost.
+
+### Option C: Puter Plus (heavy usage)
+
+For production or batch generation, [Puter Plus](https://puter.com) removes most limits.
+
+### Getting Your Auth Token
 
 ```bash
 npm install @heyputer/puter.js
 ```
 
-### One-time auth (opens browser)
-
 ```javascript
 const { getAuthToken } = require("@heyputer/puter.js/src/init.cjs");
 const token = await getAuthToken(); // Opens browser → log in → redirects back with token
-console.log(token); // Save this JWT for reuse
+console.log(token); // Save this token
 ```
 
 Or manually: start a local HTTP server, open `https://puter.com/?action=authme&redirectURL=http://localhost:<port>`, and extract `?token=` from the redirect.
+
+### Storing Your Token
+
+Add to your project's `.env` file:
+```bash
+PUTER_TOKEN=your-jwt-token-here
+```
+
+The generation scripts below read from `process.env.PUTER_TOKEN`. This way your registered account's higher limits apply to all generations.
+
+## Method 1: Node.js SDK (CLI / Scripts) — Recommended
+
+The `@heyputer/puter.js` npm package handles auth and API calls correctly in Node.js.
 
 ### Generate images
 
@@ -93,7 +120,7 @@ const { init } = require("@heyputer/puter.js/src/init.cjs");
 const { writeFileSync, mkdirSync } = require("fs");
 const { join } = require("path");
 
-const puter = init(process.env.PUTER_TOKEN); // Your saved auth token
+const puter = init(process.env.PUTER_TOKEN); // Your saved auth token (from .env)
 
 async function generateIllustrations(requests, outputDir = "public/illustrations") {
   mkdirSync(outputDir, { recursive: true });
@@ -257,8 +284,8 @@ Suitable as a section background for a SaaS dashboard. 1920x400.
 When you hit `insufficient_funds`:
 - Switch from Pro to Flash model
 - Wait for credit refresh (typically resets daily)
-- Register a Puter account for higher limits (free)
-- Consider Puter Plus for heavy usage
+- If using a temp account, register at [puter.com](https://puter.com) (free) and re-auth to get higher limits
+- For heavy usage, upgrade to [Puter Plus](https://puter.com)
 
 ## Error Handling
 
