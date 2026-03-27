@@ -3,6 +3,7 @@
 # Fires on Stop — flushes pending memory files to Neon DB and closes session
 
 set -euo pipefail
+umask 077
 
 source "$(dirname "${BASH_SOURCE[0]}")/hook-log.sh" 2>/dev/null || hook_log() { :; }
 hook_log "session-end" "started"
@@ -58,6 +59,31 @@ timeout 5 npx tsx "$RUNNER" session-end 2>>/tmp/ultrathink-errors.log || true
 (
   cd "$ULTRA_ROOT"
 
+  # Process pending Tekiō wheel turns
+  WHEEL_DIR="/tmp/ultrathink-wheel-turns"
+  if [[ -d "$WHEEL_DIR" ]]; then
+    for f in "$WHEEL_DIR"/*-correction.json; do
+      [[ -f "$f" ]] || continue
+      correction=$(jq -r '.correction // ""' "$f" 2>/dev/null)
+      correct_approach=$(jq -r '.correct_approach // ""' "$f" 2>/dev/null)
+      scope_val=$(jq -r '.scope // ""' "$f" 2>/dev/null)
+      if [[ -n "$correction" && -n "$correct_approach" ]]; then
+        timeout 10 npx tsx "$RUNNER" wheel-correct "$correction" "$correct_approach" "$scope_val" 2>/dev/null 1>/dev/null || true
+      fi
+      rm -f "$f"
+    done
+    for f in "$WHEEL_DIR"/*-success.json; do
+      [[ -f "$f" ]] || continue
+      pattern=$(jq -r '.pattern // ""' "$f" 2>/dev/null)
+      insight=$(jq -r '.insight // ""' "$f" 2>/dev/null)
+      scope_val=$(jq -r '.scope // ""' "$f" 2>/dev/null)
+      [[ -n "$pattern" && -n "$insight" ]] && timeout 10 npx tsx "$RUNNER" wheel-learn "$pattern" "$insight" "$scope_val" 2>/dev/null 1>/dev/null || true
+      rm -f "$f"
+    done
+  fi
+
+  # Deactivate stale adaptations (bundled into session-end command to avoid extra npx tsx spawn)
+
   # Daily stats aggregate
   timeout 10 npx tsx "$RUNNER" daily-stats 2>/dev/null || true
 
@@ -96,6 +122,7 @@ timeout 5 npx tsx "$RUNNER" session-end 2>>/tmp/ultrathink-errors.log || true
 # Clean up session-scoped caches
 CC_SID=$(echo "$HOOK_INPUT" | jq -r '.session_id // ""' 2>/dev/null | head -c 12)
 if [[ -n "$CC_SID" ]]; then
+  rm -f "/tmp/ultrathink-status/identity-$CC_SID" 2>/dev/null || true
   rm -f "/tmp/ultrathink-status/skills-$CC_SID" 2>/dev/null || true
   rm -f "/tmp/ultrathink-status/preferences-$CC_SID" 2>/dev/null || true
 fi
@@ -103,8 +130,10 @@ fi
 # Notify Discord — session end summary
 NOTIFY_SCRIPT="$HOOK_DIR/notify.sh"
 if [[ -x "$NOTIFY_SCRIPT" ]]; then
+  WHEEL_N=$(cat /tmp/ultrathink-status/wheel-count 2>/dev/null || echo "?")
   END_PARTS="⏹ Session ended"
   [[ "$FLUSHED_COUNT" -gt 0 ]] && END_PARTS="${END_PARTS}\n**Memories saved:** ${FLUSHED_COUNT}"
+  END_PARTS="${END_PARTS}\n**☸ Tekiō:** ${WHEEL_N} adaptations active"
   # Console.log warnings are now in background subshell — skip here
   "$NOTIFY_SCRIPT" "$END_PARTS" "discord" "normal" 2>>/tmp/ultrathink-errors.log || true
 fi

@@ -99,9 +99,12 @@ if [[ -f "$CKIGNORE_FILE" ]]; then
 fi
 
 # Check allow overrides first (built-in + .ckignore ! overrides)
+# SECURITY: Only match against basename to prevent path traversal bypasses
+# (e.g., a dir named ".env.example" should not whitelist files inside it)
+FILE_BASENAME="$(basename "$FILE_PATH")"
 for pattern in "${ALLOW_PATTERNS[@]}"; do
-  if matches_pattern "$FILE_PATH" "$pattern"; then
-    log_event "info" "allowed" "Allow override matched: $pattern"
+  if [[ "$FILE_BASENAME" == $pattern ]]; then
+    log_event "info" "allowed" "Allow override matched basename: $pattern"
     exit 0
   fi
 done

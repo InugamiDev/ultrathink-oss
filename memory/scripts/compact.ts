@@ -150,17 +150,26 @@ async function compact() {
     const dateStart = memories[0].created_at;
     const dateEnd = memories[memories.length - 1].created_at;
 
-    await sql`
-      INSERT INTO summaries (scope, summary, memory_count, date_range_start, date_range_end)
-      VALUES (${groupKey}, ${summaryText}, ${memories.length}, ${dateStart}, ${dateEnd})
-    `;
-
     const ids = memories.map((m) => m.id);
-    await sql`
-      UPDATE memories
-      SET is_compacted = true, is_archived = true, updated_at = NOW()
-      WHERE id = ANY(${ids})
-    `;
+
+    await sql`BEGIN`;
+    try {
+      await sql`
+        INSERT INTO summaries (scope, summary, memory_count, date_range_start, date_range_end)
+        VALUES (${groupKey}, ${summaryText}, ${memories.length}, ${dateStart}, ${dateEnd})
+      `;
+
+      await sql`
+        UPDATE memories
+        SET is_compacted = true, is_archived = true, updated_at = NOW()
+        WHERE id = ANY(${ids})
+      `;
+
+      await sql`COMMIT`;
+    } catch (err) {
+      await sql`ROLLBACK`;
+      throw err;
+    }
 
     totalCompacted += memories.length;
     console.log(`  OK — ${memories.length} memories archived, summary created`);

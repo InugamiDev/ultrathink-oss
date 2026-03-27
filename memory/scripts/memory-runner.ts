@@ -285,13 +285,21 @@ async function sessionEnd() {
       }
     }
 
-    await sql`
-      UPDATE sessions SET
-        ended_at = NOW(),
-        memories_created = ${Number(stats.count)},
-        summary = ${summary}
-      WHERE id = ${sessionId}
-    `;
+    // Close session in DB — only delete session file if this succeeds
+    let dbUpdateSucceeded = false;
+    try {
+      await sql`
+        UPDATE sessions SET
+          ended_at = NOW(),
+          memories_created = ${Number(stats.count)},
+          summary = ${summary}
+        WHERE id = ${sessionId}
+      `;
+      dbUpdateSucceeded = true;
+    } catch (err) {
+      console.error("Failed to update session in DB:", (err as Error).message);
+      // DO NOT delete session file — leave for next attempt
+    }
 
     await logHookEvent({
       event_type: "session_end",
@@ -344,11 +352,13 @@ async function sessionEnd() {
       // Non-critical — don't fail session end
     }
 
-    // Clean up session file
-    try {
-      unlinkSync(getSessionFile());
-    } catch {
-      // ignore
+    // Only clean up session file if DB update succeeded
+    if (dbUpdateSucceeded) {
+      try {
+        unlinkSync(getSessionFile());
+      } catch {
+        // ignore
+      }
     }
   }
 }
@@ -483,14 +493,15 @@ async function flush() {
 
         saved++;
       }
+      // Only delete after successful save
+      try {
+        unlinkSync(filePath);
+      } catch {}
     } catch (err) {
       errors++;
       console.error(`Failed to flush ${filePath}:`, err);
+      // DO NOT delete file — leave for next flush attempt
     }
-    // Always delete file — prevent stale accumulation (outside try/catch so dups are cleaned too)
-    try {
-      unlinkSync(filePath);
-    } catch {}
   }
 
   if (saved > 0 || errors > 0) {

@@ -19,9 +19,10 @@
  * Input: user prompt text via argv[2]
  * Output: JSON { skills: [...], context: string }
  */
-import { readFileSync, writeFileSync, existsSync, mkdirSync, statSync, readdirSync } from "fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, statSync, unlinkSync, readdirSync } from "fs";
 import { resolve, dirname, join } from "path";
 import { fileURLToPath } from "url";
+import { buildDecisionContext } from "./decision-engine.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 // ─── Configuration ───────────────────────────────────────────────────
@@ -728,7 +729,8 @@ function loadRegistryWithCache(registryPath) {
     try {
         const raw = JSON.parse(readFileSync(registryPath, "utf-8"));
         // Cache fields we need (keep linksTo for graph traversal, strip linkedFrom)
-        const slim = raw.skills.map((s) => ({
+        const allSkills = Array.isArray(raw.skills) ? raw.skills : Object.values(raw);
+        const slim = allSkills.map((s) => ({
             name: s.name,
             description: s.description,
             layer: s.layer,
@@ -736,6 +738,7 @@ function loadRegistryWithCache(registryPath) {
             triggers: s.triggers,
             linksTo: s.linksTo || [],
             websearch: s.websearch || false,
+            path: s.path || null,
         }));
         mkdirSync(CACHE_DIR, { recursive: true });
         writeFileSync(cachePath, JSON.stringify({ skills: slim, mtime }));
@@ -888,7 +891,7 @@ function loadUserPreferences() {
         return cachedUserPreferences;
     try {
         // Session-start populates this from the identity graph
-        const sessionId = process.env.CLAUDE_SESSION_ID || "default";
+        const sessionId = (process.env.CC_SESSION_ID || "").slice(0, 12) || "default";
         const prefPath = join(CACHE_DIR, `preferences-${sessionId}.json`);
         if (existsSync(prefPath)) {
             const data = JSON.parse(readFileSync(prefPath, "utf-8"));
@@ -902,7 +905,7 @@ function loadUserPreferences() {
     catch {
         cachedUserPreferences = null;
     }
-    return cachedUserPreferences;
+    return cachedUserPreferences ?? null;
 }
 /** Pass 2: Full scoring on candidates only. */
 function fullScore(skill, promptLower, promptWords, domainScores, matchedTriggers, matchQualities, intent) {
@@ -1405,8 +1408,36 @@ function main() {
         const refBlock = refs.join("\n");
         context = context ? `${context}\n\n${refBlock}` : refBlock;
     }
+    // Decision framework injection (ThinkBetter-style)
+    try {
+        const decision = buildDecisionContext(prompt);
+        if (decision?.context) {
+            context = context ? `${context}\n\n${decision.context}` : decision.context;
+        }
+    }
+    catch {
+        // Non-fatal — skill context still fires
+    }
     // Extract and save user preferences from prompt text
     extractAndSavePreferences(prompt);
+    // ☸ Tekiō — always-on evaluation: corrections AND successes
+    detectAndSaveCorrections(prompt);
+    detectAndSaveSuccesses(prompt, intent, top.map((s) => s.name));
+    // ☸ Tekiō notification — if a wheel turn happened recently, inject notification
+    try {
+        const wheelNotif = "/tmp/ultrathink-wheel-turns/last-notification";
+        if (existsSync(wheelNotif)) {
+            const notifContent = readFileSync(wheelNotif, "utf-8").trim();
+            if (notifContent) {
+                context = context ? `${context}\n\n${notifContent}` : notifContent;
+            }
+            // Consume the notification (one-shot)
+            unlinkSync(wheelNotif);
+        }
+    }
+    catch {
+        // non-critical
+    }
     // Model routing hints removed — users choose their model deliberately.
     // Injecting "switch to Opus/Sonnet" on every prompt was ~400 tokens/session of noise.
     // Track skill suggestions for effectiveness analysis (#6)
@@ -1643,5 +1674,85 @@ function extractAndSavePreferences(text) {
             writeFileSync(join(MEMORIES_DIR, `${ts}-pref-${key.slice(0, 20)}.json`), JSON.stringify(memory));
         }
     }
+}
+// ─── ☸ Tekiō — Always-On Evaluation (Cycle of Nova) ─────────────────
+// The wheel evaluates EVERY interaction:
+//   New → turn (learn)    Known → skip    Failure → turn (counter)    Success → turn (reinforce)
+const SUCCESS_PATTERNS = [
+    /\b(?:perfect|exactly|that'?s?\s+(?:right|correct|it|great|what\s+i\s+wanted))\b/i,
+    /\b(?:works?\s+(?:great|perfectly|well|now)|nailed\s+it|spot\s+on|nice|awesome)\b/i,
+    /\b(?:yes[,!]?\s+(?:that|like\s+that|this)|good\s+(?:job|work)|love\s+(?:it|this))\b/i,
+];
+function detectAndSaveSuccesses(text, intent, skillNames) {
+    const isSuccess = SUCCESS_PATTERNS.some((p) => p.test(text));
+    if (!isSuccess)
+        return;
+    if (skillNames.length === 0 && intent === "general")
+        return; // Nothing specific to learn
+    const wheelDir = "/tmp/ultrathink-wheel-turns";
+    if (!existsSync(wheelDir))
+        mkdirSync(wheelDir, { recursive: true });
+    const scope = process.cwd().split("/").slice(-2).join("/");
+    const ts = Date.now();
+    // Record what worked: the intent + skill combo
+    const pattern = skillNames.length > 0 ? `${intent} task using skills: ${skillNames.join(", ")}` : `${intent} task approach`;
+    const insight = `For ${intent} tasks, ${skillNames.length > 0 ? `use skills: ${skillNames.join(", ")}` : "current approach works well"}. User confirmed success.`;
+    const wheelEvent = {
+        type: "success-pattern",
+        timestamp: new Date().toISOString(),
+        pattern,
+        insight,
+        scope,
+    };
+    writeFileSync(join(wheelDir, `${ts}-success.json`), JSON.stringify(wheelEvent));
+}
+const CORRECTION_PATTERNS = [
+    // "no, not that" / "no that's wrong" / "no, instead..."
+    /\bno[,.]?\s+(?:not\s+that|that'?s?\s+(?:wrong|incorrect|not\s+(?:right|what|how)))/i,
+    // "I said X" / "I told you" / "I asked for"
+    /\bi\s+(?:said|told\s+you|asked\s+(?:for|you))\b/i,
+    // "revert" / "undo" / "go back"
+    /\b(?:revert|undo|go\s+back|roll\s*back|put\s+(?:it\s+)?back)\b/i,
+    // "wrong" / "incorrect" / "that's not"
+    /\b(?:wrong|incorrect|that'?s?\s+not\s+(?:what|how|right))\b/i,
+    // "don't do that" / "stop doing" / "not like that"
+    /\b(?:don'?t\s+do\s+that|stop\s+(?:doing|that)|not\s+like\s+that)\b/i,
+    // "I meant" / "what I want is"
+    /\bi\s+meant\b|what\s+i\s+(?:want|need|mean)\s+is\b/i,
+    // "lets not" / "don't" (at start of sentence)
+    /^(?:let'?s?\s+not|don'?t)\s+/im,
+];
+function detectAndSaveCorrections(text) {
+    const isCorrection = CORRECTION_PATTERNS.some((p) => p.test(text));
+    if (!isCorrection)
+        return;
+    // Save correction event for the adaptation system to process
+    if (!existsSync(MEMORIES_DIR))
+        mkdirSync(MEMORIES_DIR, { recursive: true });
+    const scope = process.cwd().split("/").slice(-2).join("/");
+    const ts = Date.now();
+    // Extract the correction content (what the user wants instead)
+    const correctionContent = text.slice(0, 300).trim();
+    const memory = {
+        content: `[CORRECTION] ${correctionContent}`,
+        category: "preference",
+        importance: 9,
+        confidence: 0.9,
+        scope,
+        source: "correction-detect",
+        tags: ["#correction", "#wheel", "#adaptation"],
+    };
+    writeFileSync(join(MEMORIES_DIR, `${ts}-correction.json`), JSON.stringify(memory));
+    // Also write a wheel-turn trigger file for the session-end hook to process
+    const wheelDir = "/tmp/ultrathink-wheel-turns";
+    if (!existsSync(wheelDir))
+        mkdirSync(wheelDir, { recursive: true });
+    const wheelEvent = {
+        type: "user-correction",
+        timestamp: new Date().toISOString(),
+        correction: correctionContent,
+        scope,
+    };
+    writeFileSync(join(wheelDir, `${ts}-correction.json`), JSON.stringify(wheelEvent));
 }
 main();

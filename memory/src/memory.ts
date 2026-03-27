@@ -156,13 +156,15 @@ export async function searchMemories(opts: {
   let rows;
 
   if (opts.query) {
+    // Escape ILIKE wildcards in user input to prevent injection
+    const escapedQuery = opts.query.replace(/%/g, "\\%").replace(/_/g, "\\_");
     // Use pg_trgm similarity for better fuzzy matching (leverages GIN index)
     rows = await sql`
       SELECT m.*, array_agg(mt.tag) FILTER (WHERE mt.tag IS NOT NULL) as tags,
              similarity(m.content, ${opts.query}) as sim
       FROM memories m
       LEFT JOIN memory_tags mt ON m.id = mt.memory_id
-      WHERE (m.content ILIKE ${"%" + opts.query + "%"} OR similarity(m.content, ${opts.query}) > 0.05)
+      WHERE (m.content ILIKE ${"%" + escapedQuery + "%"} OR similarity(m.content, ${opts.query}) > 0.05)
         AND m.importance >= ${minImportance}
         AND (${includeArchived} OR m.is_archived = false)
         AND (${opts.category ?? null}::text IS NULL OR m.category = ${opts.category ?? null})
@@ -269,6 +271,8 @@ export async function semanticSearch(opts: {
 
     // Tier 3: ILIKE substring fallback if still too few
     if (rows.length < 3) {
+      // Escape ILIKE wildcards in user input to prevent injection
+      const escapedQuery = opts.query.replace(/%/g, "\\%").replace(/_/g, "\\_");
       const ilikeRows = await sql`
         SELECT m.*, array_agg(mt.tag) FILTER (WHERE mt.tag IS NOT NULL) as tags,
                0::float as ts_score,
@@ -278,7 +282,7 @@ export async function semanticSearch(opts: {
         WHERE m.is_archived = false
           AND m.importance >= ${minImportance}
           AND (${opts.scope ?? null}::text IS NULL OR m.scope = ${opts.scope ?? null})
-          AND m.content ILIKE ${"%" + opts.query + "%"}
+          AND m.content ILIKE ${"%" + escapedQuery + "%"}
         GROUP BY m.id
         ORDER BY m.importance DESC
         LIMIT ${limit}
@@ -352,14 +356,44 @@ export async function updateMemory(
   updates: Partial<Pick<Memory, "content" | "category" | "importance" | "confidence" | "scope" | "is_archived">>
 ): Promise<Memory | null> {
   const sql = getClient();
+
+  // Build dynamic SET clause: undefined = keep existing, null = set to null, value = use value
+  const setClauses: string[] = [];
+  const values: Record<string, unknown> = {};
+
+  if (updates.content !== undefined) {
+    values.content = updates.content;
+  }
+  if (updates.category !== undefined) {
+    values.category = updates.category;
+  }
+  if (updates.importance !== undefined) {
+    values.importance = updates.importance;
+  }
+  if (updates.confidence !== undefined) {
+    values.confidence = updates.confidence;
+  }
+  if (updates.scope !== undefined) {
+    values.scope = updates.scope;
+  }
+  if (updates.is_archived !== undefined) {
+    values.is_archived = updates.is_archived;
+  }
+
+  // If nothing to update, just return the current row
+  if (Object.keys(values).length === 0) {
+    const current = await sql`SELECT * FROM memories WHERE id = ${id}`;
+    return current.length > 0 ? (current[0] as Memory) : null;
+  }
+
   const rows = await sql`
     UPDATE memories SET
-      content = COALESCE(${updates.content ?? null}, content),
-      category = COALESCE(${updates.category ?? null}, category),
-      importance = COALESCE(${updates.importance ?? null}, importance),
-      confidence = COALESCE(${updates.confidence ?? null}, confidence),
-      scope = COALESCE(${updates.scope ?? null}, scope),
-      is_archived = COALESCE(${updates.is_archived ?? null}, is_archived),
+      content = CASE WHEN ${updates.content !== undefined} THEN ${updates.content ?? null} ELSE content END,
+      category = CASE WHEN ${updates.category !== undefined} THEN ${updates.category ?? null} ELSE category END,
+      importance = CASE WHEN ${updates.importance !== undefined} THEN ${updates.importance ?? null} ELSE importance END,
+      confidence = CASE WHEN ${updates.confidence !== undefined} THEN ${updates.confidence ?? null} ELSE confidence END,
+      scope = CASE WHEN ${updates.scope !== undefined} THEN ${updates.scope ?? null} ELSE scope END,
+      is_archived = CASE WHEN ${updates.is_archived !== undefined} THEN ${updates.is_archived ?? null} ELSE is_archived END,
       updated_at = NOW()
     WHERE id = ${id}
     RETURNING *

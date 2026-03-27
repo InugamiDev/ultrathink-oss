@@ -67,6 +67,11 @@ npm install
 echo "  Memory dependencies — OK"
 cd ..
 
+cd code-intel
+npm install
+echo "  Code-intel dependencies — OK"
+cd ..
+
 # Step 4: Make hooks executable
 echo ""
 echo "Step 4: Configuring hooks..."

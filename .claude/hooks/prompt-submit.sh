@@ -4,6 +4,7 @@
 # Output: { additionalContext: "## Active Skills\n..." }
 
 set -euo pipefail
+umask 077
 
 source "$(dirname "${BASH_SOURCE[0]}")/hook-log.sh" 2>/dev/null || hook_log() { :; }
 hook_log "prompt-submit" "started"

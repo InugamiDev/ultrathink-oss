@@ -57,3 +57,4 @@ coverage/
 !.env.template
 !**/config/example.json
 !**/credentials.example.*
+!.claude/hooks/dist/**

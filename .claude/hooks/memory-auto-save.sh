@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
+umask 077
 
 # memory-auto-save.sh — PostToolUse hook for auto-memory creation.
 # Fires after Edit/Write/Bash tool calls.
@@ -68,7 +69,7 @@ case "$TOOL_NAME" in
     case "$FILE_PATH" in
       *migration*|*.sql)        SHOULD_SAVE=true; IMPORTANCE=7 ;;
       *schema*|*model*)         SHOULD_SAVE=true; IMPORTANCE=6 ;;
-      *.env*)                   SHOULD_SAVE=true; IMPORTANCE=6 ;;
+      *.env*)                   SHOULD_SAVE=false; IMPORTANCE=6 ;;  # .env files may contain secrets — never auto-capture
       *CLAUDE.md|*SKILL.md)     SHOULD_SAVE=true; IMPORTANCE=5 ;;
       *registry*)               SHOULD_SAVE=true; IMPORTANCE=5 ;;
       *hook*|*middleware*)       SHOULD_SAVE=true; IMPORTANCE=5 ;;
@@ -77,11 +78,61 @@ case "$TOOL_NAME" in
       *route*|*api/*)           SHOULD_SAVE=true; IMPORTANCE=5; CATEGORY="pattern" ;;
     esac
 
-    # Write tool creating a NEW file — always interesting
-    if [[ "$TOOL_NAME" == "Write" && ! -f "$FILE_PATH" ]]; then
-      SHOULD_SAVE=true
-      IMPORTANCE=5
-      CATEGORY="pattern"
+    # Write tool creating a NEW file — always interesting.
+    # Since this is a PostToolUse hook, the file already exists by the time we run.
+    # Detect "new file" by checking: (1) tool_output contains "created", or
+    # (2) file is untracked in git, or (3) file was created within the last 5 seconds.
+    if [[ "$TOOL_NAME" == "Write" ]]; then
+      IS_NEW_FILE=false
+
+      # Wait for file to appear on disk (up to 500ms) — Write may still be flushing
+      if [[ ! -f "$FILE_PATH" ]]; then
+        for _retry in 1 2 3 4 5; do
+          sleep 0.1
+          [[ -f "$FILE_PATH" ]] && break
+        done
+      fi
+
+      if [[ ! -f "$FILE_PATH" ]]; then
+        # File never appeared — skip gracefully, log to stderr for debugging
+        echo "[memory-auto-save] WARN: file not found after 500ms: $FILE_PATH" >&2
+        echo '{}'; exit 0
+      fi
+
+      # Method 1: tool_output contains "created" (Claude reports "Created file ...")
+      if echo "$TOOL_OUTPUT" | grep -qi 'created\|new file'; then
+        IS_NEW_FILE=true
+      fi
+
+      # Method 2: file is untracked in git (new, never committed)
+      if [[ "$IS_NEW_FILE" != "true" ]] && command -v git &>/dev/null; then
+        GIT_STATUS=$(git status --porcelain -- "$FILE_PATH" 2>/dev/null || true)
+        if [[ "$GIT_STATUS" == "??"* ]]; then
+          IS_NEW_FILE=true
+        fi
+      fi
+
+      # Method 3: file birth/mod time within last 5 seconds (recently created)
+      if [[ "$IS_NEW_FILE" != "true" ]]; then
+        FILE_MOD=$(stat -f %m "$FILE_PATH" 2>/dev/null || stat -c %Y "$FILE_PATH" 2>/dev/null || echo "0")
+        NOW=$(date +%s)
+        if (( NOW - FILE_MOD <= 5 )); then
+          # Could be new or just edited — check if git knows about it
+          if command -v git &>/dev/null; then
+            # If git ls-files returns empty, this file has never been committed
+            GIT_KNOWN=$(git ls-files -- "$FILE_PATH" 2>/dev/null || true)
+            if [[ -z "$GIT_KNOWN" ]]; then
+              IS_NEW_FILE=true
+            fi
+          fi
+        fi
+      fi
+
+      if [[ "$IS_NEW_FILE" == "true" ]]; then
+        SHOULD_SAVE=true
+        IMPORTANCE=5
+        CATEGORY="pattern"
+      fi
     fi
 
     if [[ "$SHOULD_SAVE" != "true" ]]; then

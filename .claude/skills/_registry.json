@@ -18,6 +18,7 @@
       "nano banana"
     ],
     "linksTo": [
+      "agora",
       "ai-agents",
       "nextjs",
       "api-designer"
@@ -27,6 +28,34 @@
     ],
     "riskLevel": "medium",
     "path": "skills/image-pipeline/SKILL.md"
+  },
+  "agora": {
+    "name": "agora",
+    "description": "Agora Conversational AI Engine — real-time voice AI, RTC channels, ASR/LLM/TTS pipeline, and WebRTC integration patterns",
+    "layer": "domain",
+    "category": "ai-ml",
+    "triggers": [
+      "agora",
+      "voice ai",
+      "voice chat",
+      "conversational ai",
+      "real-time voice",
+      "voice assistant",
+      "speech to speech",
+      "voice agent"
+    ],
+    "linksTo": [
+      "websockets",
+      "ai-agents",
+      "nextjs",
+      "api-designer",
+      "authentication"
+    ],
+    "linkedFrom": [
+      "ai-multimodal"
+    ],
+    "riskLevel": "medium",
+    "path": "skills/agora/SKILL.md"
   },
   "ai-agents": {
     "name": "ai-agents",
@@ -198,10 +227,10 @@
       "two factor"
     ],
     "linksTo": [
-      "[better-auth, encryption, owasp, nextjs]"
+      "better-auth", "encryption", "owasp", "nextjs"
     ],
     "linkedFrom": [
-      "[api-designer, code-review, security-scanner]"
+      "api-designer", "code-review", "security-scanner"
     ],
     "riskLevel": "medium",
     "path": "skills/authentication/SKILL.md"
@@ -225,10 +254,10 @@
       "sns"
     ],
     "linksTo": [
-      "[terraform, kubernetes, monitoring, docker, cicd]"
+      "terraform", "kubernetes", "monitoring", "docker", "cicd"
     ],
     "linkedFrom": [
-      "[ship, plan, infrastructure]"
+      "ship", "plan", "infrastructure"
     ],
     "riskLevel": "medium",
     "path": "skills/aws/SKILL.md"
@@ -244,10 +273,10 @@
       "betterauth"
     ],
     "linksTo": [
-      "[authentication, nextjs, drizzle, prisma]"
+      "authentication", "nextjs", "drizzle", "prisma"
     ],
     "linkedFrom": [
-      "[authentication, code-review]"
+      "authentication", "code-review"
     ],
     "riskLevel": "medium",
     "path": "skills/better-auth/SKILL.md"
@@ -458,10 +487,10 @@
       "continuous deployment"
     ],
     "linksTo": [
-      "[docker, kubernetes, terraform, vercel, monitoring]"
+      "docker", "kubernetes", "terraform", "vercel", "monitoring"
     ],
     "linkedFrom": [
-      "[ship, code-review, test]"
+      "ship", "code-review", "test"
     ],
     "riskLevel": "medium",
     "path": "skills/cicd/SKILL.md"
@@ -483,10 +512,10 @@
       "wrangler"
     ],
     "linksTo": [
-      "[nginx, terraform, monitoring, authentication]"
+      "nginx", "terraform", "monitoring", "authentication"
     ],
     "linkedFrom": [
-      "[ship, optimize, caching]"
+      "ship", "optimize", "caching"
     ],
     "riskLevel": "low",
     "path": "skills/cloudflare/SKILL.md"
@@ -834,10 +863,10 @@
       "docker build"
     ],
     "linksTo": [
-      "[kubernetes, cicd, monitoring, nginx]"
+      "kubernetes", "cicd", "monitoring", "nginx"
     ],
     "linkedFrom": [
-      "[code-review, optimize, ship]"
+      "code-review", "optimize", "ship"
     ],
     "riskLevel": "medium",
     "path": "skills/docker/SKILL.md"
@@ -969,10 +998,10 @@
       "digital signature"
     ],
     "linksTo": [
-      "[authentication, owasp, aws]"
+      "authentication", "owasp", "aws"
     ],
     "linkedFrom": [
-      "[authentication, security-scanner, code-review]"
+      "authentication", "security-scanner", "code-review"
     ],
     "riskLevel": "medium",
     "path": "skills/encryption/SKILL.md"
@@ -1375,17 +1404,17 @@
       "ingress"
     ],
     "linksTo": [
-      "[docker, monitoring, terraform, nginx, cicd]"
+      "docker", "monitoring", "terraform", "nginx", "cicd"
     ],
     "linkedFrom": [
-      "[ship, optimize, infrastructure]"
+      "ship", "optimize", "infrastructure"
     ],
     "riskLevel": "medium",
     "path": "skills/kubernetes/SKILL.md"
   },
   "learn-pattern": {
     "name": "learn-pattern",
-    "description": "Extract reusable patterns from the current session and store as memories",
+    "description": "Extract reusable patterns from the current session and store as Tekio adaptations or memories",
     "layer": "utility",
     "category": "learning",
     "triggers": [
@@ -1428,10 +1457,10 @@
       "centos"
     ],
     "linksTo": [
-      "[docker, nginx, monitoring, terraform]"
+      "docker", "nginx", "monitoring", "terraform"
     ],
     "linkedFrom": [
-      "[ship, debug, infrastructure]"
+      "ship", "debug", "infrastructure"
     ],
     "riskLevel": "medium",
     "path": "skills/linux-admin/SKILL.md"
@@ -1724,10 +1753,10 @@
       "logging"
     ],
     "linksTo": [
-      "[kubernetes, docker, aws, nginx, cicd]"
+      "kubernetes", "docker", "aws", "nginx", "cicd"
     ],
     "linkedFrom": [
-      "[ship, optimize, debug]"
+      "ship", "optimize", "debug"
     ],
     "riskLevel": "low",
     "path": "skills/monitoring/SKILL.md"
@@ -1779,10 +1808,10 @@
       "ssl termination"
     ],
     "linksTo": [
-      "[docker, kubernetes, monitoring, linux-admin, cloudflare]"
+      "docker", "kubernetes", "monitoring", "linux-admin", "cloudflare"
     ],
     "linkedFrom": [
-      "[ship, optimize, infrastructure]"
+      "ship", "optimize", "infrastructure"
     ],
     "riskLevel": "medium",
     "path": "skills/nginx/SKILL.md"
@@ -1893,10 +1922,10 @@
       "security audit"
     ],
     "linksTo": [
-      "[authentication, encryption, nginx, nextjs]"
+      "authentication", "encryption", "nginx", "nextjs"
     ],
     "linkedFrom": [
-      "[code-review, security-scanner, audit]"
+      "code-review", "security-scanner", "audit"
     ],
     "riskLevel": "low",
     "path": "skills/owasp/SKILL.md"
@@ -2674,10 +2703,10 @@
       "shopify hydrogen"
     ],
     "linksTo": [
-      "[ecommerce, stripe, react, nextjs]"
+      "ecommerce", "stripe", "react", "nextjs"
     ],
     "linkedFrom": [
-      "[ecommerce, ship]"
+      "ecommerce", "ship"
     ],
     "riskLevel": "low",
     "path": "skills/shopify/SKILL.md"
@@ -2748,10 +2777,10 @@
       "billing portal"
     ],
     "linksTo": [
-      "[billing, ecommerce, authentication, encryption]"
+      "billing", "ecommerce", "authentication", "encryption"
     ],
     "linkedFrom": [
-      "[ecommerce, billing, ship]"
+      "ecommerce", "billing", "ship"
     ],
     "riskLevel": "medium",
     "path": "skills/stripe/SKILL.md"
@@ -2894,10 +2923,10 @@
       "terraform plan"
     ],
     "linksTo": [
-      "[aws, cloudflare, kubernetes, monitoring, cicd]"
+      "aws", "cloudflare", "kubernetes", "monitoring", "cicd"
     ],
     "linkedFrom": [
-      "[ship, plan, infrastructure]"
+      "ship", "plan", "infrastructure"
     ],
     "riskLevel": "medium",
     "path": "skills/terraform/SKILL.md"
@@ -3192,10 +3221,10 @@
       "vercel.json"
     ],
     "linksTo": [
-      "[cicd, monitoring, cloudflare, nextjs]"
+      "cicd", "monitoring", "cloudflare", "nextjs"
     ],
     "linkedFrom": [
-      "[ship, optimize, plan]"
+      "ship", "optimize", "plan"
     ],
     "riskLevel": "low",
     "path": "skills/vercel/SKILL.md"
@@ -3565,6 +3594,43 @@
       "requesting-code-review"
     ],
     "riskLevel": "low",
+    "path": null
+  },
+  "research-loop": {
+    "name": "research-loop",
+    "description": "Iterative experiment loop — read spec, implement, run, evaluate, commit on success or reset and retry with learnings. Git-safe autonomous experimentation.",
+    "layer": "orchestrator",
+    "category": "workflow",
+    "triggers": [
+      "/research-loop",
+      "/experiment",
+      "/iterate",
+      "try different approaches",
+      "experiment with",
+      "iterate until it works",
+      "keep trying until",
+      "run experiments on",
+      "optimize through trial",
+      "find the best approach for",
+      "test multiple approaches"
+    ],
+    "linksTo": [
+      "debug",
+      "test",
+      "optimize",
+      "fix",
+      "plan",
+      "sequential-thinking",
+      "learn-from-mistakes"
+    ],
+    "linkedFrom": [
+      "gsd",
+      "cook",
+      "optimize",
+      "debug",
+      "plan"
+    ],
+    "riskLevel": "medium",
     "path": null
   }
 }

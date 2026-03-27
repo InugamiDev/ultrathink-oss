@@ -4,6 +4,7 @@
 # Post-compact variant: detects source=="compact" and restores state without creating a new session.
 
 set -euo pipefail
+umask 077
 
 source "$(dirname "${BASH_SOURCE[0]}")/hook-log.sh" 2>/dev/null || hook_log() { :; }
 hook_log "session-start" "started"
@@ -144,9 +145,10 @@ else
   if [[ -x "$NOTIFY_SCRIPT" ]]; then
     (
       # Gather stats for the notification
+      WHEEL_N=$(cat /tmp/ultrathink-status/wheel-count 2>/dev/null || echo "?")
       MEM_LINE=$(cat /tmp/ultrathink-status/weekly-stats 2>/dev/null || echo "")
       MEM_N=$(echo "$MEM_LINE" | cut -d'|' -f1 2>/dev/null || echo "?")
-      START_MSG="▶ New session started\n\n**Memories:** ${MEM_N}\n**Project:** $(basename "$ULTRA_ROOT")"
+      START_MSG="▶ New session started\n\n**☸ Tekiō:** ${WHEEL_N} adaptations active\n**Memories:** ${MEM_N}\n**Project:** $(basename "$ULTRA_ROOT")"
       bash "$NOTIFY_SCRIPT" "$START_MSG" "discord" "normal" 2>/dev/null || true
     ) &
   fi
