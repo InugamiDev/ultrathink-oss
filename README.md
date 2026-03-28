@@ -31,16 +31,42 @@ You ──► AI Editor ──► UltraThink ──► Skills matched · Memorie
 
 ## Install
 
-### Let your AI do it
+### Let your AI set it up
 
-Copy this prompt into Claude Code, Cursor, Windsurf, or any AI editor:
+Copy this prompt into **Claude Code, Cursor, Windsurf, or any AI editor** and it will handle everything:
 
-> ```
-> Clone https://github.com/InugamiDev/ultrathink-oss.git into ~/ultrathink,
-> run ./scripts/setup.sh, then ./scripts/init-global.sh to install globally.
-> If this is Cursor/Windsurf/Copilot, also run ./scripts/sync-editors.sh --all
-> to generate editor-specific config files. Show me the statusline output when done.
-> ```
+<details>
+<summary><strong>Copy this prompt</strong></summary>
+
+```
+I want to install UltraThink — a Workflow OS that gives you persistent memory,
+auto-triggered skills, privacy hooks, and an observability dashboard.
+
+Steps:
+1. Clone the repo: git clone https://github.com/InugamiDev/ultrathink-oss.git ~/ultrathink
+2. cd ~/ultrathink
+3. Run ./scripts/setup.sh — this installs all dependencies (root, dashboard, memory),
+   creates .env from the template, makes hooks executable, and verifies skill files.
+4. Run ./scripts/init-global.sh — this symlinks skills, agents, references, and hooks
+   into ~/.claude/ so every Claude Code session has UltraThink capabilities.
+5. If we're in Cursor, Windsurf, Antigravity, or Copilot, also run
+   ./scripts/sync-editors.sh --all to generate editor-specific config files.
+6. After setup, tell me:
+   - How many skills were linked
+   - How many hooks were installed
+   - Whether .env needs a DATABASE_URL (for memory persistence)
+   - The URL for the dashboard (should be http://localhost:3333)
+
+For the database: I need a free Neon Postgres account from https://neon.tech.
+Once I have a DATABASE_URL, put it in ~/ultrathink/.env and run:
+  cd ~/ultrathink/memory && npx tsx scripts/migrate.ts
+
+To start the dashboard: npm run dashboard:dev from ~/ultrathink/
+
+Show me the final status when done.
+```
+
+</details>
 
 ### Or manually
 
