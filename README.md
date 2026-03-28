@@ -31,7 +31,18 @@ You ──► AI Editor ──► UltraThink ──► Skills matched · Memorie
 
 ## Install
 
-### Claude Code (full integration)
+### Let your AI do it
+
+Copy this prompt into Claude Code, Cursor, Windsurf, or any AI editor:
+
+> ```
+> Clone https://github.com/InugamiDev/ultrathink-oss.git into ~/ultrathink,
+> run ./scripts/setup.sh, then ./scripts/init-global.sh to install globally.
+> If this is Cursor/Windsurf/Copilot, also run ./scripts/sync-editors.sh --all
+> to generate editor-specific config files. Show me the statusline output when done.
+> ```
+
+### Or manually
 
 ```bash
 git clone https://github.com/InugamiDev/ultrathink-oss.git ~/ultrathink
