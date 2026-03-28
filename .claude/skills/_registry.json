@@ -25,7 +25,7 @@
   },
   "build-resolver": {
     "name": "build-resolver",
-    "description": "Minimal-diff build error fixer — gets builds green with the smallest possible changes",
+    "description": "Minimal-diff build error fixer \u2014 gets builds green with the smallest possible changes",
     "layer": "utility",
     "category": "quality",
     "triggers": [
@@ -187,7 +187,7 @@
   },
   "gsd-verify": {
     "name": "gsd-verify",
-    "description": "Goal-backward verification — verify from must-haves backward to artifacts, detect stubs and regressions",
+    "description": "Goal-backward verification \u2014 verify from must-haves backward to artifacts, detect stubs and regressions",
     "layer": "hub",
     "category": "workflow",
     "triggers": [
@@ -391,7 +391,7 @@
   },
   "quality-gate": {
     "name": "quality-gate",
-    "description": "Lightweight post-edit verification pipeline — format, lint, typecheck, test in one pass",
+    "description": "Lightweight post-edit verification pipeline \u2014 format, lint, typecheck, test in one pass",
     "layer": "utility",
     "category": "quality",
     "triggers": [
@@ -638,7 +638,7 @@
   },
   "typescript-frontend": {
     "name": "typescript-frontend",
-    "description": "TypeScript for frontend development — generics, utility types, type-safe APIs, component typing, and developer experience patterns",
+    "description": "TypeScript for frontend development \u2014 generics, utility types, type-safe APIs, component typing, and developer experience patterns",
     "layer": "domain",
     "category": "frontend",
     "triggers": [
@@ -680,7 +680,7 @@
   },
   "ut-cook": {
     "name": "ut-cook",
-    "description": "End-to-end feature builder — plan, research, scout, code, test, review, ship",
+    "description": "End-to-end feature builder \u2014 plan, research, scout, code, test, review, ship",
     "layer": "domain",
     "category": "specialist",
     "triggers": [],
@@ -725,7 +725,7 @@
   },
   "ut-ship": {
     "name": "ut-ship",
-    "description": "Ship workflow — test, review, changelog, commit, and prepare for deploy",
+    "description": "Ship workflow \u2014 test, review, changelog, commit, and prepare for deploy",
     "layer": "domain",
     "category": "specialist",
     "triggers": [],
@@ -752,7 +752,7 @@
   },
   "verify": {
     "name": "verify",
-    "description": "Full pre-PR verification pipeline — build, typecheck, lint, test, secrets, git status",
+    "description": "Full pre-PR verification pipeline \u2014 build, typecheck, lint, test, secrets, git status",
     "layer": "utility",
     "category": "quality",
     "triggers": [
@@ -813,7 +813,7 @@
   },
   "systematic-debugging": {
     "name": "systematic-debugging",
-    "description": "Four-phase root-cause debugging: reproduce → isolate → identify → fix. No guessing.",
+    "description": "Four-phase root-cause debugging: reproduce \u2192 isolate \u2192 identify \u2192 fix. No guessing.",
     "layer": "hub",
     "category": "debugging",
     "triggers": [
@@ -839,7 +839,7 @@
   },
   "brainstorming": {
     "name": "brainstorming",
-    "description": "Socratic design exploration before coding. Requirements → constraints → approaches → tradeoffs.",
+    "description": "Socratic design exploration before coding. Requirements \u2192 constraints \u2192 approaches \u2192 tradeoffs.",
     "layer": "orchestrator",
     "category": "planning",
     "triggers": [
@@ -1042,5 +1042,19 @@
     ],
     "riskLevel": "low",
     "path": null
+  },
+  "plugins": {
+    "name": "plugins",
+    "description": "Enable/disable Claude Code plugins on demand",
+    "category": "tooling",
+    "path": "plugins",
+    "triggers": [
+      "/plugins",
+      "enable plugin",
+      "disable plugin",
+      "load plugin"
+    ],
+    "linksTo": [],
+    "linkedFrom": []
   }
 }
