@@ -23,11 +23,21 @@ When a task matches a skill's triggers, load its `SKILL.md`.
 **Auto-trigger**: UserPromptSubmit hook scores skills, injects top 5 via `additionalContext`.
 **Intent detection**: build/debug/refactor/explore/deploy/test/design/plan → category boosting.
 
+## VFS — Mandatory for Code Exploration
+
+**ALWAYS use `mcp__vfs__extract` before `Read` when exploring code.** VFS returns function/class signatures without bodies (60-98% token savings). Only `Read` specific line ranges after you know what you need.
+
+- `mcp__vfs__extract(path: "src/file.ts")` → signatures only (~200 tokens vs ~3000 for full file)
+- `mcp__vfs__extract(path: "src/")` → recursive directory scan
+- `mcp__vfs__search(path: "src/", query: "handleAuth")` → find symbols by name
+- `mcp__vfs__stats(path: ".")` → project overview (languages, file counts)
+- After VFS, use `Read` with `offset`/`limit` to read only the function you need
+- **Never read full files for exploration** — VFS first, targeted Read second
+
 ## Token Optimization
 
-Domain skills archived in `.claude/skills/_archive/` to reduce prompt bloat. ~43 core skills stay active.
+Domain skills archived in `.claude/skills/_archive/` to reduce prompt bloat. ~44 core skills stay active.
 Restore: `mv .claude/skills/_archive/<name> .claude/skills/<name>`
-Use `/plugins` to enable plugin skills on-demand rather than loading all at once.
 
 ## Memory
 

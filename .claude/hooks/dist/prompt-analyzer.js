@@ -924,10 +924,10 @@ function main() {
                 `or invoke full GSD if the scope grows. Read ~/.claude/skills/gsd-quick/SKILL.md.`);
         }
     }
-    // VFS reminder — only for code-related intents (avoid noise on memory/explain prompts)
+    // VFS enforcement — inject on every code-related prompt (not just once)
     const codeIntents = new Set(["build", "refactor", "debug", "test", "explore", "code_discovery"]);
     if (codeIntents.has(intent)) {
-        pushRefOnce(refs, injected, newKeys, "vfs", `🔬 **VFS active** — Use VFS MCP for AST-level code signatures before reading full files. \`vfs search\` for signatures, \`vfs stats\` for overview.`);
+        refs.push(`**VFS REQUIRED** — Before reading any file, use \`mcp__vfs__extract(path)\` for signatures (60-98% token savings). Use \`mcp__vfs__search(path, query)\` to find symbols. Only \`Read\` with offset/limit after VFS.`);
     }
     // Persist newly injected refs so they aren't repeated next prompt
     markRefsInjected(sid, newKeys);
