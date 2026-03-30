@@ -84,7 +84,7 @@ Add to `~/.openclaw/openclaw.json` under `mcpServers`:
 ## Context
 
 UltraThink OSS is a Workflow OS for AI editors with:
-- 44 active skills across 4 layers (340+ archived, zero token cost)
+- 45 active skills across 4 layers (340+ archived, zero token cost)
 - 20 lifecycle hooks (privacy, quality, observability)
 - Prompt analyzer with intent-based auto-trigger
 - Token-optimized by default (lean active set, instant restore)

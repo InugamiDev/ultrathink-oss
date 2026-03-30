@@ -2,11 +2,11 @@
 
 ## Overview
 
-UltraThink contains **43 active skills** (with 340+ archived in `_archive/`) organized across 4 layers. Skills are not isolated tools -- they form a mesh network where each skill declares explicit links to other skills it can call (`linksTo`) and skills that can call it (`linkedFrom`).
+UltraThink contains **44 active skills** (with 340+ archived in `_archive/`) organized across 4 layers. Skills are not isolated tools -- they form a mesh network where each skill declares explicit links to other skills it can call (`linksTo`) and skills that can call it (`linkedFrom`).
 
 Every skill lives in `.claude/skills/[name]/SKILL.md` with YAML frontmatter (metadata) and Markdown body (instructions). Domain specialists are archived by default to reduce token usage -- restore any skill with `mv .claude/skills/_archive/<name> .claude/skills/<name>`.
 
-## Layer 1: Orchestrators (7 skills)
+## Layer 1: Orchestrators (8 skills)
 
 Orchestrators are top-level commanders that coordinate end-to-end workflows. They receive user intent and delegate work to hubs, utilities, and specialists.
 
@@ -19,6 +19,7 @@ Orchestrators are top-level commanders that coordinate end-to-end workflows. The
 | **onboard** | New contributor onboarding: explain codebase, conventions, and workflows | scout, docs-seeker, code-explainer |
 | **skill-creator** | Create new skills: scaffold SKILL.md, validate metadata, register in graph | plan, scout |
 | **audit** | Full codebase audit: security, performance, quality, dependency review | security-scanner, code-review, dependency-analyzer, performance-profiler |
+| **ui-design** | Comprehensive UI design: 230+ font pairings, 48 themes, 65 design systems, 23 design languages, 30 UX laws, 14 color systems, Swiss grid, Pencil.dev workflow | ui-ux-pro-max, impeccable-frontend-design, ui-design-pipeline, tailwindcss, css-architecture |
 
 ## Layer 2: Workflow Hubs (15 skills)
 
@@ -180,11 +181,11 @@ Domain specialists provide deep expertise in specific technologies, frameworks, 
 
 | Layer | Count | Role |
 |-------|-------|------|
-| Orchestrators | 7 | End-to-end task coordination |
+| Orchestrators | 8 | End-to-end task coordination |
 | Workflow Hubs | 15 | Domain-specific workflow management |
 | Utility Providers | 30 | Reusable stateless capabilities |
 | Domain Specialists | 52 | Deep technology expertise |
-| **Total** | **104** | |
+| **Total** | **105** | |
 
 ## Finding Skills
 

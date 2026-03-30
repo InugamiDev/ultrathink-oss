@@ -99,7 +99,7 @@ Then run `claude` in any project. [Full guide →](docs/install-claude-code.md)
 
 ### Skill Mesh
 
-44 active skills across 4 layers, auto-triggered by intent detection on every prompt (<30ms).
+45 active skills across 4 layers, auto-triggered by intent detection on every prompt (<30ms).
 
 | Layer | Examples | Purpose |
 |-------|----------|---------|
@@ -148,7 +148,7 @@ Next.js 15 on port 3333 — memory browser, skill graph, hook events, usage trac
 │  └────────────────────────────────────────────┘  │
 │                                                  │
 │  ┌────────────────────────────────────────────┐  │
-│  │     Skill Mesh (4 layers, 44 active)       │  │
+│  │     Skill Mesh (4 layers, 45 active)       │  │
 │  │  Orchestrators → Hubs → Utils → Domain     │  │
 │  │  Auto-trigger + graph traversal (linksTo)  │  │
 │  └────────────────────────────────────────────┘  │
@@ -168,7 +168,7 @@ Next.js 15 on port 3333 — memory browser, skill graph, hook events, usage trac
 ultrathink/
 ├── .claude/
 │   ├── hooks/          20 lifecycle hooks
-│   ├── skills/         44 active + _archive/ (340+)
+│   ├── skills/         45 active + _archive/ (340+)
 │   ├── agents/         10 agent definitions
 │   ├── references/     Quality, privacy, teaching rules
 │   └── commands/       Slash commands
@@ -201,6 +201,9 @@ ultrathink/
 | Linking skills | [how-to-link-skills.md](docs/how-to-link-skills.md) |
 | Database schema | [memory-schema.md](docs/memory-schema.md) |
 | Troubleshooting | [troubleshooting.md](docs/troubleshooting.md) |
+| Font pairings (230+) | [font-pairings.md](docs/font-pairings.md) |
+| Design languages & UX laws | [design-languages-ux-laws.md](docs/design-languages-ux-laws.md) |
+| Themes & design systems | [design-themes-and-systems.md](docs/design-themes-and-systems.md) |
 
 ---
 

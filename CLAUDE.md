@@ -11,7 +11,7 @@ and a layered architecture for complex engineering tasks.
 
 - **Runtime**: Claude Code CLI | **Dashboard**: Next.js 15 + Tailwind v4 (port 3333)
 - **Database**: Neon Postgres + pgvector + pg_trgm
-- **Skills**: 43 active (340+ archived in `_archive/`)
+- **Skills**: 44 active (340+ archived in `_archive/`)
 - **Memory**: Postgres-backed fuzzy search (tsvector + trigram + ILIKE)
 - **Hooks**: Pre/post tool hooks + auto-trigger | **Tools**: VFS (AST signatures) via MCP
 
