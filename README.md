@@ -78,11 +78,7 @@ cd ultrathink-oss
 
 ### Tiers
 
-UltraThink has 3 tiers:
-
-- **OSS** (this repo) — Skills, memory, hooks, /forge guided mode. Free and open source.
-- **Builder** — Phase gates, identity graph, auto-decision extraction, /forge advanced modes. Earned through the [Builder Campaign](https://ultrathink.dev/builder-campaign) (requires an activation key).
-- **Core** — Adaptive learning, code intelligence, full harness. Internal only.
+This is the **OSS** tier — skills, memory, hooks, and /forge guided mode. Free and open source. Builder and Core tiers with additional features are coming soon.
 
 ### Use with Codex CLI
 

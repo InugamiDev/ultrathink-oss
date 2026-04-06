@@ -1,12 +1,10 @@
 /**
- * intent: Decision CRUD — lightweight constraint engine for OSS/Builder tiers
+ * intent: Decision CRUD — lightweight constraint engine
  * status: done
  * confidence: high
  *
  * Decisions are rules that constrain Claude's behavior.
- * - OSS: manual only (user creates via vault or CLI)
- * - Builder: + auto-extracted from user corrections
- * - Core: + full Tekio wheel integration
+ * Manual creation via vault or CLI.
  */
 
 import { randomUUID } from "crypto";

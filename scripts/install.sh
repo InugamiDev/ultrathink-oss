@@ -371,5 +371,3 @@ fi
 echo ""
 echo "  To uninstall: $0 --uninstall"
 echo ""
-echo "  Want Builder features? Visit https://ultrathink.dev/builder-campaign"
-echo ""

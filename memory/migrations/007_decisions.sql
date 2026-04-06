@@ -1,4 +1,4 @@
--- intent: Decisions table for constraint engine (OSS/Builder/Core)
+-- intent: Decisions table for constraint engine
 -- status: done
 -- confidence: high
 
