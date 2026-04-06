@@ -47,3 +47,4 @@ reports/
 *.keystore
 credentials*.json
 dashboard/.env.local
+.coverage

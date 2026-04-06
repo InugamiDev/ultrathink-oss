@@ -44,7 +44,7 @@ await sql`
 `;
 
 // 4. Backfill
-const [count] = await sql`SELECT COUNT(*) as c FROM memories`;
+const [count] = (await sql`SELECT COUNT(*) as c FROM memories`) as any[];
 console.log(`4. Backfilling ${count.c} memories with weighted tsvector...`);
 await sql`
   UPDATE memories SET search_vector = (
@@ -55,10 +55,10 @@ await sql`
 `;
 
 // 5. Verify
-const [col] = await sql`
+const [col] = (await sql`
   SELECT column_name FROM information_schema.columns
   WHERE table_name = 'memories' AND column_name = 'search_enrichment'
-`;
+`) as any[];
 console.log(`search_enrichment column: ${col ? "EXISTS" : "MISSING"}`);
 
 console.log("\nMigration 008 complete.");

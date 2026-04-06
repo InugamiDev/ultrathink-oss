@@ -12,6 +12,7 @@ const RUNNER = resolve(ROOT, "memory/scripts/memory-runner.ts");
  */
 const hasDatabase = (() => {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { readFileSync } = require("fs");
     const envPath = resolve(ROOT, ".env");
     if (!existsSync(envPath)) return false;
@@ -41,7 +42,9 @@ describeDb("session isolation", { timeout: 30000 }, () => {
     for (const f of sessionFiles) {
       try {
         unlinkSync(f);
-      } catch {}
+      } catch {
+        /* ignore */
+      }
     }
     sessionFiles.length = 0;
   });

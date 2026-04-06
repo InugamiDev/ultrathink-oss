@@ -36,9 +36,9 @@ interface CompactCandidate {
 }
 
 async function getTotalCount(): Promise<number> {
-  const [{ count }] = await sql`
+  const [{ count }] = (await sql`
     SELECT COUNT(*) as count FROM memories WHERE is_archived = false
-  `;
+  `) as any[];
   return Number(count);
 }
 

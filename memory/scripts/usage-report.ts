@@ -36,18 +36,19 @@ const daily = await sql`
   ORDER BY day DESC
 `;
 
-const [allTime] = await sql`SELECT COUNT(*) as count FROM sessions WHERE ended_at IS NOT NULL`;
+const [allTime] = (await sql`SELECT COUNT(*) as count FROM sessions WHERE ended_at IS NOT NULL`) as any[];
 const [thisWeek] =
-  await sql`SELECT COUNT(*) as count FROM sessions WHERE started_at > NOW() - INTERVAL '7 days' AND ended_at IS NOT NULL`;
+  (await sql`SELECT COUNT(*) as count FROM sessions WHERE started_at > NOW() - INTERVAL '7 days' AND ended_at IS NOT NULL`) as any[];
 const [today] =
-  await sql`SELECT COUNT(*) as count FROM sessions WHERE started_at > NOW() - INTERVAL '1 day' AND ended_at IS NOT NULL`;
-const [ghostCount] = await sql`SELECT COUNT(*) as count FROM sessions WHERE ended_at IS NULL`;
+  (await sql`SELECT COUNT(*) as count FROM sessions WHERE started_at > NOW() - INTERVAL '1 day' AND ended_at IS NOT NULL`) as any[];
+const [ghostCount] = (await sql`SELECT COUNT(*) as count FROM sessions WHERE ended_at IS NULL`) as any[];
 
 // --- 2. Memory ---
-const [active] = await sql`SELECT COUNT(*) as c FROM memories WHERE is_archived = false`;
-const [archived] = await sql`SELECT COUNT(*) as c FROM memories WHERE is_archived = true`;
-const [relations] = await sql`SELECT COUNT(*) as c FROM memory_relations`;
-const [avgImp] = await sql`SELECT ROUND(AVG(importance)::numeric, 1) as avg FROM memories WHERE is_archived = false`;
+const [active] = (await sql`SELECT COUNT(*) as c FROM memories WHERE is_archived = false`) as any[];
+const [archived] = (await sql`SELECT COUNT(*) as c FROM memories WHERE is_archived = true`) as any[];
+const [relations] = (await sql`SELECT COUNT(*) as c FROM memory_relations`) as any[];
+const [avgImp] =
+  (await sql`SELECT ROUND(AVG(importance)::numeric, 1) as avg FROM memories WHERE is_archived = false`) as any[];
 
 const categories = await sql`
   SELECT category, COUNT(*) as count
@@ -55,9 +56,9 @@ const categories = await sql`
   GROUP BY category ORDER BY count DESC
 `;
 
-const [weekNew] = await sql`SELECT COUNT(*) as c FROM memories WHERE created_at > NOW() - INTERVAL '7 days'`;
+const [weekNew] = (await sql`SELECT COUNT(*) as c FROM memories WHERE created_at > NOW() - INTERVAL '7 days'`) as any[];
 const [weekArchived] =
-  await sql`SELECT COUNT(*) as c FROM memories WHERE is_archived = true AND updated_at > NOW() - INTERVAL '7 days'`;
+  (await sql`SELECT COUNT(*) as c FROM memories WHERE is_archived = true AND updated_at > NOW() - INTERVAL '7 days'`) as any[];
 
 const dailyMemories = await sql`
   SELECT DATE(created_at) as day, COUNT(*) as created
@@ -78,33 +79,39 @@ const topAccessed = await sql`
 // --- 3. Skills + Tools ---
 let skillUsage: any[] = [];
 try {
-  skillUsage = await sql`
+  skillUsage = (await sql`
     SELECT skill_name, COUNT(*) as count, MAX(used_at) as last_used
     FROM skill_usage
     WHERE used_at > NOW() - INTERVAL '7 days'
     GROUP BY skill_name ORDER BY count DESC LIMIT 15
-  `;
-} catch {}
+  `) as any[];
+} catch {
+  /* ignore */
+}
 
 let toolUsage: any[] = [];
 try {
-  toolUsage = await sql`
+  toolUsage = (await sql`
     SELECT tool_name, COUNT(*) as count
     FROM command_usage
     WHERE used_at > NOW() - INTERVAL '7 days'
     GROUP BY tool_name ORDER BY count DESC LIMIT 10
-  `;
-} catch {}
+  `) as any[];
+} catch {
+  /* ignore */
+}
 
 let dailyStats: any[] = [];
 try {
-  dailyStats = await sql`
+  dailyStats = (await sql`
     SELECT date, total_prompts, total_tool_calls, skills_activated, memories_created
     FROM daily_stats
     WHERE date > NOW() - INTERVAL '7 days'
     ORDER BY date DESC
-  `;
-} catch {}
+  `) as any[];
+} catch {
+  /* ignore */
+}
 
 // --- Output ---
 console.log(

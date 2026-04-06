@@ -1,4 +1,4 @@
-import { getClient } from "../src/client.ts";
+import { getClient } from "../src/client.js";
 async function main() {
   const sql = getClient();
 
@@ -9,7 +9,7 @@ async function main() {
     GROUP BY scope, category ORDER BY cnt DESC LIMIT 25
   `;
   console.log("=== Distribution ===");
-  for (const r of dist)
+  for (const r of dist as any[])
     console.log(`  scope="${r.scope}" cat="${r.category}" cnt=${r.cnt} len=${r.min_len}-${r.max_len}`);
 
   const identities = await sql`
@@ -18,12 +18,12 @@ async function main() {
     ORDER BY importance DESC LIMIT 15
   `;
   console.log("\n=== Identity nodes (top 15) ===");
-  for (const r of identities) console.log(`  [${r.importance}] scope="${r.scope}" | ${r.content}`);
+  for (const r of identities as any[]) console.log(`  [${r.importance}] scope="${r.scope}" | ${r.content}`);
 
   const total = await sql`SELECT COUNT(*)::int as n FROM memories WHERE is_archived=false`;
   console.log(`\nTotal active memories: ${total[0].n}`);
 
-  if (typeof sql.end === "function") await sql.end();
+  if (typeof (sql as any).end === "function") await (sql as any).end();
 }
 main().catch((e) => {
   console.error(e.message);

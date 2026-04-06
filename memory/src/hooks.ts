@@ -71,10 +71,10 @@ export async function getHookEventStats(): Promise<{
   ]);
 
   const bySeverity: Record<string, number> = {};
-  for (const row of severityRows) bySeverity[row.severity as string] = Number(row.count);
+  for (const row of severityRows as any[]) bySeverity[row.severity as string] = Number(row.count);
 
   const byType: Record<string, number> = {};
-  for (const row of typeRows) byType[row.event_type as string] = Number(row.count);
+  for (const row of typeRows as any[]) byType[row.event_type as string] = Number(row.count);
 
   return {
     total: Number(totalResult[0].count),

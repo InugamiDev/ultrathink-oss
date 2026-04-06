@@ -28,7 +28,12 @@ export interface Task {
   updated_at: string;
 }
 
-export async function createPlan(input: { title: string; file_path?: string; summary?: string; session_id?: string }): Promise<Plan> {
+export async function createPlan(input: {
+  title: string;
+  file_path?: string;
+  summary?: string;
+  session_id?: string;
+}): Promise<Plan> {
   const sql = getClient();
   const rows = await sql`
     INSERT INTO plans (title, file_path, summary, session_id)
@@ -41,7 +46,7 @@ export async function createPlan(input: { title: string; file_path?: string; sum
 export async function getPlan(id: string): Promise<Plan | null> {
   const sql = getClient();
   const rows = await sql`SELECT * FROM plans WHERE id = ${id}`;
-  return rows.length > 0 ? (rows[0] as Plan) : null;
+  return (rows as any[]).length > 0 ? (rows[0] as Plan) : null;
 }
 
 export async function listPlans(status?: string): Promise<Plan[]> {
@@ -62,7 +67,7 @@ export async function updatePlanStatus(id: string, status: string): Promise<Plan
     WHERE id = ${id}
     RETURNING *
   `;
-  return rows.length > 0 ? (rows[0] as Plan) : null;
+  return (rows as any[]).length > 0 ? (rows[0] as Plan) : null;
 }
 
 export async function createTask(input: {
@@ -77,10 +82,10 @@ export async function createTask(input: {
 }): Promise<Task> {
   const sql = getClient();
 
-  const [maxPos] = await sql`
+  const [maxPos] = (await sql`
     SELECT COALESCE(MAX(position), 0) + 1 as next_pos
     FROM tasks WHERE board = ${input.board ?? "main"} AND status = 'backlog'
-  `;
+  `) as any[];
 
   const rows = await sql`
     INSERT INTO tasks (title, description, priority, plan_id, board, position, assignee, labels, due_date)
@@ -103,7 +108,7 @@ export async function createTask(input: {
 export async function getTask(id: string): Promise<Task | null> {
   const sql = getClient();
   const rows = await sql`SELECT * FROM tasks WHERE id = ${id}`;
-  return rows.length > 0 ? (rows[0] as Task) : null;
+  return (rows as any[]).length > 0 ? (rows[0] as Task) : null;
 }
 
 export async function listTasks(board: string = "main", status?: string): Promise<Task[]> {
@@ -123,7 +128,7 @@ export async function updateTaskStatus(id: string, status: string): Promise<Task
   const rows = await sql`
     UPDATE tasks SET status = ${status}, updated_at = NOW() WHERE id = ${id} RETURNING *
   `;
-  return rows.length > 0 ? (rows[0] as Task) : null;
+  return (rows as any[]).length > 0 ? (rows[0] as Task) : null;
 }
 
 export async function moveTask(id: string, newStatus: string, newPosition: number): Promise<Task | null> {
@@ -132,7 +137,7 @@ export async function moveTask(id: string, newStatus: string, newPosition: numbe
     UPDATE tasks SET status = ${newStatus}, position = ${newPosition}, updated_at = NOW()
     WHERE id = ${id} RETURNING *
   `;
-  return rows.length > 0 ? (rows[0] as Task) : null;
+  return (rows as any[]).length > 0 ? (rows[0] as Task) : null;
 }
 
 export async function createJournal(input: {

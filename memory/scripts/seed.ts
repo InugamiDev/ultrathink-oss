@@ -15,11 +15,11 @@ async function seed() {
   console.log("Seeding database...\n");
 
   // Create initial session
-  const [session] = await sql`
+  const [session] = (await sql`
     INSERT INTO sessions (summary, task_context)
     VALUES ('UltraThink initial setup', 'System bootstrap and configuration')
     RETURNING id
-  `;
+  `) as any[];
   const sessionId = session.id as string;
   console.log(`  Created session: ${sessionId}`);
 
@@ -64,11 +64,11 @@ async function seed() {
   ];
 
   for (const mem of memories) {
-    const [row] = await sql`
+    const [row] = (await sql`
       INSERT INTO memories (content, category, importance, confidence, scope, session_id, source)
       VALUES (${mem.content}, ${mem.category}, ${mem.importance}, ${mem.confidence}, ${mem.scope}, ${sessionId}, 'seed')
       RETURNING id
-    `;
+    `) as any[];
     console.log(`  Created memory: ${mem.category} — ${mem.content.slice(0, 60)}...`);
 
     await sql`INSERT INTO memory_tags (memory_id, tag) VALUES (${row.id}, ${"#" + mem.category})`;
@@ -76,11 +76,11 @@ async function seed() {
   }
 
   // Create initial plan
-  const [plan] = await sql`
+  const [plan] = (await sql`
     INSERT INTO plans (title, status, summary, session_id)
     VALUES ('UltraThink Bootstrap', 'active', 'Initial system setup and configuration', ${sessionId})
     RETURNING id
-  `;
+  `) as any[];
   console.log(`  Created plan: ${plan.id}`);
 
   // Create sample kanban tasks

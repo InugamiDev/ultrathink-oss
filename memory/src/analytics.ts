@@ -64,7 +64,7 @@ export async function computeDailyStats(date?: string): Promise<void> {
   const d = date ?? new Date().toISOString().slice(0, 10);
 
   // Single query with CTEs instead of 6 sequential round-trips
-  const [stats] = await sql`
+  const [stats] = (await sql`
     WITH s AS (SELECT COUNT(*)::int as n FROM sessions WHERE DATE(started_at) = ${d}::date),
          m AS (SELECT COUNT(*)::int as n FROM memories WHERE DATE(created_at) = ${d}::date),
          sk AS (SELECT COUNT(*)::int as n FROM skill_usage WHERE DATE(invoked_at) = ${d}::date),
@@ -72,7 +72,7 @@ export async function computeDailyStats(date?: string): Promise<void> {
          t AS (SELECT COUNT(*)::int as n FROM tasks WHERE status = 'done' AND DATE(updated_at) = ${d}::date)
     SELECT s.n as sessions, m.n as memories, sk.n as skills, h.n as hooks, t.n as tasks
     FROM s, m, sk, h, t
-  `;
+  `) as any[];
 
   const topSkills = await sql`
     SELECT skill_id, COUNT(*)::int as n
@@ -138,7 +138,7 @@ export async function updateSessionCost(sessionId: string, usage: TokenUsage): P
   const pricing = await sql`SELECT * FROM model_pricing WHERE model = ${model} LIMIT 1`;
 
   let costUsd = 0;
-  if (pricing.length > 0) {
+  if ((pricing as any[]).length > 0) {
     const p = pricing[0];
     costUsd =
       (usage.inputTokens / 1_000_000) * Number(p.input_per_mtok) +
@@ -186,7 +186,7 @@ export async function getCostSummary(days = 30): Promise<CostSummary> {
   `;
 
   const costByModel: Record<string, number> = {};
-  for (const r of modelRows) {
+  for (const r of modelRows as any[]) {
     costByModel[r.model as string] = Number(r.cost);
   }
 
@@ -269,7 +269,7 @@ export async function logDecision(input: {
   status?: string;
 }): Promise<{ id: string }> {
   const sql = getClient();
-  const [row] = await sql`
+  const [row] = (await sql`
     INSERT INTO decisions (title, decision, context, consequences, alternatives, status)
     VALUES (
       ${input.title},
@@ -280,7 +280,7 @@ export async function logDecision(input: {
       ${input.status ?? "accepted"}
     )
     RETURNING id
-  `;
+  `) as any[];
   return row as { id: string };
 }
 

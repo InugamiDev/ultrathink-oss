@@ -135,9 +135,9 @@ async function sessionStart() {
   }
 
   // Create session
-  const [session] = await sql`
+  const [session] = (await sql`
     INSERT INTO sessions (task_context) VALUES (${scope}) RETURNING id, started_at
-  `;
+  `) as any[];
   const sessionId = session.id as string;
 
   const { writeFileSync } = await import("fs");
@@ -163,7 +163,7 @@ async function sessionStart() {
       SELECT DISTINCT CASE WHEN source_id = ANY(${projectIds}) THEN target_id ELSE source_id END as neighbor_id
       FROM memory_relations WHERE source_id = ANY(${projectIds}) OR target_id = ANY(${projectIds}) LIMIT 5
     `;
-    const neighborIds = edges.map((e: Record<string, unknown>) => e.neighbor_id as string);
+    const neighborIds = (edges as any[]).map((e: Record<string, unknown>) => e.neighbor_id as string);
     if (neighborIds.length > 0) {
       neighbors = (await sql`
         SELECT m.*, array_agg(mt.tag) FILTER (WHERE mt.tag IS NOT NULL) as tags
@@ -318,9 +318,9 @@ async function sessionEnd() {
     const sql = getClient();
 
     // Count memories created in this session
-    const [stats] = await sql`
+    const [stats] = (await sql`
       SELECT COUNT(*) as count FROM memories WHERE session_id = ${sessionId}
-    `;
+    `) as any[];
 
     // Build session summary from memories created this session
     let summary: string | null = null;
@@ -333,7 +333,7 @@ async function sessionEnd() {
       `;
 
       const byCategory: Record<string, string[]> = {};
-      for (const m of sessionMemories) {
+      for (const m of sessionMemories as any[]) {
         const cat = m.category as string;
         if (!byCategory[cat]) byCategory[cat] = [];
         byCategory[cat].push(m.content as string);
@@ -475,7 +475,7 @@ function validateMemoryInput(data: unknown): data is { content: string; [key: st
     typeof data === "object" &&
     data !== null &&
     typeof (data as Record<string, unknown>).content === "string" &&
-    (data as Record<string, unknown>).content.length > 0
+    ((data as Record<string, unknown>).content as string).length > 0
   );
 }
 
@@ -500,14 +500,14 @@ async function save() {
   const sessionId = getSessionId();
 
   const input: CreateMemoryInput = {
-    content: data.content,
-    category: data.category || "insight",
-    importance: data.importance ?? 5,
-    confidence: data.confidence ?? 0.8,
-    scope: data.scope,
-    source: data.source || "auto-memory",
+    content: data.content as string,
+    category: (data.category as string) || "insight",
+    importance: (data.importance as number) ?? 5,
+    confidence: (data.confidence as number) ?? 0.8,
+    scope: data.scope as string,
+    source: (data.source as string) || "auto-memory",
     session_id: sessionId || undefined,
-    tags: data.tags,
+    tags: data.tags as string[],
   };
 
   const memory = await createMemory(input);
@@ -537,13 +537,17 @@ async function flush() {
         errors++;
         try {
           unlinkSync(filePath);
-        } catch {}
+        } catch {
+          /* ignore */
+        }
       }
     } catch {
       errors++;
       try {
         unlinkSync(filePath);
-      } catch {}
+      } catch {
+        /* ignore */
+      }
     }
   }
 
@@ -557,7 +561,7 @@ async function flush() {
         SELECT content FROM memories WHERE is_archived = false
         ORDER BY created_at DESC LIMIT 200
       `;
-      existingContents = rows.map((r: Record<string, unknown>) => r.content as string);
+      existingContents = (rows as any[]).map((r: Record<string, unknown>) => r.content as string);
     } catch {
       // Fall back to per-item dedup if batch fetch fails
     }
@@ -617,7 +621,9 @@ async function flush() {
       // Only delete after successful save
       try {
         unlinkSync(filePath);
-      } catch {}
+      } catch {
+        /* ignore */
+      }
     } catch (err) {
       errors++;
       console.error(`Failed to flush ${filePath}:`, err);
@@ -689,7 +695,7 @@ async function dedup() {
     JSON.stringify({
       isDuplicate: existing !== null,
       existingId: existing?.id ?? null,
-      similarity: existing ? (existing as Record<string, unknown>).sim : null,
+      similarity: existing ? (existing as unknown as Record<string, unknown>).sim : null,
     })
   );
 }
@@ -754,7 +760,7 @@ async function preferences() {
     `;
 
     const keywords = new Set<string>();
-    for (const r of rows) {
+    for (const r of rows as any[]) {
       const text = (r.content || r.label || "") as string;
       const matches = text.match(TOOL_PATTERNS);
       if (matches) matches.forEach((m) => keywords.add(m.toLowerCase()));
@@ -929,7 +935,7 @@ async function main() {
           )
         RETURNING id
       `;
-      process.stdout.write(JSON.stringify({ archived: result.length }));
+      process.stdout.write(JSON.stringify({ archived: (result as any[]).length }));
       break;
     }
 
@@ -944,7 +950,7 @@ async function main() {
       `;
       // Batch enrich: compute enrichments in memory, then bulk update
       const updates: { id: string; enrichment: string }[] = [];
-      for (const m of batch) {
+      for (const m of batch as any[]) {
         const enrichment = enrichMemory(m.content as string, m.category as string);
         if (enrichment) {
           updates.push({ id: m.id as string, enrichment });
@@ -959,7 +965,7 @@ async function main() {
           WHERE memories.id = data.id
         `;
       }
-      console.log(`Enriched ${updates.length} / ${batch.length} memories`);
+      console.log(`Enriched ${updates.length} / ${(batch as any[]).length} memories`);
       break;
     }
 

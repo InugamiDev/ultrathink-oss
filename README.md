@@ -1,18 +1,19 @@
 <p align="center">
-  <img src="docs/assets/ultrathink-logo-1.png" alt="UltraThink" width="600" />
+  <img src="docs/assets/ultrathink-banner.png" alt="UltraThink" width="600" />
 </p>
 
 <h1 align="center">UltraThink</h1>
 <p align="center">
-  <strong>A Workflow OS for AI Code Editors</strong><br />
-  Persistent memory · 4-layer skill mesh · Privacy hooks · Observability dashboard
+  <strong>A Workflow OS for Claude Code, with Codex-aware project integration</strong><br />
+  Persistent memory, 4-layer skill mesh, privacy hooks, and an observability dashboard — all running inside your CLI.
 </p>
 
 <p align="center">
-  <a href="#install">Install</a> &bull;
-  <a href="#features">Features</a> &bull;
+  <a href="#quickstart">Quickstart</a> &bull;
   <a href="#architecture">Architecture</a> &bull;
-  <a href="docs/">Docs</a> &bull;
+  <a href="#features">Features</a> &bull;
+  <a href="#database-schema">Schema</a> &bull;
+  <a href="#configuration">Configuration</a> &bull;
   <a href="#contributing">Contributing</a>
 </p>
 
@@ -20,144 +21,562 @@
 
 ## What is UltraThink?
 
-UltraThink turns AI code editors from stateless assistants into **persistent, skill-aware agents** that remember your preferences, enforce your standards, and adapt to your workflow.
+UltraThink transforms Claude Code from a stateless assistant into a **persistent, skill-aware agent** that remembers your preferences, enforces your coding standards, and adapts to your workflow — across sessions.
+
+This repo also ships a Codex-facing `AGENTS.md`, so Codex can inherit the same skill lookup, memory discipline, privacy rules, and agent roster when working inside this codebase. Claude-specific hooks and statusline behavior remain Claude-native.
 
 ```
-You ──► AI Editor ──► UltraThink ──► Skills matched · Memories recalled
-                                      Context injected · Better responses
+You ──► Claude Code ──► UltraThink hooks fire ──► Skills matched, memories recalled
+                                                  ──► Context injected into Claude
+                                                  ──► Better, personalized responses
 ```
+
+### Why?
+
+Claude Code is powerful but stateless. Every session starts fresh. UltraThink fixes that:
+
+- **Memory**: Claude remembers your architectural decisions, patterns, and preferences across sessions
+- **Skills**: 388 domain skills auto-activate based on intent detection (build, debug, deploy, design...)
+- **Privacy**: Hooks block access to `.env`, `.pem`, credentials before Claude sees them
+- **Observability**: Dashboard shows memory usage, skill activations, hook events, and token costs
+- **Quality gates**: Auto-format on edit, JSON validation, shell syntax checking
 
 ---
 
-## Install
+## Quickstart
 
-### Let your AI set it up
+### Prerequisites
 
-Copy this prompt into **Claude Code, Cursor, Windsurf, or any AI editor** and it will handle everything:
+- **Node.js 18+** and npm
+- **Claude Code** CLI installed (`npm install -g @anthropic-ai/claude-code`)
+- **Neon Postgres** account (free tier works) — [neon.tech](https://neon.tech)
 
-<details>
-<summary><strong>Copy this prompt</strong></summary>
-
-```
-I want to install UltraThink — a Workflow OS that gives you persistent memory,
-auto-triggered skills, privacy hooks, and an observability dashboard.
-
-Steps:
-1. Clone the repo: git clone https://github.com/InugamiDev/ultrathink-oss.git ~/ultrathink
-2. cd ~/ultrathink
-3. Run ./scripts/setup.sh — this installs all dependencies (root, dashboard, memory),
-   creates .env from the template, makes hooks executable, and verifies skill files.
-4. Run ./scripts/init-global.sh — this symlinks skills, agents, references, and hooks
-   into ~/.claude/ so every Claude Code session has UltraThink capabilities.
-5. If we're in Cursor, Windsurf, Antigravity, or Copilot, also run
-   ./scripts/sync-editors.sh --all to generate editor-specific config files.
-6. After setup, tell me:
-   - How many skills were linked
-   - How many hooks were installed
-   - Whether .env needs a DATABASE_URL (for memory persistence)
-   - The URL for the dashboard (should be http://localhost:3333)
-
-For the database: I need a free Neon Postgres account from https://neon.tech.
-Once I have a DATABASE_URL, put it in ~/ultrathink/.env and run:
-  cd ~/ultrathink/memory && npx tsx scripts/migrate.ts
-
-To start the dashboard: npm run dashboard:dev from ~/ultrathink/
-
-Show me the final status when done.
-```
-
-</details>
-
-### Or manually
+### Install
 
 ```bash
-git clone https://github.com/InugamiDev/ultrathink-oss.git ~/ultrathink
-cd ~/ultrathink && ./scripts/setup.sh && ./scripts/init-global.sh
+# Clone the repo
+git clone https://github.com/InugamiDev/ultrathink-oss.git
+cd ultrathink-oss
+
+# Run setup (installs deps, creates .env, runs migrations)
+./scripts/setup.sh
+
+# Install globally into ~/.claude/ + ~/.ultrathink/
+./scripts/install.sh
 ```
 
-Then run `claude` in any project. [Full guide →](docs/install-claude-code.md)
-
-### Other Editors
-
-| Editor | Integration | Guide |
-|--------|------------|-------|
-| **Claude Code** | Full (hooks, skills, memory, auto-trigger) | [install-claude-code.md](docs/install-claude-code.md) |
-| **Cursor** | Rules (`.cursor/rules/`) | [install-cursor.md](docs/install-cursor.md) |
-| **Windsurf** | Rules (`.windsurf/rules/`) | [install-windsurf.md](docs/install-windsurf.md) |
-| **Antigravity** | Rules (`GEMINI.md`) | [install-antigravity.md](docs/install-antigravity.md) |
-| **GitHub Copilot** | Rules (`.github/copilot-instructions.md`) | [install-copilot.md](docs/install-copilot.md) |
-| **OpenClaw** | Skills + MCP servers | [install-openclaw.md](docs/install-openclaw.md) |
+### Quick integration into an existing project
 
 ```bash
-# Generate configs for all editors at once
-./scripts/sync-editors.sh --all
+# From any project directory:
+./scripts/install.sh
+
+# This symlinks skills, hooks, agents, and references into ~/.claude/
+# Creates ~/.ultrathink/ for vault, forge state, and decisions
+# Every Claude Code session now has UltraThink capabilities
 ```
 
----
+### Tiers
 
-## Features
+UltraThink has 3 tiers:
 
-### Skill Mesh
+- **OSS** (this repo) — Skills, memory, hooks, /forge guided mode. Free and open source.
+- **Builder** — Phase gates, identity graph, auto-decision extraction, /forge advanced modes. Earned through the [Builder Campaign](https://ultrathink.dev/builder-campaign) (requires an activation key).
+- **Core** — Adaptive learning, code intelligence, full harness. Internal only.
 
-45 active skills across 4 layers, auto-triggered by intent detection on every prompt (<30ms).
+### Use with Codex CLI
 
-| Layer | Examples | Purpose |
-|-------|----------|---------|
-| Orchestrator | `cook`, `ship`, `gsd-verify` | End-to-end workflows |
-| Hub | `debug`, `test`, `react` | Multi-step coordinators |
-| Utility | `fix`, `refactor`, `verify` | Focused tools |
-| Domain | `nextjs`, `tailwind`, `react` | Tech specialists |
+```bash
+# Open this repo in Codex
+codex
 
-340+ more in `_archive/` — restore any with `mv`. [Skills catalog →](docs/skills-catalog.md)
+# Codex reads AGENTS.md automatically in this repository
+# Regenerate the Codex instructions after major CLAUDE.md changes
+./scripts/sync-editors.sh --codex
+```
 
-### Memory
+Codex support is repo-local rather than hook-driven: it inherits UltraThink's operating model through `AGENTS.md`, `.claude/skills/`, `.claude/references/`, and the repo MCP configuration that your Codex runtime exposes.
 
-Postgres-backed persistent memory with 3-tier search (tsvector + trigram + ILIKE). Memories are scoped by project, ranked by importance, and recalled automatically at session start.
+### Verify installation
 
-### Privacy Hooks
+```bash
+# Start Claude Code in any project
+claude
 
-Block `.env`, `.pem`, credentials, and secrets **before** the model sees them. All decisions logged.
+# You should see the UltraThink statusline with memory count, skills, and usage
+# Try: "explain how UltraThink hooks work" — teaching mode should auto-activate
+```
 
-### Dashboard
+### Start the dashboard
 
-Next.js 15 on port 3333 — memory browser, skill graph, hook events, usage tracking, kanban, plans.
-
-### Statusline
-
-3-line CLI status bar: model, context %, quotas, active skills, memory count, Tekiō spins.
+```bash
+npm run dashboard:dev
+# Open http://localhost:3333
+```
 
 ---
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────┐
-│                  Claude Code CLI                 │
-├─────────────────────────────────────────────────┤
-│                                                  │
-│  SessionStart → memory recall + statusline       │
-│  PromptSubmit → skill scoring → top 5 injected   │
-│  PreToolUse   → privacy check (block creds)      │
-│  PostToolUse  → quality gate + observe + save     │
-│  Stop         → memory flush + session close      │
-│                                                  │
-│  ┌────────────────────────────────────────────┐  │
-│  │     Neon Postgres (pgvector + pg_trgm)     │  │
-│  │  memories · sessions · hooks · skills      │  │
-│  │  plans · tasks · decisions · adaptations   │  │
-│  └────────────────────────────────────────────┘  │
-│                                                  │
-│  ┌────────────────────────────────────────────┐  │
-│  │     Skill Mesh (4 layers, 45 active)       │  │
-│  │  Orchestrators → Hubs → Utils → Domain     │  │
-│  │  Auto-trigger + graph traversal (linksTo)  │  │
-│  └────────────────────────────────────────────┘  │
-│                                                  │
-│  ┌────────────────────────────────────────────┐  │
-│  │     Dashboard (Next.js 15, :3333)          │  │
-│  │  /memory  /skills  /hooks  /usage  /kanban │  │
-│  └────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                        Claude Code CLI                       │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐  │
+│  │ SessionStart  │  │ PromptSubmit │  │ PostToolUse      │  │
+│  │              │  │              │  │                  │  │
+│  │ memory-start │  │ prompt-      │  │ quality-gate     │  │
+│  │ codeintel-   │  │ analyzer.ts  │  │ codeintel-index  │  │
+│  │ check        │  │ memory-recall│  │ memory-auto-save │  │
+│  └──────┬───────┘  └──────┬───────┘  │ tool-observe     │  │
+│         │                 │          │ context-monitor  │  │
+│         │                 │          │ privacy-hook     │  │
+│         │                 │          └──────────────────┘  │
+│         ▼                 ▼                                 │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │              Neon Postgres (pgvector + pg_trgm)      │   │
+│  │                                                      │   │
+│  │  memories ← memory_tags ← memory_relations          │   │
+│  │  sessions ← skill_usage ← hook_events               │   │
+│  │  plans ← tasks ← journals ← decisions               │   │
+│  │  daily_stats, model_pricing                          │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                          ▲                                  │
+│                          │                                  │
+│  ┌───────────────────────┴─────────────────────────────┐   │
+│  │           Next.js 15 Dashboard (:3333)               │   │
+│  │  Memory browser | Skill mesh | Activity feed         │   │
+│  │  Hook stats | Usage tracking | Kanban board          │   │
+│  └─────────────────────────────────────────────────────┘   │
+│                                                              │
+│  ┌─────────────────────────────────────────────────────┐   │
+│  │              Skill Mesh (4 layers)                    │   │
+│  │                                                      │   │
+│  │  Orchestrators ──► Hubs ──► Utilities ──► Domain     │   │
+│  │  (gsd, plan)    (react,   (refactor,   (nextjs,     │   │
+│  │                  debug)    test)        stripe)      │   │
+│  │                                                      │   │
+│  │  Auto-trigger: intent detection + graph traversal    │   │
+│  │  394 skills, <30ms scoring per prompt                │   │
+│  └─────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Hook Lifecycle
+
+| Event | Hook | What it does |
+|-------|------|-------------|
+| **SessionStart** | `memory-session-start.sh` | Recalls memories, identity graph, loads adaptations |
+| **SessionStart** | `codeintel-session-check.sh` | Reindexes stale projects (>24h) in background |
+| **UserPromptSubmit** | `prompt-submit.sh` | Scores skills, recalls relevant memories, injects context |
+| **PreToolUse** | `privacy-hook.sh` | Blocks access to `.env`, `.pem`, credentials |
+| **PreToolUse** | `agent-tracker-pre.sh` | Tracks spawned subagents for statusline |
+| **PostToolUse** | `post-edit-quality.sh` | Auto-formats (Biome/Prettier), validates JSON/shell |
+| **PostToolUse** | `post-edit-codeintel.sh` | Incrementally re-indexes edited files |
+| **PostToolUse** | `memory-auto-save.sh` | Saves architectural changes (migrations, schemas, configs) |
+| **PostToolUse** | `tool-observe.sh` | Batches tool usage stats (file append, flushed at session end) |
+| **PostToolUse** | `context-monitor.sh` | Warns at 65%/75% context usage, detects stuck agents |
+| **PostToolUseFailure** | `tool-failure-log.sh` | Logs failures, detects patterns |
+| **PreCompact** | `pre-compact.sh` | Saves transcript state before context compaction |
+| **Stop** | `memory-session-end.sh` | Flushes pending memories, closes session |
+| **Notification** | `desktop-notify.sh` | macOS desktop + Discord notifications |
+
+---
+
+## Features
+
+### Memory System
+
+Postgres-backed persistent memory with 3-tier search:
+
+1. **tsvector** full-text search (best precision)
+2. **pg_trgm** trigram fuzzy matching (typo-tolerant)
+3. **ILIKE** substring fallback
+
+Memories are scoped by project, categorized (preference, solution, architecture, pattern, insight, decision), and ranked by importance (1-10) and confidence (0-1).
+
+```bash
+# CLI commands
+npx tsx memory/scripts/memory-runner.ts search "authentication pattern"
+npx tsx memory/scripts/memory-runner.ts save "content" "category" importance
+npx tsx memory/scripts/memory-runner.ts flush
+npx tsx memory/scripts/memory-runner.ts session-start
+```
+
+### Skill Mesh
+
+4-layer architecture with auto-trigger on every prompt:
+
+| Layer | Count | Purpose | Example |
+|-------|-------|---------|---------|
+| **Orchestrator** | 8 | Multi-step workflows | `gsd`, `plan`, `cook` |
+| **Hub** | 18 | Domain coordinators | `react`, `debug`, `test` |
+| **Utility** | 35 | Focused tools | `refactor`, `fix`, `audit` |
+| **Domain** | 64+ | Specific tech | `nextjs`, `stripe`, `drizzle` |
+
+Skills auto-activate via intent detection. The prompt analyzer classifies each prompt into an intent (build, debug, refactor, explore, deploy, test, design, plan) and scores matching skills from `_registry.json`. Top 5 skills are injected as context directives.
+
+### Dashboard
+
+Next.js 15 app with 18 pages:
+
+- `/dashboard` — Stats overview, skill mesh visualization
+- `/memory` — Memory browser with semantic search
+- `/activity` — Hook event feed, memory writes
+- `/hooks` — Performance stats, duplicate detection
+- `/skills` — Registry browser with graph connections
+- `/usage` — Token costs, API quotas
+- `/kanban` — Task board with drag-and-drop
+- `/plans` — Workflow planning
+- `/system` — Health checks
+
+### Desktop Widget
+
+macOS Ubersicht widget showing:
+- Anthropic API usage (5hr/7day quotas)
+- Active session stats
+- Memory count
+- Token costs
+
+### Statusline
+
+3-line Claude Code statusline showing:
+- Model, context %, API quotas
+- Active skills, agent progress
+- Recent hook activity feed
+
+---
+
+## Database Schema
+
+### Entity Relationship Diagram
+
+```mermaid
+erDiagram
+    sessions {
+        uuid id PK
+        timestamptz started_at
+        timestamptz ended_at
+        text summary
+        text task_context
+        int memories_created
+        int memories_accessed
+        bigint input_tokens
+        bigint output_tokens
+        bigint cache_read_tokens
+        bigint cache_write_tokens
+        varchar model
+        decimal cost_usd
+    }
+
+    memories {
+        uuid id PK
+        text content
+        varchar category
+        smallint importance
+        decimal confidence
+        varchar scope
+        varchar source
+        uuid session_id FK
+        uuid plan_id FK
+        text file_path
+        vector embedding
+        tsvector search_vector
+        text search_enrichment
+        boolean is_archived
+        boolean is_compacted
+        int access_count
+        timestamptz created_at
+        timestamptz updated_at
+        timestamptz accessed_at
+    }
+
+    memory_tags {
+        uuid memory_id PK,FK
+        varchar tag PK
+    }
+
+    memory_relations {
+        uuid source_id PK,FK
+        uuid target_id PK,FK
+        varchar relation_type
+        decimal strength
+    }
+
+    summaries {
+        uuid id PK
+        varchar scope
+        text summary
+        int memory_count
+        timestamptz date_range_start
+        timestamptz date_range_end
+    }
+
+    plans {
+        uuid id PK
+        varchar title
+        varchar status
+        text file_path
+        text summary
+        uuid session_id FK
+        timestamptz created_at
+        timestamptz archived_at
+    }
+
+    tasks {
+        uuid id PK
+        varchar title
+        text description
+        varchar status
+        smallint priority
+        uuid plan_id FK
+        varchar board
+        int position
+        varchar assignee
+        text_arr labels
+        timestamptz due_date
+    }
+
+    decisions {
+        uuid id PK
+        varchar title
+        text context
+        text decision
+        text consequences
+        text alternatives
+        varchar status
+        uuid superseded_by FK
+    }
+
+    journals {
+        uuid id PK
+        uuid plan_id FK
+        text planned
+        text implemented
+        text blockers
+        text outcomes
+        text lessons
+        text followup_debt
+    }
+
+    hook_events {
+        uuid id PK
+        varchar event_type
+        varchar severity
+        text description
+        text path_accessed
+        varchar action_taken
+        varchar hook_name
+        uuid session_id FK
+    }
+
+    security_incidents {
+        uuid id PK
+        uuid hook_event_id FK
+        varchar title
+        text description
+        varchar status
+        text resolution
+        timestamptz resolved_at
+    }
+
+    skill_usage {
+        uuid id PK
+        varchar skill_id
+        timestamptz invoked_at
+        int duration_ms
+        boolean success
+        text error_message
+        uuid session_id FK
+    }
+
+    daily_stats {
+        date date PK
+        int total_sessions
+        int total_memories_created
+        int total_skills_invoked
+        int total_hook_events
+        int total_tasks_completed
+        jsonb top_skills
+        bigint total_input_tokens
+        bigint total_output_tokens
+        decimal total_cost_usd
+        jsonb cost_by_model
+    }
+
+    model_pricing {
+        varchar model PK
+        decimal input_per_mtok
+        decimal output_per_mtok
+        decimal cache_read_per_mtok
+        decimal cache_write_per_mtok
+        date effective_from
+    }
+
+    ci_projects {
+        uuid id PK
+        varchar name
+        text root_path
+        timestamptz last_indexed_at
+    }
+
+    ci_files {
+        uuid id PK
+        uuid project_id FK
+        text relative_path
+        char sha256
+        varchar language
+        timestamptz indexed_at
+    }
+
+    ci_symbols {
+        uuid id PK
+        uuid file_id FK
+        varchar name
+        varchar kind
+        text signature
+        int line_number
+        boolean is_exported
+        uuid parent_symbol_id FK
+        tsvector search_vector
+    }
+
+    ci_edges {
+        uuid id PK
+        uuid source_symbol_id FK
+        uuid target_symbol_id FK
+        varchar edge_type
+        varchar target_name
+        text target_module
+    }
+
+    ci_modules {
+        uuid id PK
+        uuid project_id FK
+        varchar name
+        text description
+        text directory_pattern
+        int file_count
+        int symbol_count
+    }
+
+    ci_module_files {
+        uuid module_id PK,FK
+        uuid file_id PK,FK
+    }
+
+    sessions ||--o{ memories : "creates"
+    sessions ||--o{ plans : "creates"
+    sessions ||--o{ hook_events : "logs"
+    sessions ||--o{ skill_usage : "tracks"
+
+    memories ||--o{ memory_tags : "tagged"
+    memories ||--o{ memory_relations : "source"
+    memories ||--o{ memory_relations : "target"
+
+    plans ||--o{ tasks : "contains"
+    plans ||--o{ journals : "records"
+    plans ||--o{ memories : "references"
+
+    decisions ||--o| decisions : "supersedes"
+
+    hook_events ||--o| security_incidents : "escalates"
+
+    ci_projects ||--o{ ci_files : "contains"
+    ci_projects ||--o{ ci_modules : "groups"
+
+    ci_files ||--o{ ci_symbols : "defines"
+
+    ci_symbols ||--o{ ci_edges : "source"
+    ci_symbols ||--o{ ci_edges : "target"
+    ci_symbols ||--o| ci_symbols : "parent"
+
+    ci_modules ||--o{ ci_module_files : "includes"
+    ci_files ||--o{ ci_module_files : "belongs_to"
+```
+
+### Key Indexes
+
+| Table | Index | Type | Purpose |
+|-------|-------|------|---------|
+| memories | `search_vector` | GIN | Full-text search |
+| memories | `content_trgm` | GIN (trigram) | Fuzzy matching |
+| memories | `embedding` | IVFFlat | Vector similarity |
+| memories | `scope_category` | B-tree | Scoped queries |
+| ci_symbols | `search_vector` | GIN | Symbol search |
+| ci_symbols | `name_trgm` | GIN (trigram) | Fuzzy symbol lookup |
+| ci_edges | `source_symbol_id` | B-tree | Dependency graph traversal |
+
+### Extensions Required
+
+```sql
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+CREATE EXTENSION IF NOT EXISTS "vector";      -- pgvector
+CREATE EXTENSION IF NOT EXISTS "pg_trgm";     -- trigram fuzzy search
+```
+
+---
+
+## Configuration
+
+### Environment Variables
+
+```bash
+# Required
+DATABASE_URL=postgresql://user:pass@host.neon.tech/neondb?sslmode=require
+
+# Dashboard
+NEXT_PUBLIC_APP_URL=http://localhost:3333
+PORT=3333
+
+# Optional — Notifications
+DISCORD_WEBHOOK_URL=https://discord.com/api/webhooks/...
+SLACK_WEBHOOK_URL=https://hooks.slack.com/services/...
+TELEGRAM_BOT_TOKEN=
+TELEGRAM_CHAT_ID=
+
+# Optional — Embedding provider (for vector search)
+OPENAI_API_KEY=
+```
+
+### Project Configuration (`.claude/ck.json`)
+
+```json
+{
+  "project": "ultrathink",
+  "version": "1.0.0",
+  "codingLevel": "practical-builder",
+  "memory": {
+    "provider": "neon",
+    "autoRecall": true,
+    "writePolicy": "selective",
+    "compactionThreshold": 100
+  },
+  "privacyHook": {
+    "enabled": true,
+    "sensitivityLevel": "standard",
+    "logEvents": true
+  },
+  "dashboard": { "port": 3333 }
+}
+```
+
+### Skill Registry
+
+Skills are defined in `.claude/skills/<name>/SKILL.md` and registered in `.claude/skills/_registry.json`:
+
+```json
+{
+  "react": {
+    "layer": "hub",
+    "category": "frontend",
+    "description": "React patterns, hooks, server components",
+    "triggers": ["react", "component", "useState", "useEffect", "jsx"],
+    "linksTo": ["nextjs", "tailwindcss", "testing-library"],
+    "websearch": true
+  }
+}
 ```
 
 ---
@@ -167,121 +586,167 @@ Next.js 15 on port 3333 — memory browser, skill graph, hook events, usage trac
 ```
 ultrathink/
 ├── .claude/
-│   ├── hooks/          20 lifecycle hooks
-│   ├── skills/         45 active + _archive/ (340+)
-│   ├── agents/         10 agent definitions
-│   ├── references/     Quality, privacy, teaching rules
-│   └── commands/       Slash commands
-├── memory/             Postgres-backed memory system
-├── dashboard/          Next.js 15 observability UI
-├── openclaw/           OpenClaw skill package + MCP config
-├── tests/              Vitest test suite
-├── scripts/            Setup + utilities
-└── docs/               Installation + reference docs
+│   ├── hooks/             # 15+ lifecycle hooks (shell + TypeScript)
+│   │   ├── prompt-analyzer.ts   # Intent detection + skill scoring engine
+│   │   ├── prompt-submit.sh     # UserPromptSubmit orchestrator
+│   │   ├── privacy-hook.sh      # File access control
+│   │   ├── post-edit-quality.sh # Auto-format + validation
+│   │   ├── statusline.sh        # CLI status bar
+│   │   └── ...
+│   ├── skills/            # 394 skill definitions (SKILL.md files)
+│   │   ├── _registry.json # Master skill index with triggers + graph edges
+│   │   ├── react/SKILL.md
+│   │   ├── nextjs/SKILL.md
+│   │   └── ...
+│   ├── agents/            # 10 specialized agent definitions
+│   ├── references/        # Behavioral rules (loaded on demand)
+│   └── commands/          # Slash commands (/usage, /context-tree, etc.)
+├── memory/
+│   ├── migrations/        # 12 SQL migration files (001-012)
+│   ├── src/
+│   │   ├── memory.ts      # Core CRUD + 3-tier search
+│   │   ├── client.ts      # Neon Postgres connection
+│   │   ├── hooks.ts       # Hook event logging
+│   │   ├── analytics.ts   # Usage tracking
+│   │   ├── enrich.ts      # Synonym expansion for search
+│   │   └── plans.ts       # Workflow integration
+│   └── scripts/
+│       ├── memory-runner.ts  # CLI entry point (session-start|save|flush|search)
+│       ├── migrate.ts        # Migration runner
+│       └── ...
+├── dashboard/             # Next.js 15 + Tailwind v4 observability UI
+│   ├── app/               # 18 pages (App Router)
+│   │   ├── dashboard/     # Stats overview
+│   │   ├── memory/        # Memory browser
+│   │   ├── hooks/         # Hook performance
+│   │   ├── skills/        # Skill registry
+│   │   ├── activity/      # Event feed
+│   │   ├── usage/         # Token costs
+│   │   └── ...
+│   └── lib/               # Shared utilities, DB client
+├── code-intel/            # Cross-file dependency graph (MCP server)
+│   └── src/
+│       ├── indexer.ts     # AST parser + file indexing
+│       ├── query.ts       # Graph queries (symbols, deps, impact)
+│       └── ...
+├── widgets/               # Desktop widget (macOS Ubersicht)
+├── scripts/
+│   ├── setup.sh           # One-command project setup
+│   ├── init-global.sh     # Global ~/.claude/ integration
+│   └── sync-editors.sh    # Regenerate editor/Codex instruction files
+├── docs/                  # 21 documentation files
+├── tests/                 # Vitest test suite
+├── Dockerfile             # Production container build
+└── .github/workflows/     # CI pipeline (lint, typecheck, test)
 ```
 
 ---
 
-## Docs
-
-| Topic | File |
-|-------|------|
-| **Install: Claude Code** | [install-claude-code.md](docs/install-claude-code.md) |
-| **Install: Cursor** | [install-cursor.md](docs/install-cursor.md) |
-| **Install: Windsurf** | [install-windsurf.md](docs/install-windsurf.md) |
-| **Install: Antigravity** | [install-antigravity.md](docs/install-antigravity.md) |
-| **Install: GitHub Copilot** | [install-copilot.md](docs/install-copilot.md) |
-| **Install: OpenClaw** | [install-openclaw.md](docs/install-openclaw.md) |
-| Editor setup details | [editor-setup.md](docs/editor-setup.md) |
-| Skills catalog | [skills-catalog.md](docs/skills-catalog.md) |
-| Memory system | [memory-system.md](docs/memory-system.md) |
-| Hooks & privacy | [hooks-and-privacy.md](docs/hooks-and-privacy.md) |
-| Dashboard overview | [dashboard-overview.md](docs/dashboard-overview.md) |
-| Creating skills | [how-to-create-a-new-skill.md](docs/how-to-create-a-new-skill.md) |
-| Linking skills | [how-to-link-skills.md](docs/how-to-link-skills.md) |
-| Database schema | [memory-schema.md](docs/memory-schema.md) |
-| Troubleshooting | [troubleshooting.md](docs/troubleshooting.md) |
-| Font pairings (230+) | [font-pairings.md](docs/font-pairings.md) |
-| Design languages & UX laws | [design-languages-ux-laws.md](docs/design-languages-ux-laws.md) |
-| Themes & design systems | [design-themes-and-systems.md](docs/design-themes-and-systems.md) |
-
----
-
-## CLI
+## CLI Commands
 
 ```bash
-./scripts/setup.sh              # Full setup
-./scripts/init-global.sh        # Install into ~/.claude/
-./scripts/sync-editors.sh --all # Generate all editor configs
-npm run dashboard:dev           # Dashboard on :3333
-npm run test                    # Run tests
+# Setup
+./scripts/setup.sh              # Full project setup
+./scripts/init-global.sh        # Install into ~/.claude/ globally
+./scripts/init-global.sh --uninstall  # Remove from ~/.claude/
+./scripts/sync-editors.sh --codex     # Regenerate AGENTS.md for Codex
+./scripts/sync-editors.sh --all       # Refresh all editor instruction files
+
+# Database
+npm run migrate                 # Run all pending migrations
+npm run seed                    # Populate sample data
+
+# Dashboard
+npm run dashboard:dev           # Start dev server (port 3333)
+npm run dashboard:build         # Production build
+
+# Memory
+npx tsx memory/scripts/memory-runner.ts search "query"
+npx tsx memory/scripts/memory-runner.ts flush
+npx tsx memory/scripts/memory-runner.ts compact
+
+# Code Intelligence
+npm run codeintel:build         # Compile TypeScript
+npm run codeintel:index         # Index current project
+
+# Quality
+npm run lint                    # ESLint
+npm run format                  # Prettier
+npm run typecheck               # TypeScript validation
+npm run test                    # Vitest
 ```
+
+---
+
+## Self-Hosting
+
+### Option A: Local (recommended for development)
+
+```bash
+git clone https://github.com/InuVerse/ultrathink.git
+cd ultrathink
+./scripts/setup.sh
+# Edit .env with your Neon DATABASE_URL
+npm run migrate
+npm run dashboard:dev
+```
+
+### Option B: Docker
+
+```bash
+docker build -t ultrathink .
+docker run -p 3333:3333 \
+  -e DATABASE_URL="postgresql://..." \
+  ultrathink
+```
+
+### Option C: Existing project integration
+
+You don't need to clone the full repo. The global installer symlinks everything:
+
+```bash
+# Clone once to a permanent location
+git clone https://github.com/InuVerse/ultrathink.git ~/ultrathink
+
+# Install globally
+cd ~/ultrathink && ./scripts/setup.sh && ./scripts/init-global.sh
+
+# Now every `claude` session has UltraThink capabilities
+```
+
+---
+
+## Roadmap
+
+- [ ] SQLite fallback for local-only mode (no Neon required)
+- [ ] `npx ultrathink init` — one-command installer
+- [ ] WebSocket/SSE real-time dashboard updates
+- [ ] Plugin marketplace for community skills
+- [ ] VS Code extension for dashboard access
+- [ ] Multi-user memory isolation
 
 ---
 
 ## Contributing
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Quick start:
+See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+**Quick start for contributors:**
 
 ```bash
-git clone https://github.com/InugamiDev/ultrathink-oss.git
-cd ultrathink-oss && ./scripts/setup.sh && npm run test
+git clone https://github.com/InuVerse/ultrathink.git
+cd ultrathink
+./scripts/setup.sh
+npm run test
 ```
-
----
-
-## FAQ
-
-### How is UltraThink different from Superpowers or Everything Claude Code?
-
-UltraThink is an **integration project**, not an innovation project. Most concepts come from the community:
-
-| Concept | Origin |
-|---------|--------|
-| TDD, brainstorming, subagent workflow | [Superpowers](https://github.com/obra/superpowers) (121K+ stars) |
-| Multi-agent + hook architecture | [Everything Claude Code](https://github.com/affaan-m/everything-claude-code) (115K+ stars) |
-| SKILL.md format | [Anthropic Skills](https://github.com/anthropics/skills) (official) |
-| Multi-layer security hooks | [Claude Forge](https://github.com/sangrokjung/claude-forge) |
-| "Second brain" memory pattern | [coleam00/second-brain-skills](https://github.com/coleam00/second-brain-skills) |
-| Hook lifecycle patterns | [claude-code-hooks-mastery](https://github.com/disler/claude-code-hooks-mastery) |
-
-**What UltraThink adds on top:**
-
-- **Database-backed memory** — Real Postgres (pgvector + pg_trgm) instead of flat MEMORY.md files. Memories persist across sessions with importance ranking, fuzzy search, and synonym expansion.
-- **Observability dashboard** — A full Next.js 15 UI (skill graph, memory browser, hook events, usage tracking) that no other repo provides at this level.
-- **Auto-trigger engine** — Every prompt is scored against the skill registry in <30ms. Top 5 skills are injected automatically via intent detection + graph traversal. Neither Superpowers nor ECC do this.
-- **Cross-editor configs** — One command generates rules for Cursor, Windsurf, Antigravity, Copilot, and OpenClaw.
-- **Adaptive learning (Tekiō)** — Failures become immunity rules, successes get reinforced. Infinite wheel spins.
-
-**Where others are stronger:**
-
-- **Superpowers** has a tighter methodology (spec → plan → TDD → review) and a massive community.
-- **Everything Claude Code** has more agents (28), more skills (126), 98% test coverage, and 115K+ stars.
-- Both are battle-tested by thousands of developers. UltraThink is a personal workflow open-sourced.
-
-**Bottom line:** If you want a proven, community-backed framework, use Superpowers or ECC. If you want database-backed memory, a visual dashboard, and auto-triggered skills wired together, UltraThink fills that gap.
-
----
-
-## Acknowledgments
-
-| Project | Author | Integration |
-|---------|--------|-------------|
-| [Superpowers](https://github.com/obra/superpowers) | obra | TDD, debugging, brainstorming, plan execution |
-| [Everything Claude Code](https://github.com/affaan-m/everything-claude-code) | affaan-m | Multi-agent architecture, hook patterns |
-| [Claude Forge](https://github.com/sangrokjung/claude-forge) | sangrokjung | Multi-layer security hooks |
-| [Second Brain Skills](https://github.com/coleam00/second-brain-skills) | coleam00 | "Second brain" framing for Claude Code |
-| [claude-code-hooks-mastery](https://github.com/disler/claude-code-hooks-mastery) | disler | Hook lifecycle patterns |
-| [VFS](https://github.com/TrNgTien/vfs) | TrNgTien | AST-based token compression (60-98% savings) |
-| [Get Shit Done](https://github.com/gsd-build/get-shit-done) | gsd-build | Spec-driven planning, wave execution |
-| [Impeccable](https://github.com/pbakaus/impeccable) | pbakaus | Frontend design skill suite |
-| [Anthropic Skills](https://github.com/anthropics/skills) | Anthropic | Skill format conventions |
 
 ---
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT License. See [LICENSE](LICENSE) for details.
+
+---
 
 <p align="center">
   Built by <a href="https://github.com/InuVerse">InuVerse</a>

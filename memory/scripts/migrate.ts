@@ -73,7 +73,7 @@ async function migrate() {
 
   // Get applied migrations
   const applied = await sql`SELECT name FROM _migrations ORDER BY id`;
-  const appliedNames = new Set(applied.map((r) => r.name as string));
+  const appliedNames = new Set((applied as any[]).map((r) => r.name as string));
 
   // Get migration files
   const migrationsDir = join(import.meta.dirname, "../migrations");

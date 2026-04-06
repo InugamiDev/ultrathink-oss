@@ -32,11 +32,11 @@ async function buildContextTree(scope?: string): Promise<ContextNode> {
     FROM memories WHERE is_archived = false
     GROUP BY category ORDER BY count DESC
   `;
-  const [memTotal] = await sql`
+  const [memTotal] = (await sql`
     SELECT COUNT(*) as count FROM memories WHERE is_archived = false
-  `;
+  `) as any[];
 
-  const memoryChildren: ContextNode[] = memoryCats.map((cat) => ({
+  const memoryChildren: ContextNode[] = (memoryCats as any[]).map((cat) => ({
     label: `${cat.category}/`,
     type: "leaf" as const,
     count: Number(cat.count),
@@ -72,9 +72,9 @@ async function buildContextTree(scope?: string): Promise<ContextNode> {
   // 3. Active plans
   let activePlans = 0;
   try {
-    const [planCount] = await sql`
+    const [planCount] = (await sql`
       SELECT COUNT(*) as count FROM plans WHERE status != 'completed'
-    `;
+    `) as any[];
     activePlans = Number(planCount.count);
   } catch {
     // plans table may not exist
@@ -83,7 +83,7 @@ async function buildContextTree(scope?: string): Promise<ContextNode> {
   // 4. Sessions
   let sessionCount = 0;
   try {
-    const [sc] = await sql`SELECT COUNT(*) as count FROM sessions`;
+    const [sc] = (await sql`SELECT COUNT(*) as count FROM sessions`) as any[];
     sessionCount = Number(sc.count);
   } catch {
     // sessions table may not exist
@@ -126,7 +126,10 @@ async function buildContextTree(scope?: string): Promise<ContextNode> {
         label: "identity/",
         type: "branch",
         access: "npx tsx memory-runner.ts identity",
-        children: [{ label: "preferences", type: "leaf", access: "category: preference (no decay)" }],
+        children: [
+          { label: "preferences", type: "leaf", access: "category: preference (no decay)" },
+          { label: "identity-graph", type: "leaf", access: "npx tsx memory-runner.ts identity [scope]" },
+        ],
       },
       {
         label: "memory/",
@@ -190,9 +193,9 @@ export async function getContextTreeSummary(scope?: string): Promise<string> {
   const sql = getClient();
 
   // Quick counts only — no full tree build
-  const [memTotal] = await sql`
+  const [memTotal] = (await sql`
     SELECT COUNT(*) as count FROM memories WHERE is_archived = false
-  `;
+  `) as any[];
   const memoryCats = await sql`
     SELECT category, COUNT(*) as count
     FROM memories WHERE is_archived = false
@@ -220,7 +223,7 @@ export async function getContextTreeSummary(scope?: string): Promise<string> {
   // Active plans
   let activePlans = 0;
   try {
-    const [pc] = await sql`SELECT COUNT(*) as count FROM plans WHERE status != 'completed'`;
+    const [pc] = (await sql`SELECT COUNT(*) as count FROM plans WHERE status != 'completed'`) as any[];
     activePlans = Number(pc.count);
   } catch {
     // ignore
@@ -241,7 +244,7 @@ export async function getContextTreeSummary(scope?: string): Promise<string> {
     }
   }
 
-  const catSummary = memoryCats.map((c) => `${c.count} ${c.category}`).join(", ");
+  const catSummary = (memoryCats as any[]).map((c) => `${c.count} ${c.category}`).join(", ");
 
   const layerSummary = Object.entries(layerCounts)
     .sort((a, b) => b[1] - a[1])

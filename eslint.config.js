@@ -11,5 +11,22 @@ export default tseslint.config(
       "no-console": "off",
     },
   },
-  { ignores: ["node_modules/", ".next/", "dist/", "dashboard/.next/"] }
+  {
+    files: ["**/*.cjs"],
+    languageOptions: {
+      globals: {
+        require: "readonly",
+        module: "readonly",
+        exports: "readonly",
+        __dirname: "readonly",
+        __filename: "readonly",
+        process: "readonly",
+        console: "readonly",
+      },
+    },
+    rules: {
+      "@typescript-eslint/no-require-imports": "off",
+    },
+  },
+  { ignores: ["node_modules/", ".next/", "**/dist/", "dashboard/.next/"] }
 );

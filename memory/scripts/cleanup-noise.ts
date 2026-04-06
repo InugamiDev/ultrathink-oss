@@ -32,7 +32,7 @@ const patterns = [
 ];
 
 // Find memories that are just "Modified Button.tsx" style — short, no useful context
-const [totalCount] = await sql`
+const [totalCount] = (await sql`
   SELECT COUNT(*) as c FROM memories
   WHERE is_archived = false
     AND LENGTH(content) < 80
@@ -49,7 +49,7 @@ const [totalCount] = await sql`
       OR content LIKE 'Moved %'
       OR content LIKE 'Renamed %'
     )
-`;
+`) as any[];
 
 console.log(`Found ${totalCount.c} noise memories to archive.\n`);
 
@@ -75,7 +75,7 @@ const examples = await sql`
 `;
 
 console.log("Sample entries:");
-for (const e of examples) {
+for (const e of examples as any[]) {
   console.log(`  [${e.importance}] ${e.content}`);
 }
 console.log();
@@ -100,16 +100,16 @@ const result = await sql`
     )
 `;
 
-console.log(`Archived ${result.count} noise memories.`);
+console.log(`Archived ${(result as any).count} noise memories.`);
 
 // Also archive very low importance memories with no useful content
-const [lowCount] = await sql`
+const [lowCount] = (await sql`
   SELECT COUNT(*) as c FROM memories
   WHERE is_archived = false
     AND importance <= 2
     AND LENGTH(content) < 60
     AND access_count = 0
-`;
+`) as any[];
 
 console.log(`\nFound ${lowCount.c} low-importance (<= 2), short, never-accessed memories.`);
 
@@ -121,12 +121,12 @@ if (Number(lowCount.c) > 0) {
       AND LENGTH(content) < 60
       AND access_count = 0
   `;
-  console.log(`Archived ${lowResult.count} low-quality memories.`);
+  console.log(`Archived ${(lowResult as any).count} low-quality memories.`);
 }
 
 // Final stats
-const [active] = await sql`SELECT COUNT(*) as c FROM memories WHERE is_archived = false`;
-const [archived] = await sql`SELECT COUNT(*) as c FROM memories WHERE is_archived = true`;
+const [active] = (await sql`SELECT COUNT(*) as c FROM memories WHERE is_archived = false`) as any[];
+const [archived] = (await sql`SELECT COUNT(*) as c FROM memories WHERE is_archived = true`) as any[];
 
 console.log(`\nFinal: ${active.c} active, ${archived.c} archived.`);
 process.exit(0);

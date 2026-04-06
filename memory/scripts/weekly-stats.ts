@@ -13,13 +13,13 @@ import { getClient } from "../src/client.js";
 const sql = getClient();
 
 const [s] =
-  await sql`SELECT COUNT(*) as c FROM sessions WHERE started_at > NOW() - INTERVAL '7 days' AND ended_at IS NOT NULL`;
-const [m] = await sql`SELECT COUNT(*) as c FROM memories WHERE created_at > NOW() - INTERVAL '7 days'`;
-const [t] = await sql`
+  (await sql`SELECT COUNT(*) as c FROM sessions WHERE started_at > NOW() - INTERVAL '7 days' AND ended_at IS NOT NULL`) as any[];
+const [m] = (await sql`SELECT COUNT(*) as c FROM memories WHERE created_at > NOW() - INTERVAL '7 days'`) as any[];
+const [t] = (await sql`
   SELECT COALESCE(SUM(EXTRACT(EPOCH FROM (ended_at - started_at))), 0) as secs
   FROM sessions
   WHERE started_at > NOW() - INTERVAL '7 days' AND ended_at IS NOT NULL
-`;
+`) as any[];
 
 const secs = Math.round(Number(t.secs));
 const h = Math.floor(secs / 3600);

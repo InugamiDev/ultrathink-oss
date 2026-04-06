@@ -22,7 +22,9 @@ function runHook(hookName: string, input: object): string {
   } finally {
     try {
       unlinkSync(tmpFile);
-    } catch {}
+    } catch {
+      /* ignore */
+    }
   }
 }
 
@@ -89,6 +91,7 @@ describe("prompt-submit", () => {
 
 /** Strip ANSI escape codes so assertions match visible text. */
 function stripAnsi(str: string): string {
+  // eslint-disable-next-line no-control-regex
   return str.replace(/\x1b\[[0-9;]*m/g, "");
 }
 
@@ -103,8 +106,7 @@ describe("statusline", () => {
     });
     const result = stripAnsi(raw);
     expect(result).toContain("ultrathink");
-    // Statusline reads live state — assert on format, not exact values
-    expect(result).toMatch(/session \d+%/);
-    expect(result).toMatch(/\$[\d.]+/);
+    expect(result).toContain("58%");
+    expect(result).toContain("$1.5");
   });
 });

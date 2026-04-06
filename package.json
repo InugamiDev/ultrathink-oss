@@ -6,7 +6,8 @@
   "description": "Claude Workflow OS — 4-layer skill mesh, persistent memory, privacy hooks, and observability dashboard",
   "workspaces": [
     "dashboard",
-    "memory"
+    "memory",
+    "videos"
   ],
   "scripts": {
     "setup": "./scripts/setup.sh",
@@ -35,7 +36,6 @@
     "vitest": "^4.0.18"
   },
   "dependencies": {
-    "@heyputer/puter.js": "^2.2.14",
     "postgres": "^3.4.8"
   }
 }

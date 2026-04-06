@@ -107,7 +107,7 @@ export async function createMemory(input: CreateMemoryInput): Promise<Memory> {
     ),
   ]);
 
-  const memory = (results[0] as unknown as Record<string, unknown>[])[0] as Memory;
+  const memory = (results[0] as unknown as any[])[0] as Memory;
   memory.tags = tags;
 
   // Auto-link (non-critical, outside transaction)
@@ -129,7 +129,7 @@ export async function getMemory(id: string): Promise<Memory | null> {
     GROUP BY m.id
   `;
 
-  if (rows.length === 0) return null;
+  if ((rows as any[]).length === 0) return null;
 
   await sql`
     UPDATE memories SET accessed_at = NOW(), access_count = access_count + 1
@@ -243,7 +243,7 @@ export async function semanticSearch(opts: {
     LIMIT ${limit}
   `;
 
-  let rows = tsRows;
+  let rows = tsRows as any[];
 
   // Tier 2: pg_trgm fuzzy search if tsvector returned too few results
   if (rows.length < limit) {
@@ -262,7 +262,7 @@ export async function semanticSearch(opts: {
       ORDER BY sim DESC
       LIMIT ${limit}
     `;
-    for (const r of trigramRows) {
+    for (const r of trigramRows as any[]) {
       if (!seen.has(r.id as string)) {
         rows = [...rows, r];
         seen.add(r.id as string);
@@ -287,7 +287,7 @@ export async function semanticSearch(opts: {
         ORDER BY m.importance DESC
         LIMIT ${limit}
       `;
-      for (const r of ilikeRows) {
+      for (const r of ilikeRows as any[]) {
         if (!seen.has(r.id as string)) {
           rows = [...rows, r];
           seen.add(r.id as string);
@@ -348,7 +348,7 @@ export async function findSimilar(content: string, threshold: number = 0.6): Pro
     ORDER BY sim DESC
     LIMIT 1
   `;
-  return rows.length > 0 ? (rows[0] as Memory) : null;
+  return (rows as any[]).length > 0 ? (rows[0] as Memory) : null;
 }
 
 export async function updateMemory(
@@ -383,14 +383,14 @@ export async function updateMemory(
   // If nothing to update, just return the current row
   if (Object.keys(values).length === 0) {
     const current = await sql`SELECT * FROM memories WHERE id = ${id}`;
-    return current.length > 0 ? (current[0] as Memory) : null;
+    return (current as any[]).length > 0 ? (current[0] as Memory) : null;
   }
 
   // Re-generate search enrichment if content or category changed
   let newEnrichment: string | null = null;
   if (updates.content !== undefined || updates.category !== undefined) {
     // Fetch current values for fields not being updated
-    const [current] = await sql`SELECT content, category FROM memories WHERE id = ${id}`;
+    const [current] = (await sql`SELECT content, category FROM memories WHERE id = ${id}`) as any[];
     if (current) {
       const finalContent = updates.content ?? (current.content as string);
       const finalCategory = updates.category ?? (current.category as string);
@@ -412,13 +412,13 @@ export async function updateMemory(
     RETURNING *
   `;
 
-  return rows.length > 0 ? (rows[0] as Memory) : null;
+  return (rows as any[]).length > 0 ? (rows[0] as Memory) : null;
 }
 
 export async function deleteMemory(id: string): Promise<boolean> {
   const sql = getClient();
   const rows = await sql`DELETE FROM memories WHERE id = ${id} RETURNING id`;
-  return rows.length > 0;
+  return (rows as any[]).length > 0;
 }
 
 export async function addMemoryTags(memoryId: string, tags: string[]): Promise<void> {
@@ -491,7 +491,7 @@ export async function getMemoryGraph(opts?: {
     LIMIT ${limit}
   `;
 
-  const nodeIds = nodes.map((n: Record<string, unknown>) => n.id as string);
+  const nodeIds = (nodes as any[]).map((n: Record<string, unknown>) => n.id as string);
 
   let edges: MemoryRelation[] = [];
   if (nodeIds.length > 0) {
@@ -521,9 +521,9 @@ async function autoLinkMemory(memoryId: string, content: string, scope?: string)
     LIMIT 5
   `;
 
-  if (rows.length > 0) {
-    const ids = rows.map((r: Record<string, unknown>) => r.id as string);
-    const strengths = rows.map((r: Record<string, unknown>) => Number(r.sim ?? 0.5));
+  if ((rows as any[]).length > 0) {
+    const ids = (rows as any[]).map((r: Record<string, unknown>) => r.id as string);
+    const strengths = (rows as any[]).map((r: Record<string, unknown>) => Number(r.sim ?? 0.5));
     await sql`
       INSERT INTO memory_relations (source_id, target_id, relation_type, strength)
       SELECT ${memoryId}, unnest(${ids}::uuid[]), 'related_to', unnest(${strengths}::float8[])
@@ -620,7 +620,7 @@ export async function getMemoryStats(): Promise<{
   const relRow = relResult[0] as Record<string, unknown>;
 
   const byCategory: Record<string, number> = {};
-  for (const row of categoryRows) {
+  for (const row of categoryRows as any[]) {
     byCategory[row.category as string] = Number(row.count);
   }
 
