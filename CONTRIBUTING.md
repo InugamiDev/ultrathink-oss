@@ -60,6 +60,7 @@ npm run typecheck     # TypeScript validation
 | `memory/scripts/` | CLI tools and migration runner | TypeScript |
 | `memory/migrations/` | Database schema (numbered SQL files) | SQL |
 | `dashboard/` | Next.js 15 observability UI | TypeScript/React |
+| `code-intel/src/` | Cross-file dependency graph engine | TypeScript |
 | `.claude/hooks/` | Claude Code lifecycle hooks | Bash + TypeScript |
 | `.claude/skills/` | Skill definitions with triggers | Markdown |
 | `.claude/agents/` | Specialized agent definitions | Markdown |

@@ -101,52 +101,7 @@ The privacy hook is the most critical -- it checks every file access against blo
 | `sh`, `bash`, `zsh` | Shell syntax check via `bash -n` | No (warns only) |
 | `md` | Logs modification | No |
 
-### 4. PreCompact State Preservation (`pre-compact.sh`)
-
-**Type**: Pre-compact hook (runs before context window compression)
-
-**Purpose**: Extracts critical session state from the transcript before compaction and injects it back as `additionalContext` so the compacted conversation retains continuity. Also saves state to `/tmp/ultrathink-compact-state/<session_id>.json` for session recovery.
-
-**Trigger**: Context window approaching limits, before automatic compaction.
-
-**What Gets Preserved**:
-
-| Data | Source | Purpose |
-|------|--------|---------|
-| Files modified | Edit/Write tool calls in transcript | Prevents re-reading files already seen |
-| Last user request | Last user message (truncated to 500 chars) | Maintains task context |
-| Key decisions | Pattern matching on assistant messages | Preserves rationale |
-| Pending work | Pattern matching for TODO/next/remaining | Tracks incomplete work |
-| Last progress update | Last assistant message (truncated to 400 chars) | Continuity signal |
-| GSD progress | `/tmp/ultrathink-progress-<session>` | Wave/task completion state |
-| Active agents | `/tmp/ultrathink-agents-<session>` | Running subagent states |
-
-**Companion Script**: `pre-compact-extract.ts` parses the JSONL transcript to extract structured state. It uses regex patterns to identify decisions (`"decided to..."`, `"going with..."`) and pending work (`"still need to..."`, `"TODO"`, `"next:"`).
-
-**Output**: Returns `{"additionalContext": "..."}` with preserved state so it survives compaction.
-
-### 5. Subagent Verification (`subagent-verify.sh`)
-
-**Type**: Post-tool hook (runs after Agent tool completes)
-
-**Purpose**: Automatically verifies subagent deliverables after completion. Catches failures, missing files, and build errors before the orchestrator proceeds to dependent work.
-
-**Trigger**: Any Agent tool completion (PostToolUse with Agent matcher).
-
-**Checks Performed**:
-
-| Check | Condition | What It Catches |
-|-------|-----------|----------------|
-| Error detection | Agent result contains "error", "failed", "STOP", "Rule 4" | Silent failures, architecture stops |
-| Worktree changes | Agent used `isolation: "worktree"` | Agents that ran but produced nothing |
-| Files exist | GSD `files_owned` metadata in plan files | Missing deliverables |
-| TypeScript build | Workspace has `tsconfig.json` + agent touched `.ts`/`.tsx` | Type errors from subagent code |
-
-**Output**: Returns `{"additionalContext": "Subagent verification: N/M checks passed"}` with issue details if any checks fail.
-
-**Timeout**: 20 seconds (allows time for TypeScript compilation check).
-
-### 6. Notification Hook (`notify.sh`)
+### 4. Notification Hook (`notify.sh`)
 
 **Type**: Event-driven hook (called explicitly by other hooks or skills)
 
