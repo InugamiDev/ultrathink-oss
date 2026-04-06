@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Presentation Title</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #12121a;
+      --surface2: #1a1a26;
+      --border: #2a2a3d;
+      --accent: #7c3aed;
+      --accent2: #06b6d4;
+      --accent3: #10b981;
+      --accent4: #f59e0b;
+      --danger: #ef4444;
+      --text: #f0f0f8;
+      --muted: #8888aa;
+      --dim: #4a4a6a;
+      --font: 'Inter', system-ui, sans-serif;
+      --mono: 'JetBrains Mono', 'Fira Code', monospace;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      font-size: clamp(14px, 1.6vw, 18px);
+      overflow: hidden;
+    }
+
+    /* Progress bar */
+    #progress {
+      position: fixed;
+      top: 0; left: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      transition: width .3s ease;
+      z-index: 100;
+      width: 0%;
+    }
+
+    /* Slide counter */
+    #counter {
+      position: fixed;
+      bottom: 20px; right: 24px;
+      font-size: 12px;
+      color: var(--dim);
+      z-index: 100;
+      font-family: var(--mono);
+    }
+
+    /* Source / attribution footer */
+    #source {
+      position: fixed;
+      bottom: 20px; left: 24px;
+      font-size: 11px;
+      color: var(--dim);
+      z-index: 100;
+    }
+
+    /* Slide container */
+    #deck {
+      width: 100vw;
+      height: 100vh;
+      position: relative;
+    }
+
+    /* Individual slide */
+    .slide {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 48px 64px;
+      opacity: 0;
+      transform: translateX(40px);
+      transition: opacity .35s ease, transform .35s ease;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    .slide.active {
+      opacity: 1;
+      transform: translateX(0);
+      pointer-events: auto;
+    }
+
+    .slide.exit {
+      opacity: 0;
+      transform: translateX(-40px);
+    }
+
+    /* Component classes */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+    }
+
+    .ca { color: var(--accent); }
+    .cs { color: var(--accent2); }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      background: rgba(124,58,237,.15);
+      color: var(--accent);
+      border: 1px solid rgba(124,58,237,.3);
+      padding: 4px 14px;
+      border-radius: 99px;
+      font-size: .8em;
+      font-weight: 500;
+    }
+
+    .codeblock {
+      font-family: var(--mono);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px 24px;
+      font-size: .82em;
+      overflow: auto;
+      line-height: 1.6;
+    }
+
+    .flow {
+      display: flex;
+      align-items: center;
+    }
+
+    .g2 { display: grid; grid-template-columns: 1fr 1fr; }
+    .g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; }
+    .g5 { display: grid; grid-template-columns: repeat(5, 1fr); }
+
+    /* Stat labels */
+    .sl { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; }
+    .slb { color: var(--accent2); }
+    .slg { color: var(--accent3); }
+    .slr { color: var(--danger); }
+
+    /* Fullscreen hint */
+    #fs-hint {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 11px;
+      color: var(--dim);
+      z-index: 100;
+      opacity: 1;
+      transition: opacity 2s ease;
+    }
+    #fs-hint.hidden { opacity: 0; pointer-events: none; }
+  </style>
+</head>
+<body>
+
+  <div id="progress"></div>
+  <div id="counter">1 / N</div>
+  <div id="source">Conference Name · Year</div>
+  <div id="fs-hint">Press F for fullscreen · ← → to navigate</div>
+
+  <div id="deck">
+
+    <!-- ============================================================
+         SLIDES — replace this section with your actual slides
+         Each slide: <section class="slide" id="sN"> ... </section>
+         ============================================================ -->
+
+    <section class="slide active" id="s1">
+      <h1 style="font-size: clamp(42px,5.5vw,80px); font-weight:900;">Slide 1</h1>
+      <p style="color:var(--muted);">Replace with title slide content</p>
+    </section>
+
+    <section class="slide" id="s2">
+      <h2 style="font-size: clamp(28px,3.5vw,48px); font-weight:800; margin-bottom:24px;">Slide 2</h2>
+      <p style="color:var(--muted);">Replace with content</p>
+    </section>
+
+    <!-- Add more slides here -->
+
+  </div>
+
+  <script>
+    (function() {
+      const slides = Array.from(document.querySelectorAll('.slide'));
+      const total = slides.length;
+      let cur = 0;
+
+      function go(n) {
+        if (n < 0 || n >= total) return;
+        slides[cur].classList.remove('active');
+        slides[cur].classList.add('exit');
+        const prev = cur;
+        cur = n;
+        slides[cur].classList.add('active');
+        setTimeout(() => slides[prev].classList.remove('exit'), 350);
+
+        // Update progress bar
+        document.getElementById('progress').style.width = ((cur / (total - 1)) * 100) + '%';
+
+        // Update counter
+        document.getElementById('counter').textContent = (cur + 1) + ' / ' + total;
+
+        // Hide fullscreen hint after first nav
+        document.getElementById('fs-hint').classList.add('hidden');
+      }
+
+      function next() { go(cur + 1); }
+      function prev() { go(cur - 1); }
+
+      // Keyboard navigation
+      document.addEventListener('keydown', function(e) {
+        if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); next(); }
+        if (e.key === 'ArrowLeft' || e.key === 'Backspace' || e.key === 'PageUp') { e.preventDefault(); prev(); }
+        if (e.key === 'Home') { e.preventDefault(); go(0); }
+        if (e.key === 'End') { e.preventDefault(); go(total - 1); }
+        if (e.key === 'f' || e.key === 'F') {
+          if (!document.fullscreenElement) document.documentElement.requestFullscreen();
+          else document.exitFullscreen();
+        }
+      });
+
+      // Click navigation (left half = prev, right half = next)
+      document.addEventListener('click', function(e) {
+        if (e.target.closest('a, button, input, select, textarea')) return;
+        if (e.clientX < window.innerWidth / 2) prev();
+        else next();
+      });
+
+      // Touch swipe
+      let tx = 0;
+      document.addEventListener('touchstart', function(e) { tx = e.touches[0].clientX; }, { passive: true });
+      document.addEventListener('touchend', function(e) {
+        const dx = tx - e.changedTouches[0].clientX;
+        if (Math.abs(dx) > 40) { dx > 0 ? next() : prev(); }
+      }, { passive: true });
+
+      // Initialize progress
+      document.getElementById('progress').style.width = '0%';
+      document.getElementById('counter').textContent = '1 / ' + total;
+
+      // Auto-hide fs hint
+      setTimeout(() => document.getElementById('fs-hint').classList.add('hidden'), 4000);
+    })();
+  </script>
+
+</body>
+</html>

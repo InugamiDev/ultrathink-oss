@@ -63,7 +63,8 @@ Present as a navigable tree:
 
 ultrathink/
 ├── identity/          → /ut-recall identity | /usage
-│   └── preferences    → Stored in memory (category: preference)
+│   ├── preferences    → Stored in memory (category: preference)
+│   └── identity-graph → npx tsx memory-runner.ts identity
 │
 ├── memory/            → X total items
 │   ├── solutions/     → X items — /ut-recall [topic]
