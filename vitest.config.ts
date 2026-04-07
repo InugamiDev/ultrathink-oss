@@ -5,7 +5,15 @@ export default defineConfig({
     globals: true,
     environment: "node",
     include: ["**/*.test.ts"],
-    exclude: ["node_modules", ".next", "dashboard/.next"],
+    exclude: [
+      "node_modules",
+      ".next",
+      "dashboard/.next",
+      "videos/**",
+      "mcp/**",
+      "vibecli/**",
+      "code-intel/node_modules/**",
+    ],
     testTimeout: 10000,
   },
 });

@@ -9,6 +9,7 @@
  *   recall-only       — Recall memories without creating a session (for post-compact)
  *   save              — Insert a single memory from JSON arg
  *   flush             — Bulk insert from /tmp/ultrathink-memories/*.json
+ *   flush-decisions   — Flush pending decisions from /tmp/ultrathink-pending-decisions/*.json to DB
  *   search            — Fuzzy search using pg_trgm with ILIKE fallback
  *   relate            — Create memory relation
  *   graph             — Fetch memory graph for scope
@@ -17,6 +18,7 @@
  *   identity-set      — Set a user preference in the identity graph
  *   conflicts         — Detect contradictory preferences (Prefers X vs Avoids X)
  *   resolve-conflict  — Resolve a conflict by archiving one preference
+ *   compact-context   — Compressed session-start context (MemPalace format, 3KB cap)
  */
 
 import { readFileSync, readdirSync, unlinkSync, existsSync, mkdirSync } from "fs";
@@ -62,12 +64,14 @@ import {
   type FailureEvent,
 } from "../src/adaptation.js";
 import { createJournal } from "../src/plans.js";
+import { createDecision } from "../src/decisions.js";
 
 // Load .env from project root
 const projectRoot = resolve(import.meta.dirname, "../..");
 config({ path: join(projectRoot, ".env") });
 
 const MEMORIES_DIR = "/tmp/ultrathink-memories";
+const PENDING_DECISIONS_DIR = "/tmp/ultrathink-pending-decisions";
 
 /** Return a session-scoped file path to avoid collisions between concurrent Claude sessions. */
 function getSessionFile(): string {
@@ -744,6 +748,77 @@ function getSessionId(): string | null {
   }
 }
 
+// intent: MemPalace-inspired compressed context for session-start injection
+// status: done
+// confidence: high
+async function compactContext() {
+  const sql = getClient();
+  const cwd = process.env.ULTRATHINK_CWD || process.cwd();
+  const scope = cwd.split("/").slice(-2).join("/");
+  const MAX_CHARS = 3000;
+  const lines: string[] = [];
+
+  // 1. Top 10 memories by importance
+  try {
+    const memories = (await sql`
+      SELECT content, importance, scope, category
+      FROM memories
+      WHERE is_archived = false
+      ORDER BY importance DESC, accessed_at DESC NULLS LAST
+      LIMIT 10
+    `) as { content: string; importance: number; scope: string; category: string }[];
+
+    for (const m of memories) {
+      const scopeLabel = m.scope || "global";
+      const truncated = m.content.replace(/\n/g, " ").slice(0, 200);
+      lines.push(`[MEM:${m.importance}] ${scopeLabel}/${m.category}: ${truncated}`);
+    }
+  } catch {
+    // memories table may not exist
+  }
+
+  // 2. Active identity nodes (preferences, style, tools)
+  try {
+    const nodes = (await sql`
+      SELECT type, label, category
+      FROM identity_nodes
+      WHERE is_active = true
+        AND type IN ('preference', 'style', 'tool')
+      ORDER BY updated_at DESC NULLS LAST
+      LIMIT 15
+    `) as { type: string; label: string; category: string }[];
+
+    for (const n of nodes) {
+      const key = n.category || n.type;
+      lines.push(`[ID:${n.type}] ${key}: ${n.label}`);
+    }
+  } catch {
+    // identity_nodes table may not exist
+  }
+
+  // 3. Active adaptations
+  try {
+    const adaptations = await getActiveAdaptations(sql, scope);
+    for (const a of adaptations) {
+      const trigger = (a.trigger_pattern || "").replace(/\n/g, " ").slice(0, 80);
+      const response = (a.adaptation_rule || "").replace(/\n/g, " ").slice(0, 80);
+      lines.push(`[ADAPT:${a.severity}] ${trigger} → ${response}`);
+    }
+  } catch {
+    // adaptations table may not exist
+  }
+
+  // 4. Cap total output at MAX_CHARS
+  let output = "";
+  for (const line of lines) {
+    const candidate = output ? output + "\n" + line : line;
+    if (candidate.length > MAX_CHARS) break;
+    output = candidate;
+  }
+
+  process.stdout.write(JSON.stringify({ additionalContext: output || undefined }));
+}
+
 // Extract tool/framework preferences as keyword array for skill scoring
 async function preferences() {
   const sql = getClient();
@@ -765,9 +840,67 @@ async function preferences() {
       const matches = text.match(TOOL_PATTERNS);
       if (matches) matches.forEach((m) => keywords.add(m.toLowerCase()));
     }
-    process.stdout.write(JSON.stringify([...keywords]));
+    process.stdout.write(JSON.stringify({ preferences: [...keywords] }));
   } catch {
-    process.stdout.write("[]");
+    process.stdout.write(JSON.stringify({ preferences: [] }));
+  }
+}
+
+// intent: flush pending decisions extracted by decision-extract.sh hook into the DB
+// status: done
+// confidence: high
+// next: none
+async function flushDecisions() {
+  if (!existsSync(PENDING_DECISIONS_DIR)) return;
+
+  const files = readdirSync(PENDING_DECISIONS_DIR).filter((f) => f.endsWith(".json"));
+  if (files.length === 0) return;
+
+  let flushed = 0;
+  let errors = 0;
+
+  for (const file of files) {
+    const filePath = join(PENDING_DECISIONS_DIR, file);
+    try {
+      const raw = readFileSync(filePath, "utf-8");
+      const data = JSON.parse(raw);
+
+      // decision-extract.sh writes: { rule, scope, project_hash, extracted_at, confirmed }
+      if (!data.rule || typeof data.rule !== "string") {
+        errors++;
+        try {
+          unlinkSync(filePath);
+        } catch {
+          /* ignore */
+        }
+        continue;
+      }
+
+      await createDecision({
+        rule: data.rule,
+        scope: data.scope || "global",
+        source: "claude",
+        priority: 5,
+        context: `Auto-extracted from user correction at ${data.extracted_at || "unknown"}`,
+        tags: ["auto-extracted", "pending-review"],
+      });
+
+      // Delete file after successful DB write
+      try {
+        unlinkSync(filePath);
+      } catch {
+        /* ignore */
+      }
+      flushed++;
+    } catch (err) {
+      errors++;
+      console.error(`Failed to flush decision ${filePath}:`, (err as Error).message);
+      // Leave file for next attempt
+    }
+  }
+
+  if (flushed > 0 || errors > 0) {
+    console.error(`Flushed ${flushed} pending decisions (${errors} errors)`);
   }
 }
 
@@ -788,6 +921,9 @@ async function main() {
       break;
     case "flush":
       await flush();
+      break;
+    case "flush-decisions":
+      await flushDecisions();
       break;
     case "search":
       await search();
@@ -1000,6 +1136,29 @@ async function main() {
       const cat = result.adaptation.category.toUpperCase();
       console.error(`${icon} [${cat}] → ${result.adaptation.adaptation_rule.slice(0, 120)}`);
       console.error(`  Wheel position: ${result.wheelSpin} adaptations learned`);
+
+      // intent: Bridge high-severity defensive adaptations into the decisions system.
+      // Defensive adaptations are essentially "don't do X again" rules — they are
+      // operational decisions that should persist in the decisions table too, so they
+      // are surfaced by decision-aware queries and not just the Tekiō wheel context.
+      // status: done
+      // confidence: high
+      if (result.isNew && result.adaptation.category === "defensive" && result.adaptation.severity >= 7) {
+        try {
+          await createDecision({
+            rule: result.adaptation.adaptation_rule,
+            scope: "global",
+            source: "tekio",
+            priority: result.adaptation.severity,
+            context: `Auto-mirrored from Tekiō defensive adaptation (severity ${result.adaptation.severity}/10). Trigger: ${result.adaptation.trigger_pattern}`,
+            tags: ["auto-tekio", "defensive"],
+          });
+          console.error(`  → Mirrored to decisions system (severity ${result.adaptation.severity})`);
+        } catch (decErr) {
+          console.error(`  → Failed to mirror to decisions: ${(decErr as Error).message}`);
+        }
+      }
+
       process.stdout.write(
         JSON.stringify({
           isNew: result.isNew,
@@ -1110,10 +1269,14 @@ async function main() {
       await preferences();
       break;
 
+    case "compact-context":
+      await compactContext();
+      break;
+
     default:
       console.error(`Unknown command: ${command}`);
       console.error(
-        "Usage: memory-runner.ts <session-start|session-end|recall-only|save|flush|search|relate|graph|dedup|identity|identity-set|conflicts|resolve-conflict|log-skill|log-tool|daily-stats|log-security|decision|decisions|journal|enrich-all|context-recall|preferences>"
+        "Usage: memory-runner.ts <session-start|session-end|recall-only|save|flush|flush-decisions|search|relate|graph|dedup|identity|identity-set|conflicts|resolve-conflict|log-skill|log-tool|daily-stats|log-security|decision|decisions|journal|enrich-all|context-recall|preferences|compact-context>"
       );
       process.exit(1);
   }

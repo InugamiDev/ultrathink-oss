@@ -54,10 +54,19 @@ SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // ""' 2>/dev/null || echo "")
 # Export CC_SESSION_ID for process-scoped session file isolation
 export CC_SESSION_ID="$SESSION_ID"
 
+# ── Vault sync: import Obsidian edits before memory recall ──
+VAULT_DIR="$HOME/.ultrathink/vault"
+VAULT_SYNC="$ULTRA_ROOT/scripts/vault-sync.ts"
+if [[ -d "$VAULT_DIR" && -f "$VAULT_SYNC" ]]; then
+  if ! timeout 15 npx tsx "$VAULT_SYNC" vault-to-db 2>>/tmp/ultrathink-errors.log; then
+    hook_log "session-start" "vault-sync-warning" "vault-to-db failed, continuing"
+  fi
+fi
+
 if [[ "$SOURCE" == "compact" ]]; then
   # --- Post-compact path ---
-  # 1. Recall memories without creating a new session
-  recall_output=$(cd "$ULTRA_ROOT" && npx tsx "$RUNNER" recall-only 2>/dev/null) || recall_output='{}'
+  # 1. Recall memories using compact MemPalace format (3KB cap)
+  recall_output=$(cd "$ULTRA_ROOT" && npx tsx "$RUNNER" compact-context 2>/dev/null) || recall_output='{}'
 
   # 2. Read pre-compact state file if available
   STATE_DIR="/tmp/ultrathink-compact-state"
@@ -96,13 +105,20 @@ if [[ "$SOURCE" == "compact" ]]; then
   hook_log "session-start" "done"
 else
   # --- Normal session start path ---
+  # Create session in DB (side-effects: session row, session file, identity sync)
   output=$(cd "$ULTRA_ROOT" && npx tsx "$RUNNER" session-start 2>/dev/null) || output='{}'
+
+  # Replace verbose context with compact MemPalace format (3KB cap)
+  compact_ctx=$(cd "$ULTRA_ROOT" && npx tsx "$RUNNER" compact-context 2>/dev/null) || compact_ctx='{}'
+  if echo "$compact_ctx" | jq -e '.additionalContext' >/dev/null 2>&1; then
+    output="$compact_ctx"
+  fi
 
   # Ensure valid JSON output
   if echo "$output" | jq empty 2>/dev/null; then
     # Cache identity for status line — scoped to Claude Code session
     ctx=$(echo "$output" | jq -r '.additionalContext // ""' 2>/dev/null || echo "")
-    identity=$(echo "$ctx" | grep -o '\*\*Identity:\*\* [^*]*' | sed 's/\*\*Identity:\*\* //' | head -1)
+    identity=$(echo "$ctx" | grep -o '\*\*Identity:\*\* [^*]*' | sed 's/\*\*Identity:\*\* //' | head -1 || true)
     if [[ -n "$identity" ]]; then
       CC_SID=$(echo "$INPUT" | jq -r '.session_id // ""' 2>/dev/null | head -c 12)
       if [[ -n "$CC_SID" ]]; then

@@ -43,7 +43,17 @@ fi
 CC_SID_FULL=$(echo "$HOOK_INPUT" | jq -r '.session_id // ""' 2>/dev/null || echo "")
 export CC_SESSION_ID="$CC_SID_FULL"
 
-# ── CRITICAL PATH (blocking) — flush memories + close session ──
+# ── CRITICAL PATH (blocking) — flush decisions + memories + close session ──
+
+# Flush pending decisions BEFORE memory flush (decisions extracted by decision-extract.sh)
+PENDING_DECISIONS_DIR="/tmp/ultrathink-pending-decisions"
+if [[ -d "$PENDING_DECISIONS_DIR" ]]; then
+  DECISION_COUNT=$(find "$PENDING_DECISIONS_DIR" -name "*.json" 2>/dev/null | wc -l | tr -d ' ')
+  if [[ "$DECISION_COUNT" -gt 0 ]]; then
+    timeout 10 npx tsx "$RUNNER" flush-decisions 2>>/tmp/ultrathink-errors.log || true
+  fi
+fi
+
 FLUSHED_COUNT=0
 if [[ -d "$MEMORIES_DIR" ]]; then
   FLUSHED_COUNT=$(find "$MEMORIES_DIR" -name "*.json" 2>/dev/null | wc -l | tr -d ' ')
@@ -54,6 +64,15 @@ fi
 
 # Close the session (updates ended_at) — must happen before exit
 timeout 5 npx tsx "$RUNNER" session-end 2>>/tmp/ultrathink-errors.log || true
+
+# ── Vault sync: export DB writes to Obsidian after flush ──
+VAULT_DIR="$HOME/.ultrathink/vault"
+VAULT_SYNC="$ULTRA_ROOT/scripts/vault-sync.ts"
+if [[ -d "$VAULT_DIR" && -f "$VAULT_SYNC" ]]; then
+  if ! timeout 15 npx tsx "$VAULT_SYNC" db-to-vault "$CC_SID_FULL" 2>>/tmp/ultrathink-errors.log; then
+    hook_log "session-end" "vault-sync-warning" "db-to-vault failed, continuing"
+  fi
+fi
 
 # ── NON-CRITICAL (fire-and-forget background) — don't block shutdown ──
 (
@@ -133,6 +152,7 @@ find /tmp/ultrathink-memories -name "*.json" -mmin +1440 -delete 2>/dev/null || 
 find /tmp/ultrathink-wheel-turns -name "*.json" -mmin +1440 -delete 2>/dev/null || true
 find /tmp/ultrathink-wheel-turns -name "learn-lock-*" -mmin +60 -delete 2>/dev/null || true
 find /tmp/ultrathink-skill-suggestions -name "*.json" -mmin +1440 -delete 2>/dev/null || true
+find /tmp/ultrathink-pending-decisions -name "*.json" -mmin +1440 -delete 2>/dev/null || true
 find /tmp/ultrathink-tool-usage-* -mmin +1440 -delete 2>/dev/null || true
 
 # Notify Discord — session end summary

@@ -15,6 +15,26 @@ umask 077  # UltraThink: restrict temp files to owner only
 source "$(dirname "${BASH_SOURCE[0]}")/hook-log.sh" 2>/dev/null || hook_log() { :; }
 hook_log "pre-compact" "started"
 
+# ─── MemPalace: Flush in-flight memories before compaction ────────────
+# intent: prevent auto-memories in /tmp from being lost during context compression
+# status: done
+# confidence: high
+FLUSH_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+
+# Flush pending auto-memories (10s timeout, failure-tolerant)
+if ls /tmp/ultrathink-memories/*.json 1>/dev/null 2>&1; then
+  hook_log "pre-compact" "flushing pending auto-memories"
+  timeout 10 bash -c "cd '$FLUSH_ROOT' && npx tsx memory/scripts/memory-runner.ts flush" 2>/dev/null \
+    || hook_log "pre-compact" "warning: memory flush failed or timed out (non-blocking)"
+fi
+
+# Flush pending decisions (10s timeout, failure-tolerant)
+if ls /tmp/ultrathink-pending-decisions/*.json 1>/dev/null 2>&1; then
+  hook_log "pre-compact" "flushing pending decisions"
+  timeout 10 bash -c "cd '$FLUSH_ROOT' && npx tsx memory/scripts/memory-runner.ts flush-decisions" 2>/dev/null \
+    || hook_log "pre-compact" "warning: decision flush failed or timed out (non-blocking)"
+fi
+
 # Read stdin JSON (Claude passes hook input via stdin)
 INPUT=$(cat)
 

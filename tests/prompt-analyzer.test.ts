@@ -42,7 +42,7 @@ describe("prompt-analyzer", () => {
     expect(names).not.toContain("docker");
   });
 
-  it("respects MAX_SKILLS limit of 3", () => {
+  it("respects MAX_SKILLS limit of 5", () => {
     const result = analyze(
       "deploy nextjs app with prisma database to vercel using docker and kubernetes with terraform"
     );

@@ -38,6 +38,27 @@ export interface CreateMemoryInput {
 export async function createMemory(input: CreateMemoryInput): Promise<Memory> {
   const sql = getClient();
 
+  // ─── MemPalace: Duplicate detection before write ───────────────────
+  // intent: prevent near-duplicate memories by merging into existing when similarity > 0.85
+  // status: done
+  // confidence: high
+  // next: none
+  const existingDup = await findDuplicate(input.content, input.scope, input.category);
+  if (existingDup) {
+    // Merge: update existing memory — append new content if materially different,
+    // bump importance (cap at 10), bump confidence (cap at 1.0)
+    const mergedContent = existingDup.content.length >= input.content.length ? existingDup.content : input.content;
+    const mergedImportance = Math.min(parseFloat(String(existingDup.importance)) || 5 + 1, 10);
+    const mergedConfidence = Math.min((parseFloat(String(existingDup.confidence)) || 0.8) + 0.05, 1.0);
+
+    const updated = await updateMemory(existingDup.id, {
+      content: mergedContent,
+      importance: mergedImportance,
+      confidence: mergedConfidence,
+    });
+    return updated ?? (existingDup as Memory);
+  }
+
   // Wrap memory INSERT + tag INSERTs in a single Neon HTTP transaction
   // so they succeed or fail atomically (avoids orphaned memories without tags).
   // Normalize tags: lowercase, trimmed, deduplicated
@@ -351,6 +372,32 @@ export async function findSimilar(content: string, threshold: number = 0.6): Pro
   return (rows as any[]).length > 0 ? (rows[0] as Memory) : null;
 }
 
+/**
+ * MemPalace: Duplicate detection with scope+category scoping.
+ * Uses pg_trgm similarity (threshold 0.85) to find near-duplicates
+ * within the same scope and category before inserting a new memory.
+ * Returns the existing memory if a duplicate is found, null otherwise.
+ */
+async function findDuplicate(content: string, scope?: string, category?: string): Promise<Memory | null> {
+  const sql = getClient();
+  const threshold = 0.85;
+
+  const rows = await sql`
+    SELECT m.*, array_agg(mt.tag) FILTER (WHERE mt.tag IS NOT NULL) as tags,
+           similarity(m.content, ${content}) as sim
+    FROM memories m
+    LEFT JOIN memory_tags mt ON m.id = mt.memory_id
+    WHERE m.is_archived = false
+      AND similarity(m.content, ${content}) > ${threshold}
+      AND (${scope ?? null}::text IS NULL OR m.scope = ${scope ?? null})
+      AND (${category ?? null}::text IS NULL OR m.category = ${category ?? null})
+    GROUP BY m.id
+    ORDER BY sim DESC
+    LIMIT 1
+  `;
+  return (rows as any[]).length > 0 ? (rows[0] as Memory) : null;
+}
+
 export async function updateMemory(
   id: string,
   updates: Partial<Pick<Memory, "content" | "category" | "importance" | "confidence" | "scope" | "is_archived">>
@@ -459,12 +506,14 @@ export async function createRelation(
   `;
 }
 
-export async function getRelations(memoryId: string): Promise<MemoryRelation[]> {
+export async function getRelations(memoryId: string, opts?: { includeHistory?: boolean }): Promise<MemoryRelation[]> {
   const sql = getClient();
+  const includeHistory = opts?.includeHistory ?? false;
   const rows = await sql`
     SELECT source_id, target_id, relation_type, COALESCE(strength, 0.5) as strength
     FROM memory_relations
-    WHERE source_id = ${memoryId} OR target_id = ${memoryId}
+    WHERE (source_id = ${memoryId} OR target_id = ${memoryId})
+      AND (${includeHistory} OR valid_to IS NULL)
   `;
   return rows as MemoryRelation[];
 }
