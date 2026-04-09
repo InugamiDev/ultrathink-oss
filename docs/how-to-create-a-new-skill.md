@@ -2,7 +2,21 @@
 
 ## Overview
 
-This guide walks through creating a new skill for UltraThink, from folder structure to YAML frontmatter to testing and registration. A skill is a self-contained workflow definition that lives in `.claude/skills/[name]/SKILL.md`.
+This guide walks through creating a new skill for UltraThink, from folder structure to YAML frontmatter to testing and registration.
+
+**A skill is NOT just a markdown file.** It's a folder — containing `SKILL.md`, plus optional `references/`, `scripts/`, `assets/`, `templates/`, and `config.json`. The agent can explore and use everything in the folder. Think of it as a complete knowledge package.
+
+### Progressive Disclosure (Token Economy)
+
+Skills load in 3 layers to minimize context usage:
+
+| Layer | When Loaded | Token Cost |
+|-------|-------------|------------|
+| **L1 — Metadata** | At startup (always) | ~100 tokens per skill (name + description only) |
+| **L2 — SKILL.md body** | When skill is triggered | Keep under 500 lines |
+| **L3 — Reference files** | When agent decides to read them | Zero until accessed |
+
+This is why skill-based context is more efficient than dumping everything into `CLAUDE.md`. Context window is a shared resource — every token competes with conversation history and reasoning space.
 
 ## Step 1: Decide the Layer
 
@@ -19,6 +33,24 @@ The layer determines:
 - What skills you can link to (prefer calling same-layer or lower-layer skills)
 - What skills can call you (higher-layer skills delegate to lower-layer ones)
 - How much state and orchestration logic to include
+
+## Step 1b: Identify the Category
+
+Skills fall into 9 functional categories (per Anthropic's internal taxonomy):
+
+| Category | What It Does | Examples |
+|----------|--------------|---------|
+| **Library & API Reference** | Teaches the agent about internal libs, SDKs, or APIs it can't know from training data | `billing-lib`, `frontend-design`, domain-specific skills |
+| **Product Verification** | Tests and verifies code is working correctly. Often uses Playwright, tmux, or test runners | `test`, `verify`, `test-ui` |
+| **Data Fetching & Analysis** | Connects to data stack, monitoring dashboards, credentials | `analytics`, `monitoring`, `research` |
+| **Business Process** | Automates repetitive team workflows into a single command | `standup-post`, `weekly-recap`, `pr-writer` |
+| **Code Scaffolding** | Generates boilerplate for specific patterns in the codebase | `bootstrap`, `landing-gen`, `component-patterns` |
+| **Code Quality & Review** | Enforces code standards, can run via hooks or CI | `code-review`, `audit`, `quality-gate` |
+| **CI/CD & Deployment** | Fetches, pushes, deploys code, babysits PRs | `ship`, `cicd`, `github-actions` |
+| **Runbooks** | Takes symptoms (alert, error, Slack thread) and walks through investigation | `debug`, `oncall-runner`, `troubleshoot` |
+| **Infrastructure Ops** | Maintenance and operational procedures with destructive-action guardrails | `kubernetes`, `terraform`, `migrate` |
+
+The category with the highest value-add is **Library & API Reference** — it fills knowledge gaps the model genuinely doesn't have, rather than repeating what it already knows.
 
 ## Step 2: Create the Directory
 
@@ -289,6 +321,127 @@ examines existing code regardless of when it was last modified.
 - Read only -- never modify audited files
 - Limit scope to avoid auditing the entire codebase (max 50 files per run)
 - Save significant findings to memory for future reference
+```
+
+## Best Practices
+
+### 1. Don't teach the model what it already knows
+
+The model already knows React, TypeScript, SQL, etc. Focus your skill on information that pushes it *away from its defaults* — internal APIs, team conventions, edge cases specific to your codebase.
+
+**Bad**: "React components should use hooks instead of classes"
+**Good**: "Our `useAnalytics` hook requires a `trackingId` from the campaign config, not a hardcoded string"
+
+### 2. Build a Gotchas section
+
+The highest-value section in any skill. List failure points the agent commonly hits. Update this over time as you discover new ones.
+
+```markdown
+## Gotchas
+
+- `billing.createInvoice()` silently fails if `currency` is not ISO 4217 — always validate
+- The staging API returns 200 with an error body (not 4xx) — check `response.data.error`
+- Import from `@internal/billing` not `billing` — the bare import pulls the deprecated v1
+```
+
+### 3. Use the file system for progressive disclosure
+
+The entire skill folder is your context engineering surface. Tell the agent what files exist and let it read them when needed — zero tokens until accessed.
+
+```
+.claude/skills/billing/
+├── SKILL.md              # Core instructions (L2, loaded on trigger)
+├── references/
+│   ├── api.md            # Function signatures + usage (L3, on demand)
+│   └── edge-cases.md     # Known failure scenarios (L3, on demand)
+├── scripts/
+│   ├── validate.sh       # Validation script the agent can run
+│   └── scaffold.ts       # Template generator
+├── assets/
+│   └── template.md       # Output template
+└── config.json           # User-specific config (API keys, project IDs)
+```
+
+In SKILL.md, reference these files:
+```markdown
+For API signatures, read `references/api.md`.
+For edge cases and known failures, read `references/edge-cases.md`.
+Use `scripts/scaffold.ts` to generate the initial file structure.
+```
+
+### 4. Write descriptions for the model, not humans
+
+The `description` field is scanned by the agent at startup to decide which skill matches. It's a trigger condition, not a summary. Include concrete terms the user would say.
+
+**Bad**: `"A comprehensive code quality tool"`
+**Good**: `"Run when user says 'review this code', 'check quality', 'audit PR', or 'find bugs in'. Multi-pass review with security + performance + style checks."`
+
+Research shows: well-optimized descriptions improve activation rate from ~20% to ~50%. Adding examples pushes it to ~90%.
+
+### 5. Don't railroad the agent
+
+Skills get reused across many situations. Give the agent the information it needs but let it adapt. Avoid over-prescriptive step-by-step instructions for simple tasks.
+
+**Bad**: "Step 1: Open the file. Step 2: Find line 42. Step 3: Change X to Y."
+**Good**: "The billing config lives in `src/config/billing.ts`. The `taxRate` field must match the region's legal requirement — check `references/tax-rates.md` for current values."
+
+### 6. Store data in the skill folder
+
+Skills can persist data between sessions. From simple append-only logs to structured data:
+
+```markdown
+## Memory
+
+This skill maintains `standups.log` — an append-only history of generated standup posts.
+Read the last 5 entries before generating a new one to maintain consistency and avoid repetition.
+```
+
+For stable persistence across upgrades, use `${CLAUDE_PLUGIN_DATA}` (if available) instead of the skill directory.
+
+### 7. Include scripts the agent can compose
+
+Providing helper scripts and libraries is one of the most powerful patterns. The agent spends turns composing rather than reconstructing boilerplate.
+
+```
+scripts/
+├── fetch-metrics.ts    # Helper: fetch from Grafana API
+├── format-report.ts    # Helper: format findings into markdown
+└── run-checks.sh       # Helper: run all static analysis tools
+```
+
+The agent reads these, understands the interfaces, and composes them together for the specific task.
+
+### 8. On-demand hooks
+
+Skills can include hooks that only activate when the skill is invoked and last for the session:
+
+```markdown
+## Hooks
+
+When this skill is active, enable these safety hooks:
+- **PreToolUse**: Block `rm -rf`, `DROP TABLE`, `force-push`, `kubectl delete`
+- **PreToolUse**: Block all Edit/Write outside the target directory
+```
+
+Useful for skills that touch production or sensitive systems.
+
+### 9. Config for user-specific setup
+
+If your skill needs API keys, project IDs, or other user-specific config:
+
+```markdown
+## Setup
+
+This skill requires `config.json` in the skill directory:
+\`\`\`json
+{
+  "grafana_url": "https://grafana.internal",
+  "dashboard_id": "api-latency",
+  "slack_channel": "#oncall"
+}
+\`\`\`
+
+If `config.json` doesn't exist, ask the user for these values before proceeding.
 ```
 
 ## Related Documentation
