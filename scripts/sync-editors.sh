@@ -2,7 +2,7 @@
 # ──────────────────────────────────────────────────────────────────
 # UltraThink — Cross-Editor Sync
 # Generates config files for Cursor, Windsurf, Antigravity, Copilot, and Codex
-# from UltraThink's CLAUDE.md and skill registry.
+# from UltraThink's canonical agent instruction files.
 #
 # Usage: ./scripts/sync-editors.sh [--all | --cursor | --windsurf | --antigravity | --copilot | --codex]
 # ──────────────────────────────────────────────────────────────────
@@ -29,7 +29,7 @@ if [[ ! -f "$CLAUDE_MD" ]]; then
 fi
 
 # ── Core instructions (shared across all editors) ────────────────
-# Extract the essential parts of CLAUDE.md for other editors
+# OSS-safe content only — no Tekiō, Code-Intel, identity graph
 generate_core_instructions() {
   cat << 'CORE'
 # UltraThink — Workflow OS for AI Code Editors
@@ -45,17 +45,36 @@ and a layered architecture for complex engineering tasks.
 
 - **Dashboard**: Next.js 15 + Tailwind v4 (port 3333)
 - **Database**: Neon Postgres + pgvector + pg_trgm
-- **Skills**: 370+ across 4 layers (orchestrator, hub, utility, domain)
-- **Memory**: Postgres-backed fuzzy search (tsvector + trigram + ILIKE)
-- **Tools**: VFS (AST signatures) via MCP
+- **Skills**: 125 across 4 layers (8 orchestrator, 18 hub, 35 utility, 64 domain)
+- **Memory**: Postgres-backed Second Brain with 4-wing architecture
+- **Search**: Hybrid tsvector + pg_trgm + ILIKE with synonym expansion
+- **Tools**: VFS (AST signatures, 60-98% token savings) via MCP
+
+## Memory (Second Brain)
+
+- **4-wing structure**: agent (WHO I am) | user (WHO you are) | knowledge (WHAT learned) | experience (WHAT happened)
+- **4-layer recall**: L0 core (~100tok) → L1 essential (~300tok) → L2 context (~500tok) → L3 on-demand
+- **Zettelkasten linking**: Relations typed as learned-from | contradicts | supports | applies-to | caused-by | supersedes
+- **AAAK**: Lossless shorthand dialect for ~1.5x compression on recall output
+
+### Memory Commands
+
+```bash
+npx tsx memory/scripts/memory-runner.ts session-start  # Load context
+npx tsx memory/scripts/memory-runner.ts search "query"  # Search memories
+npx tsx memory/scripts/memory-runner.ts save "content" "category" importance
+npx tsx memory/scripts/memory-runner.ts flush            # Flush pending
+```
 
 ## Skill System
 
-Skills are in `.claude/skills/[name]/SKILL.md`. Each skill has:
-- Triggers (keywords that activate it)
-- Inputs/outputs
-- Step-by-step workflow instructions
-- Links to related skills
+Skills are folders in `.claude/skills/[name]/` containing:
+- `SKILL.md` — Core instructions (loaded on trigger)
+- `references/` — API docs, edge cases (loaded on demand)
+- `scripts/` — Helper scripts the agent can run
+- `assets/` — Templates, data files
+
+Progressive disclosure: metadata at startup (~100tok/skill), body on trigger, references on demand.
 
 When a task matches a skill's triggers, read and follow its SKILL.md.
 
@@ -74,7 +93,7 @@ When a task matches a skill's triggers, read and follow its SKILL.md.
 - React: functional components, hooks, server components where possible
 - CSS: Tailwind v4 with CSS custom properties for design tokens
 - SQL: Parameterized queries only, no string interpolation
-- Tests: Vitest for unit, Playwright for E2E
+- Tests: Vitest for unit
 - Git: Conventional commits, no force push
 
 ## References (read on demand)
@@ -83,130 +102,8 @@ When a task matches a skill's triggers, read and follow its SKILL.md.
 - `.claude/references/memory.md` — Memory read/write discipline
 - `.claude/references/privacy.md` — File access control, sensitivity levels
 - `.claude/references/quality.md` — Code standards, review checklist
+- `.claude/references/teaching.md` — Coding level adaptation
 CORE
-}
-
-generate_codex_instructions() {
-  cat << 'CODEX'
-# UltraThink Agent Instructions
-
-## Identity
-
-You are **UltraThink** running inside Codex. Use this repository's Claude-native assets as
-the source of truth for skills, references, memory, and code intelligence.
-
-## Codex Runtime Mapping
-
-- `AGENTS.md` is the Codex entrypoint for repo behavior and operating rules
-- `.claude/skills/[name]/SKILL.md` contains the full UltraThink skill workflows
-- `.claude/skills/_registry.json` maps triggers, layers, and related skills
-- `.claude/references/*.md` contains on-demand reference material
-- `.claude/agents/*.md` defines specialist roles and handoff expectations
-- `.mcp.json` defines the repo's MCP servers; inspect it carefully and never echo secrets
-- `.claude/hooks/*.sh` documents Claude-specific automation; in Codex, emulate the intent
-  manually when native hook parity is not available
-CODEX
-
-  if [[ -d "$ROOT/code-intel" ]]; then
-    cat << 'CODEX'
-- `code-intel/` is the local graph/indexing implementation behind the richer code exploration flow
-CODEX
-  else
-    cat << 'CODEX'
-- `code-intel/` is intentionally absent in this build; rely on VFS, `rg`, and targeted file reads instead
-CODEX
-  fi
-
-  cat << 'CODEX'
-
-## Operating Workflow
-
-1. Check `.ckignore` before broad file exploration or search.
-2. For non-trivial tasks, identify the relevant skill in `.claude/skills/` and read its `SKILL.md`.
-3. Read `.claude/references/*.md` only when the task needs the extra context.
-4. Prefer repo-native memory and MCP-backed exploration tools when available; otherwise fall back
-   to targeted `rg` searches and minimal file reads.
-5. Treat Claude-only features such as statusline and hook orchestration as design intent, not
-   guaranteed runtime behavior in Codex.
-
-## Memory Protocol
-
-1. Read before write — check existing memories for context before creating new ones
-2. Selective persistence — only write memories with lasting value (decisions, patterns, blockers)
-3. Tag appropriately — use project, file, and category scopes
-4. Confidence ratings — score 0.0–1.0 based on how verified the information is
-
-### Memory Commands
-
-- Search: `npx tsx memory/scripts/memory-runner.ts search "query"`
-- Save: `npx tsx memory/scripts/memory-runner.ts save "content" "category" importance`
-- Flush: `npx tsx memory/scripts/memory-runner.ts flush`
-
-## Privacy Protocol
-
-1. Check `.ckignore` — never access files matching ignore patterns without explicit approval
-2. No secrets in output — never echo API keys, tokens, credentials, or `.mcp.json` env values
-3. Log access — keep file access visible through tool traces and concise progress updates
-4. Ask before accessing — sensitive paths require user confirmation
-
-## Quality Protocol
-
-1. Read before modify — always read existing code before suggesting changes
-2. Minimal diff — make the smallest change that solves the problem
-3. No hallucination — if unsure, search or ask rather than guessing
-4. Test verification — verify changes work before marking complete
-
-## Codex-Specific Execution
-
-- Use `.claude/skills/_registry.json` to find matching skills when the task is ambiguous
-- Use `.claude/agents/*.md` as role guides when the task maps to planner, debugger, reviewer, etc.
-- Use `.mcp.json` as the source of truth for available repo tooling in the current build
-CODEX
-
-  if [[ -d "$ROOT/code-intel" ]]; then
-    cat << 'CODEX'
-- Use `code-intel/` and `npm run codeintel:index` when dependency graph or impact analysis is needed
-- If MCP is unavailable in the current Codex runtime, fall back to the code-intel CLI, `rg`, and direct repository reads
-CODEX
-  else
-    cat << 'CODEX'
-- This build does not ship `code-intel/`; fall back to VFS, `rg`, and direct repository reads for exploration
-CODEX
-  fi
-
-  cat << 'CODEX'
-
-## Communication Protocol
-
-1. Structured output — use headers, lists, and code blocks for clarity
-2. Concise by default — adapt verbosity to the user's coding level
-3. Show reasoning — explain non-obvious decisions and tradeoffs
-4. Flag uncertainty — clearly mark assumptions and unknowns
-
-## Available Agents
-
-| Agent | Role | Context |
-|-------|------|---------|
-| planner | Implementation planning | Full project context |
-| architect | System design | Architecture patterns |
-| code-reviewer | Code review | Changed files + surrounding code |
-| debugger | Bug hunting | Error logs + relevant source |
-| security-auditor | Security scanning | Full codebase access |
-| scout | Codebase exploration | Full codebase access |
-| researcher | Deep research | Web + docs access |
-| tester | Test generation | Source + test files |
-| docs-writer | Documentation | Source + existing docs |
-| memory-curator | Memory management | Memory database |
-
-## Agent Handoff
-
-When an agent needs capabilities outside its scope:
-
-1. Complete current analysis with available context
-2. Document findings and handoff notes
-3. Recommend the appropriate next agent
-4. Include any relevant context for the receiving agent
-CODEX
 }
 
 # ── 1. Cursor (.cursor/rules/) ───────────────────────────────────
@@ -236,13 +133,15 @@ alwaysApply: true
 # Skill System
 
 When working on a task, check if any skill in `.claude/skills/` matches.
-Skills contain step-by-step workflows, best practices, and constraints.
+Skills are folders containing SKILL.md + references + scripts + assets.
+Progressive disclosure: only load what you need.
 
 To find relevant skills:
 1. Look at the task keywords
 2. Check `.claude/skills/_registry.json` for matching triggers
 3. Read the matching `SKILL.md` file
-4. Follow its workflow
+4. Read `references/` only when you need deeper context
+5. Follow the workflow
 
 Key skills: gsd (task execution), react, nextjs, tailwindcss, debug, test, plan, research-loop, ui-design-pipeline
 EOF
@@ -279,10 +178,12 @@ alwaysApply: false
 
 - TypeScript with strict mode
 - Neon Postgres with `postgres` package (not pg)
+- 4-wing architecture: agent/user/knowledge/experience
 - 3-tier search: tsvector → pg_trgm → ILIKE with synonym expansion
 - All queries parameterized — no string interpolation
 - Importance scale 1-10, confidence 0-1
 - Read before write — always check existing memories before saving
+- Quality gates: reject <20 chars, code dumps, raw errors
 EOF
   ok ".cursor/rules/memory.mdc"
 }
@@ -292,7 +193,6 @@ sync_windsurf() {
   log "Syncing Windsurf rules..."
   mkdir -p "$ROOT/.windsurf/rules"
 
-  # Main rules
   {
     generate_core_instructions
     cat << 'EOF'
@@ -312,33 +212,31 @@ EOF
 sync_antigravity() {
   log "Syncing Antigravity (GEMINI.md)..."
 
-  {
-    generate_core_instructions
-    cat << 'EOF'
-
-## Antigravity-Specific
-
-- Skills are in `.claude/skills/[name]/SKILL.md` — same format as Antigravity skills
-- The skill registry at `.claude/skills/_registry.json` maps triggers to skills
-- MCP servers are configured in `.mcp.json` (VFS for AST signatures)
-- Dashboard runs on port 3333: `cd dashboard && npm run dev`
-- Memory CLI: `npx tsx memory/scripts/memory-runner.ts <command>`
+  # Use the hand-curated GEMINI.md if it exists, otherwise generate
+  if [[ -f "$ROOT/GEMINI.md" ]]; then
+    ok "GEMINI.md (kept existing — hand-curated)"
+  else
+    {
+      echo "# UltraThink — Gemini Agent Instructions"
+      echo ""
+      generate_core_instructions
+      cat << 'EOF'
 
 ## Key Skills for Common Tasks
 
 | Task | Skill | Trigger |
 |------|-------|---------|
-| Build a feature | `gsd` | "/gsd", "build", "implement" |
-| Debug an issue | `debug` | "/debug", "fix this", "why is" |
-| Write tests | `test` | "/test", "write tests" |
-| Plan architecture | `plan` | "/plan", "how should we" |
-| UI design | `ui-design-pipeline` | "/design-pipeline", "design a page" |
-| Experiment loop | `research-loop` | "/experiment", "iterate until" |
-| Code review | `code-review` | "/review", "review this" |
-| Optimize perf | `optimize` | "/optimize", "make it faster" |
+| Build a feature | `gsd` | "build", "implement" |
+| Debug an issue | `debug` | "fix this", "why is" |
+| Write tests | `test` | "write tests" |
+| Plan architecture | `plan` | "how should we" |
+| UI design | `ui-design-pipeline` | "design a page" |
+| Code review | `code-review` | "review this" |
+| Optimize perf | `optimize` | "make it faster" |
 EOF
-  } > "$ROOT/GEMINI.md"
-  ok "GEMINI.md"
+    } > "$ROOT/GEMINI.md"
+    ok "GEMINI.md (generated)"
+  fi
 }
 
 # ── 4. GitHub Copilot (.github/copilot-instructions.md) ─────────
@@ -346,15 +244,108 @@ sync_copilot() {
   log "Syncing Copilot instructions..."
   mkdir -p "$ROOT/.github"
 
-  generate_core_instructions > "$ROOT/.github/copilot-instructions.md"
-  ok ".github/copilot-instructions.md"
+  # Use the hand-curated file if it exists, otherwise generate
+  if [[ -f "$ROOT/.github/copilot-instructions.md" ]]; then
+    ok ".github/copilot-instructions.md (kept existing — hand-curated)"
+  else
+    {
+      echo "# UltraThink — Copilot Agent Instructions"
+      echo ""
+      generate_core_instructions
+    } > "$ROOT/.github/copilot-instructions.md"
+    ok ".github/copilot-instructions.md (generated)"
+  fi
 }
 
-# ── 5. Codex (AGENTS.md) ────────────────────────────────────────
+# ── 5. Codex (AGENTS.md + .codex/) ──────────────────────────────
 sync_codex() {
   log "Syncing Codex instructions..."
-  generate_codex_instructions > "$ROOT/AGENTS.md"
-  ok "AGENTS.md"
+
+  # Use the hand-curated AGENTS.md if it exists, otherwise generate
+  if [[ -f "$ROOT/AGENTS.md" ]]; then
+    ok "AGENTS.md (kept existing — hand-curated)"
+  else
+    {
+      echo "# UltraThink — Codex Agent Instructions"
+      echo ""
+      generate_core_instructions
+      cat << 'EOF'
+
+## Codex Runtime Mapping
+
+| Claude Code | Codex CLI |
+|-------------|-----------|
+| `CLAUDE.md` | `AGENTS.md` (this file) |
+| `.claude/settings.json` | `.codex/config.toml` |
+| `.claude/hooks/*.sh` | `.codex/hooks.json` |
+| `.mcp.json` | `.codex/config.toml` `[mcp_servers]` |
+
+## Operating Workflow
+
+1. Check `.ckignore` before broad file exploration or search.
+2. Use VFS (`mcp__vfs__extract`) before reading any file.
+3. For non-trivial tasks, find the relevant skill in `.claude/skills/` and read its `SKILL.md`.
+4. Read `.claude/references/*.md` only when the task needs extra context.
+5. Read before write — check existing memories before creating new ones.
+
+## Privacy Protocol
+
+1. Check `.ckignore` — never access files matching ignore patterns without explicit approval
+2. No secrets in output — never echo API keys, tokens, credentials, or `.mcp.json` env values
+3. Ask before accessing sensitive paths
+EOF
+    } > "$ROOT/AGENTS.md"
+    ok "AGENTS.md (generated)"
+  fi
+
+  # Codex config directory
+  mkdir -p "$ROOT/.codex"
+  if [[ ! -f "$ROOT/.codex/config.toml" ]]; then
+    cat > "$ROOT/.codex/config.toml" << 'TOML'
+# UltraThink — Codex CLI Configuration
+model = "gpt-5"
+approval_policy = "on-request"
+
+[features]
+codex_hooks = true
+
+[mcp_servers.vfs]
+command = ["vfs", "mcp"]
+TOML
+    ok ".codex/config.toml (generated)"
+  else
+    ok ".codex/config.toml (kept existing)"
+  fi
+
+  if [[ ! -f "$ROOT/.codex/hooks.json" ]]; then
+    cat > "$ROOT/.codex/hooks.json" << 'JSON'
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "command": [".claude/hooks/privacy-hook.sh"],
+        "description": "Block access to sensitive files"
+      }
+    ],
+    "SessionStart": [
+      {
+        "command": ["npx", "tsx", "memory/scripts/memory-runner.ts", "session-start"],
+        "description": "Load memory context and adaptive learning rules"
+      }
+    ],
+    "Stop": [
+      {
+        "command": ["npx", "tsx", "memory/scripts/memory-runner.ts", "flush"],
+        "description": "Flush pending memories and close session"
+      }
+    ]
+  }
+}
+JSON
+    ok ".codex/hooks.json (generated)"
+  else
+    ok ".codex/hooks.json (kept existing)"
+  fi
 }
 
 # ── Execute ──────────────────────────────────────────────────────
@@ -366,11 +357,11 @@ case "$TARGETS" in
     sync_copilot
     sync_codex
     ;;
-  --cursor)     sync_cursor ;;
-  --windsurf)   sync_windsurf ;;
+  --cursor)      sync_cursor ;;
+  --windsurf)    sync_windsurf ;;
   --antigravity) sync_antigravity ;;
-  --copilot)    sync_copilot ;;
-  --codex)      sync_codex ;;
+  --copilot)     sync_copilot ;;
+  --codex)       sync_codex ;;
   *)
     echo "Usage: $0 [--all | --cursor | --windsurf | --antigravity | --copilot | --codex]"
     exit 1
@@ -385,7 +376,7 @@ echo "  Generated files:"
 [[ "$TARGETS" == "--all" || "$TARGETS" == "--windsurf" ]] && echo "    .windsurf/rules/*.md     (Windsurf)"
 [[ "$TARGETS" == "--all" || "$TARGETS" == "--antigravity" ]] && echo "    GEMINI.md                (Antigravity)"
 [[ "$TARGETS" == "--all" || "$TARGETS" == "--copilot" ]] && echo "    .github/copilot-instructions.md  (Copilot)"
-[[ "$TARGETS" == "--all" || "$TARGETS" == "--codex" ]] && echo "    AGENTS.md                (Codex)"
+[[ "$TARGETS" == "--all" || "$TARGETS" == "--codex" ]] && echo "    AGENTS.md + .codex/      (Codex)"
 echo ""
 echo "  All editors now share UltraThink's skill system and conventions."
 echo ""
