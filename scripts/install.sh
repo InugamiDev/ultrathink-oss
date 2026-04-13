@@ -38,9 +38,11 @@ run_cmd() {
 
 dry_ln() {
   if $DRY_RUN; then
-    log_dry "ln -sf $1 -> $2"
+    log_dry "ln -sfn $1 -> $2"
   else
-    ln -sf "$1" "$2"
+    # -n: if target is an existing symlink to a directory, replace it
+    #     instead of following it and creating a nested link inside.
+    ln -sfn "$1" "$2"
   fi
 }
 
@@ -325,7 +327,7 @@ for skill_dir in "$ULTRA_ROOT/.claude/skills"/*/; do
     continue
   fi
   dry_ln "$skill_dir" "$target"
-  ((skill_count++))
+  skill_count=$((skill_count+1))
 done
 dry_ln "$ULTRA_ROOT/.claude/skills/_registry.json" "$CLAUDE_DIR/skills/_registry.json"
 log_ok "Linked $skill_count skills"
@@ -361,11 +363,13 @@ SHARED_HOOKS+=" gsd-utils.sh post-edit-quality.sh registry-sync.sh"
 SHARED_HOOKS+=" search-cap.sh vfs-enforce.sh"
 
 hook_count=0
-for hook in $SHARED_HOOKS; do
+# shellcheck disable=SC2086
+IFS=' ' read -ra HOOK_ARR <<< "$SHARED_HOOKS"
+for hook in "${HOOK_ARR[@]}"; do
   src="$ULTRA_ROOT/.claude/hooks/$hook"
   [[ -f "$src" ]] || continue
   dry_ln "$src" "$CLAUDE_DIR/hooks/ultrathink-$hook"
-  ((hook_count++))
+  hook_count=$((hook_count+1))
 done
 
 log_ok "Linked $hook_count hooks"

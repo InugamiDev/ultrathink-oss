@@ -2,6 +2,9 @@
 -- status: done
 -- confidence: high
 
+-- Supersede the older decisions schema from migration 003 (incompatible columns)
+DROP TABLE IF EXISTS decisions CASCADE;
+
 CREATE TABLE IF NOT EXISTS decisions (
   id TEXT PRIMARY KEY DEFAULT 'dec_' || substr(gen_random_uuid()::text, 1, 8),
   rule TEXT NOT NULL,

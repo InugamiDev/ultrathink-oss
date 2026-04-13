@@ -121,7 +121,7 @@ else
     identity=$(echo "$ctx" | grep -o '\*\*Identity:\*\* [^*]*' | sed 's/\*\*Identity:\*\* //' | head -1 || true)
     if [[ -n "$identity" ]]; then
       CC_SID=$(echo "$INPUT" | jq -r '.session_id // ""' 2>/dev/null | head -c 12)
-      if [[ -n "$CC_SID" ]]; then
+      if [[ -n "${CC_SID:-}" ]]; then
         mkdir -p /tmp/ultrathink-status 2>/dev/null || true
         echo "$identity" > "/tmp/ultrathink-status/identity-$CC_SID" 2>/dev/null || true
       fi
@@ -136,7 +136,7 @@ else
     (
       cd "$ULTRA_ROOT"
       # Preferences for prompt-analyzer skill boosting
-      if [[ -n "$CC_SID" ]]; then
+      if [[ -n "${CC_SID:-}" ]]; then
         raw_prefs=$(npx tsx "$RUNNER" preferences 2>/dev/null) || raw_prefs='[]'
         echo "$raw_prefs" > "/tmp/ultrathink-status/preferences-${CC_SID}.json"
       fi
