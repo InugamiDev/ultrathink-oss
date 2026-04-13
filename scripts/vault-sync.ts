@@ -39,14 +39,14 @@ import { createHash } from "crypto";
 const projectRoot = resolve(import.meta.dirname, "..");
 config({ path: join(projectRoot, ".env") });
 
-import { neon } from "@neondatabase/serverless";
+import { createNeonCompat, type NeonCompatClient } from "../memory/src/neon-compat.js";
 
-let _sql: ReturnType<typeof neon> | null = null;
+let _sql: NeonCompatClient | null = null;
 function getDb() {
   if (!_sql) {
     const url = process.env.DATABASE_URL;
     if (!url) throw new Error("DATABASE_URL required");
-    _sql = neon(url);
+    _sql = createNeonCompat(url);
   }
   return _sql;
 }

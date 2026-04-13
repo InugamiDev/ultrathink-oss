@@ -10,7 +10,8 @@
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.10.4",
-    "dotenv": "^16.4.7"
+    "dotenv": "^16.4.7",
+    "postgres": "^3.4.9"
   },
   "devDependencies": {
     "tsx": "^4.19.2",

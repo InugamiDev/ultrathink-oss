@@ -1,6 +1,6 @@
-import { neon } from "@neondatabase/serverless";
+import { createNeonCompat, type NeonCompatClient } from "./neon-compat.js";
 
-let sqlClient: ReturnType<typeof neon> | null = null;
+let sqlClient: NeonCompatClient | null = null;
 
 export function getClient() {
   if (!sqlClient) {
@@ -8,10 +8,9 @@ export function getClient() {
     if (!databaseUrl) {
       throw new Error("DATABASE_URL environment variable is required");
     }
-    sqlClient = neon(databaseUrl);
+    sqlClient = createNeonCompat(databaseUrl);
   }
   return sqlClient;
 }
 
-export type SqlClient = ReturnType<typeof neon>;
-
+export type SqlClient = NeonCompatClient;
