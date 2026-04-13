@@ -146,8 +146,22 @@ async function sessionEnd() {
       SELECT COUNT(*) as count FROM memories WHERE session_id = ${sessionId}
     `) as any[];
 
-    // Build session summary from memories created this session
+    // intent: ALWAYS generate a session summary — even if no explicit memories were
+    // created. The old code only summarized when stats.count > 0, which meant sessions
+    // with auto-save disabled (the default) never persisted anything. This was the root
+    // cause of the empty Second Brain.
+    //
+    // Summary sources (in priority order):
+    // 1. Memories created this session (if any)
+    // 2. Git activity during the session (files changed, commit messages)
+    // 3. Session metadata (duration, task_context)
+
     let summary: string | null = null;
+    const cwd = process.env.ULTRATHINK_CWD || process.cwd();
+    const scope = cwd.split("/").slice(-2).join("/");
+    const summaryParts: string[] = [];
+
+    // Part 1: Memories created this session
     if (Number(stats.count) > 0) {
       const sessionMemories = await sql`
         SELECT content, category, importance FROM memories
@@ -163,7 +177,6 @@ async function sessionEnd() {
         byCategory[cat].push(m.content as string);
       }
 
-      // Prioritize: decisions > preferences > corrections > solutions > architecture > rest
       const CATEGORY_PRIORITY = [
         "decision",
         "preference",
@@ -180,17 +193,75 @@ async function sessionEnd() {
       });
 
       const sections = sortedEntries.map(([cat, items]) => `[${cat}]: ${items.join("; ")}`).join("\n");
-      summary = `Session summary (${stats.count} memories):\n${sections}`;
+      summaryParts.push(`Memories (${stats.count}):\n${sections}`);
+    }
+
+    // Part 2: Git activity (what files changed, recent commits)
+    try {
+      const { execFileSync } = await import("child_process");
+
+      const [sessionRecord] = (await sql`
+        SELECT started_at FROM sessions WHERE id = ${sessionId}
+      `) as any[];
+
+      if (sessionRecord) {
+        const since = new Date(sessionRecord.started_at).toISOString();
+        try {
+          const commits = execFileSync("git", ["log", "--oneline", `--since=${since}`, "-10"], {
+            encoding: "utf-8",
+            cwd,
+            timeout: 5000,
+            stdio: ["pipe", "pipe", "pipe"],
+          }).trim();
+          if (commits) summaryParts.push(`Commits:\n${commits}`);
+        } catch {
+          /* not a git repo */
+        }
+
+        try {
+          const diff = execFileSync("git", ["diff", "--stat", "HEAD"], {
+            encoding: "utf-8",
+            cwd,
+            timeout: 5000,
+            stdio: ["pipe", "pipe", "pipe"],
+          }).trim();
+          if (diff) {
+            const lastLine = diff.split("\n").pop() || "";
+            summaryParts.push(`Uncommitted: ${lastLine}`);
+          }
+        } catch {
+          /* not a git repo */
+        }
+      }
+    } catch {
+      /* git not available */
+    }
+
+    // Part 3: Session metadata
+    try {
+      const [sessionMeta] = (await sql`
+        SELECT task_context, started_at FROM sessions WHERE id = ${sessionId}
+      `) as any[];
+      if (sessionMeta) {
+        const duration = Math.round((Date.now() - new Date(sessionMeta.started_at).getTime()) / 60000);
+        if (duration > 0) summaryParts.push(`Duration: ${duration}min`);
+        if (sessionMeta.task_context) summaryParts.push(`Project: ${sessionMeta.task_context}`);
+      }
+    } catch {
+      /* non-critical */
+    }
+
+    // Build final summary
+    if (summaryParts.length > 0) {
+      summary = summaryParts.join("\n");
 
       // Save session summary as a memory
       try {
-        const cwd = process.env.ULTRATHINK_CWD || process.cwd();
-        const scope = cwd.split("/").slice(-2).join("/");
         await createMemory({
           content: summary.slice(0, 4000),
           category: "session-summary",
-          importance: 6,
-          confidence: 0.9,
+          importance: 5,
+          confidence: 0.8,
           scope,
           source: "session-end",
           session_id: sessionId,
