@@ -15,7 +15,7 @@ export interface Decision {
   rule: string;
   priority: number; // 1-10
   scope: string; // "global" | project path
-  source: "user" | "claude" | "tekio";
+  source: "user" | "claude";
   context?: string;
   is_active: boolean;
   times_applied: number;
@@ -28,7 +28,7 @@ export interface CreateDecisionInput {
   rule: string;
   priority?: number;
   scope?: string;
-  source?: "user" | "claude" | "tekio";
+  source?: "user" | "claude";
   context?: string;
   tags?: string[];
 }

@@ -43,11 +43,8 @@ export const command = `
   cd /Users/inugami/Documents/GitHub/InuVerse/ai-agents/ultrathink
   DB_STATS=$(npx tsx memory/scripts/usage-report.ts 2>/dev/null || echo '{}')
 
-  # 3. Tekiō wheel stats
-  WHEEL=$(npx tsx memory/scripts/wheel-count.ts 2>/dev/null || echo '0')
-
-  # 4. Combine
-  jq -n --argjson usage "$USAGE" --argjson db "$DB_STATS" --argjson wheel "$WHEEL" '{ usage: $usage, db: $db, wheel: $wheel }'
+  # 3. Combine
+  jq -n --argjson usage "$USAGE" --argjson db "$DB_STATS" '{ usage: $usage, db: $db }'
 `;
 
 // Position: top-right corner

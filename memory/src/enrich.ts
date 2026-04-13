@@ -276,7 +276,7 @@ export function enrichMemory(content: string, category: string, tags?: string[])
   }
 
   // 7. Unicode normalization — add ASCII equivalents for non-ASCII chars
-  // e.g., "Tekiō" → "tekio", "résumé" → "resume"
+  // e.g., "résumé" → "resume", "naïve" → "naive"
   const asciiContent = content
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")

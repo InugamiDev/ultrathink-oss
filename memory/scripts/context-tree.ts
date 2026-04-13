@@ -126,10 +126,7 @@ async function buildContextTree(scope?: string): Promise<ContextNode> {
         label: "identity/",
         type: "branch",
         access: "npx tsx memory-runner.ts identity",
-        children: [
-          { label: "preferences", type: "leaf", access: "category: preference (no decay)" },
-          { label: "identity-graph", type: "leaf", access: "npx tsx memory-runner.ts identity [scope]" },
-        ],
+        children: [{ label: "preferences", type: "leaf", access: "category: preference (no decay)" }],
       },
       {
         label: "memory/",

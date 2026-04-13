@@ -1,0 +1,27 @@
+{
+  "name": "@ultrathink/harness",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Intention-driven TUI harness — drives UltraThink skills through a fixed clarify→plan→build→validate→ship pipeline. AI runs as worker processes; the TUI is the control layer.",
+  "bin": {
+    "ultrathink-harness": "./bin/harness.js"
+  },
+  "scripts": {
+    "dev": "tsx src/cli.tsx",
+    "start": "tsx src/cli.tsx",
+    "expert": "tsx src/cli.tsx --expert",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "ink": "^7.0.0",
+    "ink-text-input": "^6.0.0",
+    "react": "^19.2.4",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.39",
+    "@types/react": "^19.2.14",
+    "tsx": "^4.19.2"
+  }
+}

@@ -43,65 +43,109 @@ Claude Code is powerful but stateless. Every session starts fresh. UltraThink fi
 
 ---
 
+## Requirements
+
+| Requirement | Details |
+|-------------|---------|
+| **OS** | macOS or Linux (bash required). Windows: WSL2 only — native PowerShell is not supported. |
+| **Runtime** | Node.js 18+ and npm |
+| **CLI tools** | `jq` (install via `brew install jq` or `apt install jq`), `grep`, `sed` |
+| **Claude Code** | `npm install -g @anthropic-ai/claude-code` |
+| **Database** | PostgreSQL ([Neon](https://neon.tech) free tier works) — required for memory + dashboard |
+
+---
+
+## What UltraThink Does for Your AI Agent
+
+Out of the box, Claude Code is stateless — every session starts from zero. UltraThink upgrades it into a persistent, context-aware agent:
+
+| Capability | Without UltraThink | With UltraThink |
+|---|---|---|
+| **Memory** | Forgets everything between sessions | Remembers decisions, preferences, patterns across sessions |
+| **Skills** | Generic responses for every task | 388 domain skills auto-activate based on what you're doing |
+| **Quality** | No guardrails on edits | Auto-formats code, validates JSON/shell, blocks credential access |
+| **Observability** | Black box | Dashboard with memory browser, skill mesh, hook stats, token costs |
+| **Context** | You repeat yourself every session | Intent detection + memory recall inject relevant context automatically |
+
+Works with **Claude Code** (hooks + statusline) and **Codex** (AGENTS.md + skills).
+
+---
+
 ## Quickstart
 
-### Prerequisites
-
-- **Node.js 18+** and npm
-- **Claude Code** CLI installed (`npm install -g @anthropic-ai/claude-code`)
-- **Neon Postgres** account (free tier works) — [neon.tech](https://neon.tech)
-
-### Install
+### One-liner install
 
 ```bash
-# Clone the repo
+git clone https://github.com/InugamiDev/ultrathink-oss.git && cd ultrathink-oss && ./scripts/setup.sh && ./scripts/install.sh
+```
+
+That's it. Open `claude` in any project and UltraThink is active.
+
+### Step-by-step install
+
+<details>
+<summary>Click to expand full setup walkthrough</summary>
+
+#### 1. Prerequisites
+
+| Requirement | Install |
+|---|---|
+| Node.js 18+ | [nodejs.org](https://nodejs.org) |
+| Claude Code CLI | `npm install -g @anthropic-ai/claude-code` |
+| PostgreSQL | [neon.tech](https://neon.tech) free tier (required for memory + dashboard) |
+| jq | `brew install jq` (macOS) or `apt install jq` (Linux) |
+
+#### 2. Clone and setup
+
+```bash
 git clone https://github.com/InugamiDev/ultrathink-oss.git
 cd ultrathink-oss
 
-# Run setup (installs deps, creates .env, runs migrations)
+# Installs dependencies, creates .env template, runs database migrations
 ./scripts/setup.sh
-
-# Install globally into ~/.claude/ + ~/.ultrathink/
-./scripts/install.sh
 ```
 
-### Quick integration into an existing project
+Edit `.env` with your Neon connection string before proceeding.
+
+#### 3. Install into Claude Code
 
 ```bash
-# From any project directory:
-./scripts/install.sh
-
-# This symlinks skills, hooks, agents, and references into ~/.claude/
+# Symlinks skills, hooks, agents, references into ~/.claude/
 # Creates ~/.ultrathink/ for vault, forge state, and decisions
-# Every Claude Code session now has UltraThink capabilities
+./scripts/install.sh
 ```
 
-### Tiers
+**Installer flags:**
+- `--dry-run` — preview what would change without modifying anything
+- `--uninstall` — fully remove all UltraThink symlinks and hooks
+- `--no-identity` — skip modifying your CLAUDE.md
+- `--yes` / `-y` — auto-approve all prompts
 
-This is the **OSS** tier — skills, memory, hooks, and /forge guided mode. Free and open source. Builder and Core tiers with additional features are coming soon.
+#### 4. Verify
+
+```bash
+claude
+# You should see the UltraThink statusline with memory count, skills, and usage
+# Try: "explain how UltraThink hooks work" — teaching mode should auto-activate
+```
+
+</details>
 
 ### Use with Codex CLI
 
 ```bash
-# Open this repo in Codex
 codex
-
 # Codex reads AGENTS.md automatically in this repository
-# Regenerate the Codex instructions after major CLAUDE.md changes
+
+# Regenerate after major CLAUDE.md changes
 ./scripts/sync-editors.sh --codex
 ```
 
-Codex support is repo-local rather than hook-driven: it inherits UltraThink's operating model through `AGENTS.md`, `.claude/skills/`, `.claude/references/`, and the repo MCP configuration that your Codex runtime exposes.
+Codex inherits UltraThink's operating model through `AGENTS.md`, `.claude/skills/`, `.claude/references/`, and the repo MCP config.
 
-### Verify installation
+### Tiers
 
-```bash
-# Start Claude Code in any project
-claude
-
-# You should see the UltraThink statusline with memory count, skills, and usage
-# Try: "explain how UltraThink hooks work" — teaching mode should auto-activate
-```
+This is the **OSS** tier — skills, memory, hooks, and /forge guided mode. Free and open source. Builder and Core tiers with additional features are coming soon.
 
 ### Start the dashboard
 
@@ -465,58 +509,6 @@ erDiagram
         date effective_from
     }
 
-    ci_projects {
-        uuid id PK
-        varchar name
-        text root_path
-        timestamptz last_indexed_at
-    }
-
-    ci_files {
-        uuid id PK
-        uuid project_id FK
-        text relative_path
-        char sha256
-        varchar language
-        timestamptz indexed_at
-    }
-
-    ci_symbols {
-        uuid id PK
-        uuid file_id FK
-        varchar name
-        varchar kind
-        text signature
-        int line_number
-        boolean is_exported
-        uuid parent_symbol_id FK
-        tsvector search_vector
-    }
-
-    ci_edges {
-        uuid id PK
-        uuid source_symbol_id FK
-        uuid target_symbol_id FK
-        varchar edge_type
-        varchar target_name
-        text target_module
-    }
-
-    ci_modules {
-        uuid id PK
-        uuid project_id FK
-        varchar name
-        text description
-        text directory_pattern
-        int file_count
-        int symbol_count
-    }
-
-    ci_module_files {
-        uuid module_id PK,FK
-        uuid file_id PK,FK
-    }
-
     sessions ||--o{ memories : "creates"
     sessions ||--o{ plans : "creates"
     sessions ||--o{ hook_events : "logs"
@@ -534,17 +526,6 @@ erDiagram
 
     hook_events ||--o| security_incidents : "escalates"
 
-    ci_projects ||--o{ ci_files : "contains"
-    ci_projects ||--o{ ci_modules : "groups"
-
-    ci_files ||--o{ ci_symbols : "defines"
-
-    ci_symbols ||--o{ ci_edges : "source"
-    ci_symbols ||--o{ ci_edges : "target"
-    ci_symbols ||--o| ci_symbols : "parent"
-
-    ci_modules ||--o{ ci_module_files : "includes"
-    ci_files ||--o{ ci_module_files : "belongs_to"
 ```
 
 ### Key Indexes
@@ -555,9 +536,6 @@ erDiagram
 | memories | `content_trgm` | GIN (trigram) | Fuzzy matching |
 | memories | `embedding` | IVFFlat | Vector similarity |
 | memories | `scope_category` | B-tree | Scoped queries |
-| ci_symbols | `search_vector` | GIN | Symbol search |
-| ci_symbols | `name_trgm` | GIN (trigram) | Fuzzy symbol lookup |
-| ci_edges | `source_symbol_id` | B-tree | Dependency graph traversal |
 
 ### Extensions Required
 
@@ -678,7 +656,7 @@ ultrathink/
 ├── widgets/               # Desktop widget (macOS Ubersicht)
 ├── scripts/
 │   ├── setup.sh           # One-command project setup
-│   ├── init-global.sh     # Global ~/.claude/ integration
+│   ├── install.sh         # Global ~/.claude/ integration
 │   └── sync-editors.sh    # Regenerate editor/Codex instruction files
 ├── docs/                  # 21 documentation files
 ├── tests/                 # Vitest test suite
@@ -693,8 +671,8 @@ ultrathink/
 ```bash
 # Setup
 ./scripts/setup.sh              # Full project setup
-./scripts/init-global.sh        # Install into ~/.claude/ globally
-./scripts/init-global.sh --uninstall  # Remove from ~/.claude/
+./scripts/install.sh            # Install into ~/.claude/ globally
+./scripts/install.sh --uninstall     # Remove from ~/.claude/
 ./scripts/sync-editors.sh --codex     # Regenerate AGENTS.md for Codex
 ./scripts/sync-editors.sh --all       # Refresh all editor instruction files
 
@@ -751,7 +729,7 @@ You don't need to clone the full repo. The global installer symlinks everything:
 git clone https://github.com/InuVerse/ultrathink.git ~/ultrathink
 
 # Install globally
-cd ~/ultrathink && ./scripts/setup.sh && ./scripts/init-global.sh
+cd ~/ultrathink && ./scripts/setup.sh && ./scripts/install.sh
 
 # Now every `claude` session has UltraThink capabilities
 ```
@@ -780,6 +758,12 @@ git clone https://github.com/InuVerse/ultrathink.git
 cd ultrathink
 ./scripts/setup.sh
 npm run test
+```
+
+**Rebuilding hooks after modifications:**
+
+```bash
+cd .claude/hooks && npx tsc --target ES2022 --module ES2022 --moduleResolution node --outDir dist prompt-analyzer.ts
 ```
 
 ---

@@ -20,7 +20,7 @@
  * Output: JSON { skills: [...], context: string }
  */
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, statSync, unlinkSync, readdirSync } from "fs";
+import { readFileSync, writeFileSync, existsSync, mkdirSync, statSync, readdirSync } from "fs";
 import { resolve, dirname, join } from "path";
 import { fileURLToPath } from "url";
 import { buildDecisionContext } from "./decision-engine.js";
@@ -64,7 +64,7 @@ const MAX_SKILLS = 5;
 const MIN_PROMPT_LENGTH = 5;
 const CACHE_DIR = "/tmp/ultrathink-status";
 const GRAPH_HOP_BONUS = 1.5; // Score added to skills discovered via graph traversal
-const PREFERENCE_BOOST = 1.0; // Score added when skill matches a user identity-graph preference
+// Preference boost — available in Core tier
 
 // ─── Superpowers: now in _registry.json ─────────────────────────────
 // Migrated from hardcoded arrays to registry on 2026-03-24.
@@ -962,25 +962,9 @@ function quickTriggerScan(
   return candidates;
 }
 
-/** Load user preferences from session-start identity graph export (if available). */
-let cachedUserPreferences: string[] | null | undefined = undefined; // undefined = not yet loaded
+// User preferences — available in Core tier
 function loadUserPreferences(): string[] | null {
-  if (cachedUserPreferences !== undefined) return cachedUserPreferences;
-  try {
-    // Session-start populates this from the identity graph
-    const sessionId = (process.env.CC_SESSION_ID || "").slice(0, 12) || "default";
-    const prefPath = join(CACHE_DIR, `preferences-${sessionId}.json`);
-    if (existsSync(prefPath)) {
-      const data = JSON.parse(readFileSync(prefPath, "utf-8"));
-      // Expect { preferences: ["tailwind", "drizzle", "react", ...] }
-      cachedUserPreferences = Array.isArray(data.preferences) ? data.preferences : null;
-    } else {
-      cachedUserPreferences = null;
-    }
-  } catch {
-    cachedUserPreferences = null;
-  }
-  return cachedUserPreferences ?? null;
+  return null;
 }
 
 /** Pass 2: Full scoring on candidates only. */
@@ -1053,18 +1037,7 @@ function fullScore(
     score += 1.5;
   }
 
-  // 7. User preference boost — identity graph preferences boost matching skills
-  const userPrefs = loadUserPreferences();
-  if (userPrefs) {
-    const skillNameLower = skill.name.toLowerCase();
-    for (const pref of userPrefs) {
-      const prefLower = pref.toLowerCase();
-      if (skillNameLower.includes(prefLower) || prefLower.includes(skillNameLower)) {
-        score += PREFERENCE_BOOST;
-        break;
-      }
-    }
-  }
+  // Preference boost — available in Core tier
 
   return {
     name: skill.name,
@@ -1439,7 +1412,7 @@ function main() {
 
   // GSD — when GSD skills match, enforce spec-driven workflow
   const topNames = new Set(top.map((s) => s.name));
-  const gsdSkills = ["gsd", "gsd-execute", "gsd-plan", "gsd-quick", "gsd-verify"];
+  const gsdSkills = ["gsd"];
   const gsdMatched = gsdSkills.filter((g) => topNames.has(g));
   if (gsdMatched.length > 0) {
     const cwd = process.env.ULTRATHINK_CWD || process.cwd();
@@ -1448,7 +1421,7 @@ function main() {
 
     // Determine if this is a non-trivial task that warrants full GSD
     const isNonTrivial = detectNonTrivialTask(prompt, intent);
-    const isQuickOnly = gsdMatched.length === 1 && gsdMatched[0] === "gsd-quick";
+    const isQuickOnly = false; // unified gsd skill handles all modes
 
     if (hasPlanning) {
       // Active GSD project — inject STATE.md + SPEC.md for continuity
@@ -1493,7 +1466,7 @@ function main() {
           `- Verify after EVERY wave before advancing (goal-backward, not just build)\n` +
           `- Deviation rule 4 (architecture change) = STOP and report to user\n` +
           `- Update STATE.md after every phase/wave completion\n` +
-          `- On completion: run gsd-verify, then archive via plan-archive\n` +
+          `- On completion: run 'gsd verify', then archive via plan-archive\n` +
           `Read .claude/references/gsd.md for full workflow.`
       );
     } else if (isNonTrivial && !isQuickOnly) {
@@ -1508,8 +1481,8 @@ function main() {
     } else {
       // Quick/trivial task — suggest GSD-lite without enforcement
       refs.push(
-        `⚡ **GSD available** — This looks like a quick task. Use \`gsd-quick\` for lightweight spec-driven execution,\n` +
-          `or invoke full GSD if the scope grows. Read ~/.claude/skills/gsd-quick/SKILL.md.`
+        `⚡ **GSD available** — This looks like a quick task. Use \`gsd quick\` for lightweight spec-driven execution,\n` +
+          `or invoke full GSD if the scope grows. Read ~/.claude/skills/gsd/SKILL.md.`
       );
     }
   }
@@ -1541,31 +1514,7 @@ function main() {
     // Non-fatal — skill context still fires
   }
 
-  // Extract and save user preferences from prompt text
-  extractAndSavePreferences(prompt);
-
-  // ☸ Tekiō — always-on evaluation: corrections AND successes
-  detectAndSaveCorrections(prompt);
-  detectAndSaveSuccesses(
-    prompt,
-    intent,
-    top.map((s) => s.name)
-  );
-
-  // ☸ Tekiō notification — if a wheel turn happened recently, inject notification
-  try {
-    const wheelNotif = "/tmp/ultrathink-wheel-turns/last-notification";
-    if (existsSync(wheelNotif)) {
-      const notifContent = readFileSync(wheelNotif, "utf-8").trim();
-      if (notifContent) {
-        context = context ? `${context}\n\n${notifContent}` : notifContent;
-      }
-      // Consume the notification (one-shot)
-      unlinkSync(wheelNotif);
-    }
-  } catch {
-    // non-critical
-  }
+  // Preference extraction and adaptive learning — available in Core tier
 
   // Model routing hints removed — users choose their model deliberately.
   // Injecting "switch to Opus/Sonnet" on every prompt was ~400 tokens/session of noise.
@@ -1592,344 +1541,6 @@ function main() {
   );
 }
 
-// ─── Preference extraction ──────────────────────────────────────────
-
-const MEMORIES_DIR = "/tmp/ultrathink-memories";
-
-const PREFER_PATTERNS = [
-  /\bi\s+(?:prefer|like|want|love|enjoy|favor|favour)\s+(.+?)(?:\s+and\s+|\.|,|$|\n)/gi,
-  /\balways\s+use\s+(.+?)(?:\s+and\s+|\.|,|$|\n)/gi,
-  /\buse\s+(\w+)\s+(?:instead\s+of|over|rather\s+than)\s+\w+/gi,
-  /\bswitch(?:ed)?\s+to\s+(\w+)/gi,
-  /\b(?:never|don'?t|do\s+not|avoid)\s+(?:use\s+)?(.+?)(?:\.|,|$|\n)/gi,
-  /\bremember\s+(?:that\s+)?i\s+(.+?)(?:\.|$|\n)/gi,
-];
-
-const TOOLS = new Set([
-  "bun",
-  "npm",
-  "pnpm",
-  "yarn",
-  "deno",
-  "node",
-  "vim",
-  "neovim",
-  "vscode",
-  "cursor",
-  "zed",
-  "react",
-  "vue",
-  "svelte",
-  "angular",
-  "next",
-  "nextjs",
-  "nuxt",
-  "remix",
-  "astro",
-  "tailwind",
-  "typescript",
-  "python",
-  "rust",
-  "go",
-  "postgres",
-  "mysql",
-  "sqlite",
-  "mongodb",
-  "redis",
-  "neon",
-  "docker",
-  "vercel",
-  "netlify",
-  "cloudflare",
-  "aws",
-  "figma",
-  "vitest",
-  "jest",
-  "playwright",
-  "prisma",
-  "drizzle",
-  "expo",
-  "electron",
-  "cypress",
-  "storybook",
-  "turborepo",
-  "nx",
-  "pnpm",
-  "sanity",
-  "payload",
-  "openai",
-  "supabase",
-  "stripe",
-  "hono",
-  "convex",
-  "clerk",
-  "upstash",
-  "htmx",
-  "inngest",
-  "bullmq",
-  "uploadthing",
-  "testing-library",
-  "opentelemetry",
-  "algolia",
-  "meilisearch",
-  "elasticsearch",
-  "react-email",
-  "mjml",
-  "pdfkit",
-  "wasm",
-  "web-vitals",
-  "sentry",
-  "plausible",
-  "posthog",
-  "grpc",
-  "protobuf",
-  "comlink",
-  "swagger",
-  "biome",
-  "flask",
-  "nestjs",
-  "vite",
-  "eslint",
-  "prettier",
-  "pact",
-  "kong",
-  "envoy",
-  "traefik",
-  "spring",
-  "laravel",
-  "rails",
-  "xstate",
-  "k6",
-  "artillery",
-  "locust",
-  "workbox",
-  "axios",
-  "ky",
-  "vault",
-  "hashicorp",
-  "sentry",
-  "datadog",
-  "flyway",
-  "liquibase",
-  "redoc",
-  "pgbouncer",
-]);
-
-const STYLES = new Set([
-  "glassmorphism",
-  "neomorphism",
-  "brutalism",
-  "dark mode",
-  "light mode",
-  "minimal",
-  "minimalist",
-  "elegant",
-  "modern",
-  "retro",
-  "gradient",
-  "monochrome",
-]);
-
-function extractAndSavePreferences(text: string): void {
-  // intent: Extract ONLY genuine user preferences, not code fragments or system context
-  // status: done
-  // confidence: high
-
-  // STRICT: Only match first-person statements ("I prefer...", "I always use...", "I never...")
-  // Previous version matched any text containing "avoid"/"prefer" — which captured code comments,
-  // CLAUDE.md instructions, and tool output as user preferences. 143+ garbage memories resulted.
-  if (!/\bi\s+(prefer|like|always use|never|don'?t use|avoid|switch|remember that)\b/i.test(text)) {
-    return;
-  }
-
-  // Reject if text looks like it contains code or system context
-  if (/```|<system|<plan_metadata|## |### /.test(text)) {
-    return;
-  }
-
-  if (!existsSync(MEMORIES_DIR)) mkdirSync(MEMORIES_DIR, { recursive: true });
-
-  const scope = process.cwd().split("/").slice(-2).join("/");
-  const seen = new Set<string>();
-
-  // STRICT patterns: require first-person subject "I"
-  const STRICT_PATTERNS = [
-    /\bi\s+(?:prefer|like|want|love|enjoy|favor|favour)\s+(.+?)(?:\s+(?:and|but|because)\s+|\.|,|$|\n)/gi,
-    /\bi\s+always\s+use\s+(.+?)(?:\s+(?:and|but|because)\s+|\.|,|$|\n)/gi,
-    /\bi\s+(?:never|don'?t|do\s+not|avoid)\s+(?:use\s+|using\s+)?(.+?)(?:\.|,|$|\n)/gi,
-    /\bremember\s+that\s+i\s+(.+?)(?:\.|$|\n)/gi,
-  ];
-
-  for (const pattern of STRICT_PATTERNS) {
-    pattern.lastIndex = 0;
-    let match: RegExpExecArray | null;
-    while ((match = pattern.exec(text)) !== null) {
-      const raw = match[1]
-        .trim()
-        .replace(/[.!?,;*_]+$/, "")
-        .trim();
-      if (!raw || raw.length < 5 || raw.length > 80) continue;
-
-      // Reject technical fragments: code keywords, file paths, SQL, camelCase, special chars
-      if (/[{}()=><;|]|::\s|\\n|\.ts\b|\.js\b|\.py\b|[A-Z][a-z]+[A-Z]/.test(raw)) continue;
-
-      // Reject if it starts with a verb that suggests code context
-      if (/^(function|const|let|var|class|import|export|return|async|await|if|for|while)\b/i.test(raw)) continue;
-
-      const key = raw.toLowerCase().replace(/\s+/g, "-");
-      if (seen.has(key)) continue;
-      seen.add(key);
-
-      let category = "preference";
-      const lower = raw.toLowerCase();
-      for (const tool of TOOLS) {
-        if (lower === tool || lower.includes(tool)) {
-          category = "tool-preference";
-          break;
-        }
-      }
-      if (category === "preference") {
-        for (const style of STYLES) {
-          if (lower.includes(style)) {
-            category = "style-preference";
-            break;
-          }
-        }
-      }
-
-      const isAnti = /never|don'?t|avoid/i.test(match[0]);
-      const content = `User ${isAnti ? "avoids" : "prefers"} ${raw}`;
-
-      const ts = Date.now();
-      const memory = {
-        content,
-        category,
-        importance: 8,
-        confidence: 0.85,
-        scope,
-        source: "identity-extract",
-        tags: ["#preference", "#identity"],
-      };
-
-      writeFileSync(join(MEMORIES_DIR, `${ts}-pref-${key.slice(0, 20)}.json`), JSON.stringify(memory));
-    }
-  }
-}
-
-// ─── ☸ Tekiō — Always-On Evaluation (Cycle of Nova) ─────────────────
-// The wheel evaluates EVERY interaction:
-//   New → turn (learn)    Known → skip    Failure → turn (counter)    Success → turn (reinforce)
-
-const SUCCESS_PATTERNS = [
-  /\b(?:perfect|exactly|that'?s?\s+(?:right|correct|it|great|what\s+i\s+wanted))\b/i,
-  /\b(?:works?\s+(?:great|perfectly|well|now)|nailed\s+it|spot\s+on|nice|awesome)\b/i,
-  /\b(?:yes[,!]?\s+(?:that|like\s+that|this)|good\s+(?:job|work)|love\s+(?:it|this))\b/i,
-];
-
-function detectAndSaveSuccesses(text: string, intent: Intent, skillNames: string[]): void {
-  const isSuccess = SUCCESS_PATTERNS.some((p) => p.test(text));
-  if (!isSuccess) return;
-  if (skillNames.length === 0 && intent === "general") return; // Nothing specific to learn
-
-  const wheelDir = "/tmp/ultrathink-wheel-turns";
-  if (!existsSync(wheelDir)) mkdirSync(wheelDir, { recursive: true });
-
-  const scope = process.cwd().split("/").slice(-2).join("/");
-  const ts = Date.now();
-
-  // Record what worked: the intent + skill combo
-  const pattern =
-    skillNames.length > 0 ? `${intent} task using skills: ${skillNames.join(", ")}` : `${intent} task approach`;
-  const insight = `For ${intent} tasks, ${skillNames.length > 0 ? `use skills: ${skillNames.join(", ")}` : "current approach works well"}. User confirmed success.`;
-
-  const wheelEvent = {
-    type: "success-pattern",
-    timestamp: new Date().toISOString(),
-    pattern,
-    insight,
-    scope,
-  };
-
-  writeFileSync(join(wheelDir, `${ts}-success.json`), JSON.stringify(wheelEvent));
-}
-
-const CORRECTION_PATTERNS = [
-  // "no, not that" / "no that's wrong" / "no, instead..."
-  /\bno[,.]?\s+(?:not\s+that|that'?s?\s+(?:wrong|incorrect|not\s+(?:right|what|how)))/i,
-  // "I said X" / "I told you" / "I asked for"
-  /\bi\s+(?:said|told\s+you|asked\s+(?:for|you))\b/i,
-  // "revert" / "undo" / "go back"
-  /\b(?:revert|undo|go\s+back|roll\s*back|put\s+(?:it\s+)?back)\b/i,
-  // "wrong" / "incorrect" / "that's not"
-  /\b(?:wrong|incorrect|that'?s?\s+not\s+(?:what|how|right))\b/i,
-  // "don't do that" / "stop doing" / "not like that"
-  /\b(?:don'?t\s+do\s+that|stop\s+(?:doing|that)|not\s+like\s+that)\b/i,
-  // "I meant" / "what I want is"
-  /\bi\s+meant\b|what\s+i\s+(?:want|need|mean)\s+is\b/i,
-  // "lets not" / "don't" (at start of sentence)
-  /^(?:let'?s?\s+not|don'?t)\s+/im,
-];
-
-function detectAndSaveCorrections(text: string): void {
-  const isCorrection = CORRECTION_PATTERNS.some((p) => p.test(text));
-  if (!isCorrection) return;
-
-  // Save correction event for the adaptation system to process
-  if (!existsSync(MEMORIES_DIR)) mkdirSync(MEMORIES_DIR, { recursive: true });
-
-  const scope = process.cwd().split("/").slice(-2).join("/");
-  const ts = Date.now();
-
-  // Extract the correction content (what the user wants instead)
-  const correctionContent = text.slice(0, 300).trim();
-
-  // Extract what went wrong vs what the user wants
-  // "no, not X — do Y instead" → wrong="X", correct="Y"
-  let wrongApproach = "Previous approach";
-  let correctApproach = correctionContent;
-
-  // Try to split "no/not X, instead Y" pattern
-  const splitMatch = text.match(
-    /\b(?:no[,.]?\s+)?(?:not\s+|don'?t\s+)(.{5,80})(?:[,;.]\s*(?:instead|rather|use|do|try)\s+(.{5,150}))/i
-  );
-  if (splitMatch) {
-    wrongApproach = splitMatch[1].trim();
-    correctApproach = splitMatch[2]?.trim() || correctionContent;
-  }
-
-  // "I meant X" / "what I want is X"
-  const meantMatch =
-    text.match(/\bi\s+meant\s+(.{5,150})/i) || text.match(/what\s+i\s+(?:want|need)\s+is\s+(.{5,150})/i);
-  if (meantMatch) {
-    correctApproach = meantMatch[1].trim().replace(/[.!?,;]+$/, "");
-  }
-
-  const memory = {
-    content: `[CORRECTION] ${correctionContent}`,
-    category: "correction-log",
-    importance: 9,
-    confidence: 0.9,
-    scope,
-    source: "correction-detect",
-    tags: ["#correction", "#wheel", "#adaptation"],
-  };
-
-  writeFileSync(join(MEMORIES_DIR, `${ts}-correction.json`), JSON.stringify(memory));
-
-  // Write wheel-turn trigger with both wrong and correct approach
-  // so session-end hook can call wheel-correct properly
-  const wheelDir = "/tmp/ultrathink-wheel-turns";
-  if (!existsSync(wheelDir)) mkdirSync(wheelDir, { recursive: true });
-
-  const wheelEvent = {
-    type: "user-correction",
-    timestamp: new Date().toISOString(),
-    correction: wrongApproach,
-    correct_approach: correctApproach,
-    scope,
-  };
-
-  writeFileSync(join(wheelDir, `${ts}-correction.json`), JSON.stringify(wheelEvent));
-}
+// Adaptive learning — available in Core tier
 
 main();

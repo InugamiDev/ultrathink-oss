@@ -360,56 +360,6 @@ export function encodeMemoryAAAK(memory: {
 }
 
 /**
- * Format Tekiō adaptations in AAAK shorthand.
- * Replaces the verbose formatAdaptations() output.
- */
-export function formatAdaptationsAAAK(
-  adaptations: {
-    category: string;
-    adaptation_rule: string;
-    times_applied?: number;
-    times_prevented?: number;
-  }[]
-): string {
-  if (adaptations.length === 0) return "";
-
-  const catCode: Record<string, string> = {
-    defensive: "DEF",
-    auxiliary: "AUX",
-    offensive: "OFF",
-    learning: "LRN",
-  };
-
-  const lines: string[] = [`☸ TEKIŌ(${adaptations.length}spins)`];
-
-  // Group by category
-  const groups = new Map<string, typeof adaptations>();
-  for (const a of adaptations) {
-    const cat = a.category;
-    if (!groups.has(cat)) groups.set(cat, []);
-    groups.get(cat)!.push(a);
-  }
-
-  for (const [cat, items] of groups) {
-    const code = catCode[cat] || cat.slice(0, 3).toUpperCase();
-    const rules = items.map((a) => {
-      let rule = a.adaptation_rule;
-      // Compress the rule text
-      rule = encodeAAAK(rule);
-      // Add counters
-      const counters: string[] = [];
-      if (a.times_applied && a.times_applied > 0) counters.push(`${a.times_applied}x`);
-      if (a.times_prevented && a.times_prevented > 0) counters.push(`p${a.times_prevented}`);
-      if (counters.length > 0) rule += `(${counters.join(",")})`;
-      return rule;
-    });
-    lines.push(`${code}: ${rules.join(" | ")}`);
-  }
-
-  return lines.join("\n");
-}
-
-/**
  * Format recalled memories in AAAK for context injection.
  * Replaces the markdown format in recall.ts.
  */

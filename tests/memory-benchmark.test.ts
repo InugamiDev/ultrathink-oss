@@ -44,14 +44,7 @@ describe("memory-benchmark", () => {
     expect(result.additionalContext.length).toBeLessThan(4000);
   });
 
-  // 3. Identity graph returns structured data
-  it("identity returns structured graph", () => {
-    const result = runJSON("identity");
-    // Should have nodes and edges (or be a formatted string)
-    expect(result).toBeDefined();
-  });
-
-  // 4. Conflict detection doesn't crash
+  // 3. Conflict detection doesn't crash
   it("conflicts returns structured data", () => {
     const result = runJSON("conflicts");
     // May return array directly or { conflicts: [...] }
@@ -101,13 +94,7 @@ describe("memory-benchmark", () => {
     expect(dedupResult).toBeDefined();
   });
 
-  // 7. Wheel stats don't crash
-  it("wheel-stats returns data", () => {
-    const result = run("wheel-stats");
-    expect(result).toBeTruthy();
-  });
-
-  // 8. Preferences command works
+  // 7. Preferences command works
   it("preferences returns valid JSON", () => {
     const result = runJSON("preferences");
     // Should be object with preferences array

@@ -29,10 +29,11 @@ describe("prompt-analyzer", () => {
   });
 
   it("matches multi-word triggers with higher score", () => {
+    // animation skill was merged into css-foundations
     const result = analyze("add framer motion animation to the card");
-    const animation = result.skills.find((s) => s.name === "animation");
-    expect(animation).toBeDefined();
-    expect(animation!.score).toBeGreaterThan(2);
+    const cssFoundations = result.skills.find((s) => s.name === "css-foundations");
+    expect(cssFoundations).toBeDefined();
+    expect(cssFoundations!.score).toBeGreaterThan(2);
   });
 
   it("does NOT trigger unrelated skills", () => {
@@ -49,9 +50,9 @@ describe("prompt-analyzer", () => {
     expect(result.skills.length).toBeLessThanOrEqual(5);
   });
 
-  it("includes MANDATORY activation in context when skills match", () => {
+  it("includes ACTIVATE directive in context when skills match", () => {
     const result = analyze("create a stripe checkout with webhooks");
-    expect(result.context).toContain("MANDATORY");
+    expect(result.context).toContain("ACTIVATE");
     expect(result.context).toContain("Skill()");
   });
 

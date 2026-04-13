@@ -60,7 +60,6 @@ npm run typecheck     # TypeScript validation
 | `memory/scripts/` | CLI tools and migration runner | TypeScript |
 | `memory/migrations/` | Database schema (numbered SQL files) | SQL |
 | `dashboard/` | Next.js 15 observability UI | TypeScript/React |
-| `code-intel/src/` | Cross-file dependency graph engine | TypeScript |
 | `.claude/hooks/` | Claude Code lifecycle hooks | Bash + TypeScript |
 | `.claude/skills/` | Skill definitions with triggers | Markdown |
 | `.claude/agents/` | Specialized agent definitions | Markdown |
@@ -235,6 +234,19 @@ exit 0
 - **Background heavy work** — use `( ... ) &` for non-blocking operations
 - **Debounce** — use file-based counters to skip redundant runs
 - **Export functions** — if backgrounding with `( ... ) &`, use `export -f` for shell functions
+
+### Hook performance benchmarks
+
+| Hook | Typical latency | Notes |
+|------|----------------|-------|
+| `prompt-analyzer.ts` | ~28ms | Pre-compiled to JS; intent detection + skill scoring |
+| `memory-session-start.sh` | ~1-2s | DB queries for recall + identity; runs once at session start |
+| `privacy-hook.sh` | <50ms | Regex path check, no I/O |
+| `post-edit-quality.sh` | <50ms | Delegates to Biome/Prettier (async) |
+| `context-monitor.sh` | <50ms | Reads token count from stdin JSON |
+| Other hooks | <50ms each | File-based checks, no network |
+
+**Total per-prompt overhead**: ~100-200ms (prompt-analyzer + privacy-hook + tool hooks). Session-start hooks add ~1-2s once.
 
 ---
 

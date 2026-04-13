@@ -1,6 +1,6 @@
 ---
 name: ultrathink
-description: "UltraThink Workflow OS — 4-layer skill mesh with persistent memory, privacy hooks, and code intelligence for complex engineering tasks. Routes prompts through intent detection to activate the right domain skills automatically."
+description: "UltraThink Workflow OS — 4-layer skill mesh with persistent memory and privacy hooks for complex engineering tasks. Routes prompts through intent detection to activate the right domain skills automatically."
 metadata:
   openclaw:
     emoji: "🧠"
@@ -60,13 +60,6 @@ When the `ultrathink-memory` MCP server is available:
 1. Before starting work, search memory for relevant context: `memory-search`
 2. After completing work, save key decisions: `memory-save`
 3. For recurring projects, recall full context: `memory-recall`
-
-## Code Intelligence
-
-When the `ultrathink-code-intel` MCP server is available:
-1. Find symbol definitions: `code-symbols`
-2. Trace dependencies: `code-deps` and `code-dependents`
-3. Assess change impact: `code-impact`
 
 ## Safety Rules
 

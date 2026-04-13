@@ -36,37 +36,7 @@ ULTRA_ROOT="$(cd "$HOOK_DIR/../.." && pwd)"
 ANALYZER="$HOOK_DIR/dist/prompt-analyzer.js"
 RUNNER="$ULTRA_ROOT/memory/scripts/memory-runner.ts"
 
-# Process pending wheel events inline (don't wait for session-end)
-# This ensures adaptations are available in the CURRENT session, not just the next one
-WHEEL_DIR="/tmp/ultrathink-wheel-turns"
-if [[ -d "$WHEEL_DIR" && -f "$ULTRA_ROOT/.env" ]]; then
-  PENDING_SUCCESSES=$(find "$WHEEL_DIR" -name "*-success.json" -mmin -60 2>/dev/null | head -3)
-  PENDING_CORRECTIONS=$(find "$WHEEL_DIR" -name "*-correction.json" -mmin -60 2>/dev/null | head -3)
-  if [[ -n "$PENDING_SUCCESSES" || -n "$PENDING_CORRECTIONS" ]]; then
-    (
-      cd "$ULTRA_ROOT"
-      for f in $PENDING_SUCCESSES; do
-        [[ -f "$f" ]] || continue
-        pattern=$(jq -r '.pattern // ""' "$f" 2>/dev/null)
-        insight=$(jq -r '.insight // ""' "$f" 2>/dev/null)
-        scope_val=$(jq -r '.scope // ""' "$f" 2>/dev/null)
-        [[ -n "$pattern" && -n "$insight" ]] && timeout 5 npx tsx "$RUNNER" wheel-learn "$pattern" "$insight" "$scope_val" 2>/dev/null 1>/dev/null || true
-        rm -f "$f"
-      done
-      for f in $PENDING_CORRECTIONS; do
-        [[ -f "$f" ]] || continue
-        correction=$(jq -r '.correction // ""' "$f" 2>/dev/null)
-        correct_approach=$(jq -r '.correct_approach // ""' "$f" 2>/dev/null)
-        scope_val=$(jq -r '.scope // ""' "$f" 2>/dev/null)
-        if [[ -n "$correction" && -n "$correct_approach" ]]; then
-          timeout 5 npx tsx "$RUNNER" wheel-correct "$correction" "$correct_approach" "$scope_val" 2>/dev/null 1>/dev/null || true
-        fi
-        rm -f "$f"
-      done
-    ) &
-    pid_wheel=$!
-  fi
-fi
+# Adaptive learning event processing — available in Core tier
 
 # Run skill analyzer AND memory recall in parallel
 # Memory recall searches the DB for memories relevant to the user's prompt
@@ -103,7 +73,6 @@ fi
 # Wait for all to complete (analyzer is required, recall/wheel are best-effort)
 wait "$pid_analyzer" 2>/dev/null || true
 [[ -n "$pid_recall" ]] && { wait "$pid_recall" 2>/dev/null || true; }
-[[ -n "${pid_wheel:-}" ]] && { wait "$pid_wheel" 2>/dev/null || true; }
 
 output=$(cat "$output_file" 2>/dev/null) || output='{}'
 recall_context=$(cat "$recall_file" 2>/dev/null | jq -r '.context // ""' 2>/dev/null) || recall_context=""

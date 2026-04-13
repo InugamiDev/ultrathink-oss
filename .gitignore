@@ -12,7 +12,6 @@ node_modules/
 out/
 dist/
 !.claude/hooks/dist/
-!code-intel/dist/
 build/
 *.tsbuildinfo
 

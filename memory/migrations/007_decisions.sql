@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS decisions (
   rule TEXT NOT NULL,
   priority INTEGER NOT NULL DEFAULT 5 CHECK (priority BETWEEN 1 AND 10),
   scope TEXT NOT NULL DEFAULT 'global',
-  source TEXT NOT NULL DEFAULT 'user' CHECK (source IN ('user', 'claude', 'tekio', 'dashboard')),
+  source TEXT NOT NULL DEFAULT 'user' CHECK (source IN ('user', 'claude', 'dashboard')),
   context TEXT,
   is_active BOOLEAN NOT NULL DEFAULT true,
   times_applied INTEGER NOT NULL DEFAULT 0,

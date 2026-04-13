@@ -4,16 +4,13 @@
 
 import { getClient, type SqlClient } from "./client.js";
 import { type Memory, calculateRecallScore, touchMemories } from "./memory.js";
-import { getActiveAdaptations, formatAdaptations } from "./adaptation.js";
-import { encodeMemoryAAAK, formatAdaptationsAAAK } from "./aaak.js";
+import { encodeMemoryAAAK } from "./aaak.js";
 
 export interface RecallOptions {
   scope?: string;
   projectName?: string;
   /** Max total tokens for L0+L1+L2 combined */
   maxTokens?: number;
-  /** Include adaptations (Tekiō wheel) */
-  includeAdaptations?: boolean;
   /** Compact mode — tighter budget, no headers */
   compact?: boolean;
   /** AAAK mode — lossless shorthand dialect (~3-8x token compression) */
@@ -36,12 +33,11 @@ interface LayerBudget {
  * | L2    | ~500 tok  | Context (insights, references, projects)           |
  * | L3    | On-demand | Deep search (sessions, outcomes, errors)           |
  *
- * Adaptations appended after brain section.
+ * Returns formatted memory context string.
  */
 export async function recall(scope?: string, options: RecallOptions = {}): Promise<string> {
   const sql = getClient();
   const maxTokens = options.maxTokens ?? 900;
-  const includeAdaptations = options.includeAdaptations ?? true;
   const compact = options.compact ?? false;
   const aaak = options.aaak ?? false;
   const projectName = options.projectName ?? scope?.split("/").pop() ?? "project";
@@ -152,19 +148,8 @@ export async function recall(scope?: string, options: RecallOptions = {}): Promi
     }
   }
 
-  // Append adaptations
-  let wheel = "";
-  if (includeAdaptations) {
-    try {
-      const adaptations = await getActiveAdaptations(sql, scope);
-      wheel = aaak ? formatAdaptationsAAAK(adaptations) : formatAdaptations(adaptations);
-    } catch {
-      // adaptations table may not exist
-    }
-  }
-
   // Dynamic total budget: base 5120, max 8192 bytes
-  const raw = brain + (wheel ? "\n" + wheel : "");
+  const raw = brain;
   const MAX_BYTES = compact ? 3000 : 8192;
   if (raw.length > MAX_BYTES) {
     return raw.slice(0, MAX_BYTES);

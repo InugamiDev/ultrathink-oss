@@ -144,17 +144,6 @@
       "tags": ["pg_trgm", "threshold"]
     },
     {
-      "id": "seed-014",
-      "content": "Session on 2026-04-01: Implemented Tekiō adaptive learning wheel. 8 initial adaptations seeded from common failures.",
-      "category": "session-summary",
-      "importance": 5,
-      "confidence": 0.85,
-      "wing": "experience",
-      "hall": "sessions",
-      "layer": 3,
-      "tags": ["tekio", "adaptation"]
-    },
-    {
       "id": "seed-015",
       "content": "Reference: Neon Postgres docs at https://neon.tech/docs — connection pooling section is critical for serverless",
       "category": "project-context",
@@ -360,12 +349,6 @@
         "expected_seed": "seed-019"
       },
       {
-        "id": "tr-03",
-        "question": "When was Tekiō implemented?",
-        "expected_keywords": ["2026-04-01", "tekio"],
-        "expected_seed": "seed-014"
-      },
-      {
         "id": "tr-04",
         "question": "When was the ORM switch made?",
         "expected_keywords": ["2026-03-20", "drizzle"],
@@ -389,12 +372,6 @@
         "question": "Was the tRPC migration before or after the ORM switch?",
         "expected_keywords": ["trpc", "before", "drizzle"],
         "description": "seed-006 (Mar 15) before seed-009 (Mar 20)"
-      },
-      {
-        "id": "tr-08",
-        "question": "What was the most recent session?",
-        "expected_keywords": ["tekio", "2026-04-01"],
-        "expected_seed": "seed-014"
       },
       {
         "id": "tr-09",

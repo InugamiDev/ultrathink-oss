@@ -1,6 +1,6 @@
 ---
 name: learn-pattern
-description: Extract reusable patterns from the current session and store as Tekio adaptations or memories
+description: Extract reusable patterns from the current session and store as memories
 layer: utility
 category: learning
 triggers:
@@ -15,7 +15,7 @@ inputs:
   - scope: "Project scope for pattern storage"
 outputs:
   - patterns: "Extracted patterns with confidence scores"
-  - storage: "Where patterns were saved (Tekio adaptation or memory)"
+  - storage: "Where patterns were saved (memory)"
 linksTo:
   - debug
   - fix
@@ -34,7 +34,6 @@ riskLevel: low
 memoryReadPolicy: full
 memoryWritePolicy: full
 sideEffects:
-  - "Creates Tekio adaptations in database"
   - "Creates memory entries in database"
 ---
 
@@ -43,8 +42,7 @@ sideEffects:
 ## Purpose
 
 Extract reusable engineering patterns from the current session and persist them
-for future sessions. Unlike Tekio wheel-turns (which learn from failures), this
-skill proactively captures **successes, techniques, and insights** mid-session.
+for future sessions. This skill proactively captures **successes, techniques, and insights** mid-session.
 
 Use this when:
 - You just solved a non-trivial problem worth remembering
@@ -59,11 +57,11 @@ Use this when:
 
 | Type | Description | Storage | Example |
 |------|-------------|---------|---------|
-| **Error Resolution** | How a specific error was fixed | Tekio (defensive) | "TS2322 in Neon queries → cast with `as Record<string, unknown>[]`" |
+| **Error Resolution** | How a specific error was fixed | Memory (solution) | "TS2322 in Neon queries → cast with `as Record<string, unknown>[]`" |
 | **Debugging Technique** | Systematic approach that worked | Memory (solution) | "Galaxy canvas memory leak → useMemo for filtered data + useRef for animation" |
 | **Project Convention** | Discovered project patterns | Memory (pattern) | "All API routes use `getDb()` singleton, never inline neon import" |
 | **Architectural Decision** | Design choices with rationale | Memory (decision) | "Chose pgvector + pg_trgm hybrid over pure vector search for memory recall" |
-| **Workaround** | Known limitation with mitigation | Tekio (auxiliary) | "Bash `set -u` + empty arrays → use `${arr[@]+\"${arr[@]}\"}` safe expansion" |
+| **Workaround** | Known limitation with mitigation | Memory (insight) | "Bash `set -u` + empty arrays → use `${arr[@]+\"${arr[@]}\"}` safe expansion" |
 | **Performance Insight** | Optimization that worked | Memory (insight) | "Promise.all for independent DB queries cut response time 60%" |
 
 ### Confidence Scoring
@@ -80,9 +78,9 @@ Each extracted pattern gets a confidence score:
 ### Storage Decision
 
 ```
-Is it about preventing a failure?     → Tekio adaptation (defensive)
-Is it about detecting issues early?   → Tekio adaptation (auxiliary)
-Is it about a better approach?        → Tekio adaptation (offensive)
+Is it about preventing a failure?     → Memory (solution/decision)
+Is it about detecting issues early?   → Memory (insight)
+Is it about a better approach?        → Memory (pattern)
 Is it a project-specific convention?  → Memory (pattern/architecture)
 Is it a reusable debugging technique? → Memory (solution)
 Is it a design decision?              → Memory (decision)
@@ -118,7 +116,7 @@ For each pattern found, capture:
 
 Before saving, check against existing knowledge:
 1. Search memory DB for similar content (similarity > 0.6 = skip)
-2. Check Tekio adaptations for overlapping triggers
+2. Check existing memories for overlapping patterns
 3. If duplicate found, update confidence/importance instead of creating new
 
 ### Phase 4: Store
@@ -126,9 +124,6 @@ Before saving, check against existing knowledge:
 ```bash
 # For memory entries
 npx tsx memory/scripts/memory-runner.ts save '<json>'
-
-# For Tekio adaptations (from corrections/failures)
-npx tsx memory/scripts/memory-runner.ts wheel-correct '<wrong>' '<right>' [scope]
 ```
 
 ### Phase 5: Report
@@ -139,7 +134,7 @@ PATTERNS EXTRACTED: 3
   1. [solution] Promise.all for parallel DB queries (confidence: 0.9, importance: 7)
      → Saved to memory: abc123
   2. [defensive] Neon getDb() singleton prevents connection leaks (confidence: 0.8, importance: 8)
-     → Saved as Tekio adaptation
+     → Saved to memory
   3. [pattern] Dashboard API routes follow getDb() + try/catch + NextResponse pattern
      → Already exists (updated confidence 0.7 → 0.85)
 ```
@@ -197,7 +192,7 @@ Extracted pattern:
 ### After a Security Fix
 
 ```
-Extracted Tekio adaptation:
+Extracted pattern:
   Trigger: "SQL query with user input"
   Rule: "Always use websearch_to_tsquery() instead of to_tsquery() for user-provided
   search terms. to_tsquery() throws on special characters — websearch_to_tsquery()

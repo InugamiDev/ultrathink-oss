@@ -7,7 +7,7 @@
   "workspaces": [
     "dashboard",
     "memory",
-    "videos"
+    "harness"
   ],
   "scripts": {
     "setup": "./scripts/setup.sh",

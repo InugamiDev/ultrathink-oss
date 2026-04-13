@@ -78,30 +78,7 @@ fi
 (
   cd "$ULTRA_ROOT"
 
-  # Process pending Tekiō wheel turns
-  WHEEL_DIR="/tmp/ultrathink-wheel-turns"
-  if [[ -d "$WHEEL_DIR" ]]; then
-    for f in "$WHEEL_DIR"/*-correction.json; do
-      [[ -f "$f" ]] || continue
-      correction=$(jq -r '.correction // ""' "$f" 2>/dev/null)
-      correct_approach=$(jq -r '.correct_approach // ""' "$f" 2>/dev/null)
-      scope_val=$(jq -r '.scope // ""' "$f" 2>/dev/null)
-      if [[ -n "$correction" && -n "$correct_approach" ]]; then
-        timeout 10 npx tsx "$RUNNER" wheel-correct "$correction" "$correct_approach" "$scope_val" 2>/dev/null 1>/dev/null || true
-      fi
-      rm -f "$f"
-    done
-    for f in "$WHEEL_DIR"/*-success.json; do
-      [[ -f "$f" ]] || continue
-      pattern=$(jq -r '.pattern // ""' "$f" 2>/dev/null)
-      insight=$(jq -r '.insight // ""' "$f" 2>/dev/null)
-      scope_val=$(jq -r '.scope // ""' "$f" 2>/dev/null)
-      [[ -n "$pattern" && -n "$insight" ]] && timeout 10 npx tsx "$RUNNER" wheel-learn "$pattern" "$insight" "$scope_val" 2>/dev/null 1>/dev/null || true
-      rm -f "$f"
-    done
-  fi
-
-  # Deactivate stale adaptations (bundled into session-end command to avoid extra npx tsx spawn)
+  # Adaptive learning processing — available in Core tier
 
   # Daily stats aggregate
   timeout 10 npx tsx "$RUNNER" daily-stats 2>/dev/null || true
@@ -149,8 +126,6 @@ fi
 
 # GC: clean up orphan /tmp files older than 24 hours
 find /tmp/ultrathink-memories -name "*.json" -mmin +1440 -delete 2>/dev/null || true
-find /tmp/ultrathink-wheel-turns -name "*.json" -mmin +1440 -delete 2>/dev/null || true
-find /tmp/ultrathink-wheel-turns -name "learn-lock-*" -mmin +60 -delete 2>/dev/null || true
 find /tmp/ultrathink-skill-suggestions -name "*.json" -mmin +1440 -delete 2>/dev/null || true
 find /tmp/ultrathink-pending-decisions -name "*.json" -mmin +1440 -delete 2>/dev/null || true
 find /tmp/ultrathink-tool-usage-* -mmin +1440 -delete 2>/dev/null || true
@@ -158,20 +133,23 @@ find /tmp/ultrathink-tool-usage-* -mmin +1440 -delete 2>/dev/null || true
 # Notify Discord — session end summary
 NOTIFY_SCRIPT="$HOOK_DIR/notify.sh"
 if [[ -x "$NOTIFY_SCRIPT" ]]; then
-  WHEEL_N=$(cat /tmp/ultrathink-status/wheel-count 2>/dev/null || echo "?")
   END_PARTS="⏹ Session ended"
   [[ "$FLUSHED_COUNT" -gt 0 ]] && END_PARTS="${END_PARTS}\n**Memories saved:** ${FLUSHED_COUNT}"
-  END_PARTS="${END_PARTS}\n**☸ Tekiō:** ${WHEEL_N} adaptations active"
   # Console.log warnings are now in background subshell — skip here
   "$NOTIFY_SCRIPT" "$END_PARTS" "discord" "normal" 2>>/tmp/ultrathink-errors.log || true
 fi
 
-# Kill Playwright MCP browser (Google Chrome for Testing / ms-playwright chromium)
-# Identifies only Playwright MCP browsers by their user-data-dir pattern, not regular Chrome.
-PLAYWRIGHT_PIDS=$(pgrep -f "playwright_chromiumdev_profile\|ms-playwright/mcp-chrome\|ms-playwright/chromium.*--remote-debugging" 2>/dev/null || true)
-if [[ -n "$PLAYWRIGHT_PIDS" ]]; then
-  echo "$PLAYWRIGHT_PIDS" | xargs kill 2>/dev/null || true
-  hook_log "session-end" "killed-playwright-browser" "pids=$PLAYWRIGHT_PIDS"
+# Kill Playwright MCP browser — only if UltraThink started one (marker file guard).
+# The marker ~/.ultrathink/.playwright-mcp-active is set by UltraThink when it
+# launches a Playwright MCP session, preventing us from killing unrelated browsers.
+PLAYWRIGHT_MARKER="$HOME/.ultrathink/.playwright-mcp-active"
+if [[ -f "$PLAYWRIGHT_MARKER" ]]; then
+  PLAYWRIGHT_PIDS=$(pgrep -f "playwright_chromiumdev_profile\|ms-playwright/mcp-chrome\|ms-playwright/chromium.*--remote-debugging" 2>/dev/null || true)
+  if [[ -n "$PLAYWRIGHT_PIDS" ]]; then
+    echo "$PLAYWRIGHT_PIDS" | xargs kill 2>/dev/null || true
+    hook_log "session-end" "killed-playwright-browser" "pids=$PLAYWRIGHT_PIDS"
+  fi
+  rm -f "$PLAYWRIGHT_MARKER" 2>/dev/null || true
 fi
 
 hook_log "session-end" "done" "flushed=$FLUSHED_COUNT"

@@ -1,7 +1,7 @@
 # GSD — Get Shit Done Reference
 
 > Spec-driven development with fresh-context agents and goal-backward verification.
-> Integrated with OpenSpec lifecycle, Tekiō adaptations, and UltraThink hooks.
+> Integrated with OpenSpec lifecycle and UltraThink hooks.
 
 ## Quick Start (MANDATORY for every GSD session)
 
@@ -76,7 +76,7 @@ After verification passes:
 1. Move spec + plans + verification to `.planning/archive/{date}-{title}/`
 2. Extract docs to `.planning/docs/`
 3. Write JOURNAL.md retrospective
-4. Feed lessons to Tekiō via learn-pattern
+4. Feed lessons to memory via learn-pattern
 
 ## Context Management
 
@@ -180,15 +180,15 @@ Phase: {n}, Plan: {n}, Status: {planning|executing|verifying}
 
 ```
 User prompt → auto-trigger detects build/implement intent
-  → gsd (orchestrator, stays thin at ~10-15% context)
-    → gsd-plan (research + SPEC.md + PLAN.md files)
-    → gsd-execute (wave-based agent spawning)
+  → gsd (unified orchestrator, stays thin at ~10-15% context)
+    → gsd plan   — research + SPEC.md + PLAN.md files
+    → gsd execute — wave-based agent spawning
       → Agent per plan (fresh 200K context each)
-    → gsd-verify (goal-backward verification)
+    → gsd verify — goal-backward verification
     → plan-archive (archive + journal + docs)
-    → learn-pattern → Tekiō (adapt from results)
+    → learn-pattern → memory (adapt from results)
 
-  → gsd-quick (lightweight alternative for small/trivial tasks)
+  → gsd quick (lightweight mode for small/trivial tasks)
     → Inline spec + execute + verify, no subagents
 ```
 
@@ -196,8 +196,7 @@ User prompt → auto-trigger detects build/implement intent
 
 | System | Integration |
 |--------|------------|
-| **Tekiō** | Rule 4 violations → wheel-turn. Stubs → wheel-turn. Successes → learn-pattern. |
-| **Memory** | Decisions → save. Conventions → save. Archive journals → save. |
+| **Memory** | Decisions → save. Conventions → save. Archive journals → save. Successes → learn-pattern. |
 | **Hooks** | context-monitor warns at 65/75%. post-edit-typecheck catches errors. tool-observe logs usage. |
-| **Discord** | Session start/end + Tekiō turns + progress updates + compaction events. |
+| **Discord** | Session start/end + progress updates + compaction events. |
 | **Statusline** | L2 shows GSD wave progress when active. L3 shows hook activity. |

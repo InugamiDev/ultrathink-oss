@@ -27,13 +27,12 @@ async function fetchStats() {
     if (!process.env.DATABASE_URL) return null;
     const sql = getDb();
 
-    const [memRows, memWeekRows, planRows, hookRows, sessionRows, spinRows] = (await Promise.all([
+    const [memRows, memWeekRows, planRows, hookRows, sessionRows] = (await Promise.all([
       sql`SELECT COUNT(*) as count FROM memories WHERE is_archived = false`,
       sql`SELECT COUNT(*) as count FROM memories WHERE created_at > NOW() - INTERVAL '7 days' AND is_archived = false`,
       sql`SELECT COUNT(*) as count FROM plans`,
       sql`SELECT COUNT(*) as count FROM hook_events`,
       sql`SELECT COUNT(*) as count FROM sessions`,
-      sql`SELECT COUNT(*) as count FROM adaptations WHERE is_active = true`,
     ])) as Record<string, unknown>[][];
 
     return {
@@ -42,7 +41,6 @@ async function fetchStats() {
       plans: Number(planRows[0].count),
       hookEvents: Number(hookRows[0].count),
       sessions: Number(sessionRows[0].count),
-      spins: Number(spinRows[0].count),
     };
   } catch {
     return null;
@@ -256,13 +254,6 @@ const StatIcons = {
       />
     </svg>
   ),
-  tekio: (
-    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
-      <circle cx="12" cy="12" r="9" strokeLinecap="round" />
-      <path strokeLinecap="round" d="M12 3v4m0 10v4M3 12h4m10 0h4" />
-      <circle cx="12" cy="12" r="3" />
-    </svg>
-  ),
 };
 
 // Quick action icons
@@ -339,13 +330,6 @@ export default async function HomePage() {
       change: stats ? `${stats.memoriesWeek} this week` : "Connect DB",
       color: "var(--color-info)",
       icon: StatIcons.memories,
-    },
-    {
-      label: "Tekio Spins",
-      value: stats ? String(stats.spins) : "--",
-      change: stats ? "Active adaptations" : "Connect DB",
-      color: "var(--color-warning)",
-      icon: StatIcons.tekio,
     },
     {
       label: "Active Plans",

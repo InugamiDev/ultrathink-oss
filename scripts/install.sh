@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # intent: UltraThink OSS installer — deploys to ~/.claude/ + ~/.ultrathink/
 # status: done
+# next: none
 # confidence: high
 set -euo pipefail
 IFS=$'\n\t'
@@ -15,51 +16,268 @@ readonly YELLOW='\033[0;33m' BLUE='\033[0;34m'
 readonly CYAN='\033[0;36m'   BOLD='\033[1m'
 readonly NC='\033[0m'
 
+# ── Logging ──
 log_info()  { echo -e "${BLUE}[INFO]${NC}  $*"; }
 log_ok()    { echo -e "${GREEN}[OK]${NC}    $*"; }
 log_warn()  { echo -e "${YELLOW}[WARN]${NC}  $*"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $*" >&2; }
 log_step()  { echo -e "\n${CYAN}${BOLD}[$1/$TOTAL_STEPS]${NC} $2"; }
+log_dry()   { echo -e "${YELLOW}[DRY]${NC}  $*"; }
 
 TOTAL_STEPS=7
+
+# ── Dry-run helpers ──
+# When DRY_RUN=true, commands that modify the filesystem are replaced with log output.
+run_cmd() {
+  if $DRY_RUN; then
+    log_dry "would run: $*"
+  else
+    "$@"
+  fi
+}
+
+dry_ln() {
+  if $DRY_RUN; then
+    log_dry "ln -sf $1 -> $2"
+  else
+    ln -sf "$1" "$2"
+  fi
+}
+
+dry_mkdir() {
+  if $DRY_RUN; then
+    log_dry "mkdir -p $*"
+  else
+    mkdir -p "$@"
+  fi
+}
+
+dry_rm() {
+  if $DRY_RUN; then
+    log_dry "rm $*"
+  else
+    rm "$@"
+  fi
+}
+
+dry_write() {
+  local dest="$1"
+  if $DRY_RUN; then
+    log_dry "write file: $dest"
+  else
+    cat > "$dest"
+  fi
+}
 
 # ── Parse args ──
 DB_URL=""
 VAULT_PATH="$ULTRA_DATA/vault"
 UNINSTALL=false
+DRY_RUN=false
+NO_IDENTITY=false
+AUTO_YES=false
 
 for arg in "$@"; do
   case "$arg" in
-    --uninstall) UNINSTALL=true ;;
-    --db=*) DB_URL="${arg#*=}" ;;
-    --vault=*) VAULT_PATH="${arg#*=}" ;;
+    --uninstall)    UNINSTALL=true ;;
+    --dry-run)      DRY_RUN=true ;;
+    --no-identity)  NO_IDENTITY=true ;;
+    --yes|-y)       AUTO_YES=true ;;
+    --db=*)         DB_URL="${arg#*=}" ;;
+    --vault=*)      VAULT_PATH="${arg#*=}" ;;
     --help|-h)
-      echo "Usage: install.sh [--db=postgres://...] [--vault=path]"
-      echo "       install.sh --uninstall"
+      echo "Usage: install.sh [OPTIONS]"
+      echo ""
+      echo "Options:"
+      echo "  --db=URL          Neon Postgres connection string"
+      echo "  --vault=PATH      Obsidian vault location (default: ~/.ultrathink/vault)"
+      echo "  --no-identity     Skip adding UltraThink section to ~/.claude/CLAUDE.md"
+      echo "  --yes, -y         Auto-approve all prompts"
+      echo "  --dry-run         Print what would be changed without modifying anything"
+      echo "  --uninstall       Remove UltraThink from ~/.claude/ and ~/.ultrathink/"
+      echo "  --help, -h        Show this help"
       exit 0 ;;
   esac
 done
 
+if $DRY_RUN; then
+  echo ""
+  log_warn "DRY RUN — no files will be modified"
+fi
+
 # ── Uninstall ──
 if $UNINSTALL; then
+  echo ""
   log_info "Uninstalling UltraThink..."
-  # Remove skill symlinks
+  REMOVED=()
+
+  # 1. Remove skill symlinks
   for link in "$CLAUDE_DIR/skills"/*/; do
     name="$(basename "$link")"
-    [[ -L "$CLAUDE_DIR/skills/$name" ]] && rm "$CLAUDE_DIR/skills/$name"
+    if [[ -L "$CLAUDE_DIR/skills/$name" ]]; then
+      dry_rm "$CLAUDE_DIR/skills/$name"
+      REMOVED+=("skill: $name")
+    fi
   done
-  [[ -L "$CLAUDE_DIR/skills/_registry.json" ]] && rm "$CLAUDE_DIR/skills/_registry.json"
-  [[ -L "$CLAUDE_DIR/references" ]] && rm "$CLAUDE_DIR/references"
-  [[ -L "$CLAUDE_DIR/agents" ]] && rm "$CLAUDE_DIR/agents"
-  # Remove hook symlinks (both prefixed and direct)
+  if [[ -L "$CLAUDE_DIR/skills/_registry.json" ]]; then
+    dry_rm "$CLAUDE_DIR/skills/_registry.json"
+    REMOVED+=("skills/_registry.json")
+  fi
+
+  # 2. Remove references + agents symlinks
+  if [[ -L "$CLAUDE_DIR/references" ]]; then
+    dry_rm "$CLAUDE_DIR/references"
+    REMOVED+=("references/ symlink")
+  fi
+  if [[ -L "$CLAUDE_DIR/agents" ]]; then
+    dry_rm "$CLAUDE_DIR/agents"
+    REMOVED+=("agents/ symlink")
+  fi
+
+  # 3. Remove hook symlinks
   for hook in "$CLAUDE_DIR/hooks"/ultrathink-*; do
-    [[ -L "$hook" ]] && rm "$hook"
+    if [[ -L "$hook" ]]; then
+      dry_rm "$hook"
+      REMOVED+=("hook: $(basename "$hook")")
+    fi
   done
-  log_ok "Removed symlinks from ~/.claude/"
-  log_warn "~/.ultrathink/ data preserved. Remove manually if desired."
-  log_warn "~/.claude/CLAUDE.md and settings.json not modified — edit manually."
+
+  # 4. Remove UltraThink section from CLAUDE.md (between markers)
+  CLAUDE_MD="$CLAUDE_DIR/CLAUDE.md"
+  if [[ -f "$CLAUDE_MD" ]] && grep -q "## UltraThink Integration" "$CLAUDE_MD" 2>/dev/null; then
+    if $DRY_RUN; then
+      log_dry "would remove UltraThink section from $CLAUDE_MD"
+    else
+      # Remove from "---\n\n## UltraThink Integration" to the next "---" or EOF
+      # Use awk: skip lines between the UltraThink heading and the next major section
+      awk '
+        /^---$/ && saw_ut_heading { skip=0; next }
+        /^## UltraThink Integration/ { saw_ut_heading=1; skip=1; next }
+        skip && /^---$/ { skip=0; next }
+        # Also skip the "---" line immediately before the heading
+        !skip { buffer=$0 }
+        !skip && !/^---$/ { if (NR>1 && prev_was_separator && next_is_ut) {} else print; prev_was_separator=0 }
+      ' "$CLAUDE_MD" > "$CLAUDE_MD.tmp" 2>/dev/null || true
+
+      # Simpler approach: use sed to remove the block
+      # Pattern: "---\n\n## UltraThink Integration (OSS tier)\n...\nData directory:..."
+      sed '/^---$/,/^---$/{
+        /^## UltraThink Integration/,/^Data directory:.*/{d}
+      }' "$CLAUDE_MD" > "$CLAUDE_MD.tmp2" 2>/dev/null || true
+
+      # Most reliable: Python-style line-by-line removal
+      # Remove everything from the "---" before "## UltraThink Integration" to the end of that block
+      {
+        in_ut_block=false
+        found_separator=false
+        separator_line=""
+        while IFS= read -r line; do
+          if [[ "$line" == "---" ]] && ! $in_ut_block; then
+            # Peek: save separator, check if next non-empty line is UltraThink heading
+            separator_line="$line"
+            found_separator=true
+            continue
+          fi
+          if $found_separator; then
+            if [[ -z "$line" ]]; then
+              # blank line after ---, keep buffering
+              separator_line="${separator_line}"$'\n'"$line"
+              continue
+            elif [[ "$line" =~ ^"## UltraThink Integration" ]]; then
+              # Entering UltraThink block — drop the separator and skip
+              in_ut_block=true
+              found_separator=false
+              separator_line=""
+              continue
+            else
+              # Not UltraThink — flush the buffered separator
+              echo "$separator_line"
+              echo "$line"
+              found_separator=false
+              separator_line=""
+              continue
+            fi
+          fi
+          if $in_ut_block; then
+            # Skip until we hit an empty line followed by a new section, or EOF
+            if [[ "$line" =~ ^"## " ]] || [[ "$line" == "---" ]]; then
+              in_ut_block=false
+              echo "$line"
+            fi
+            continue
+          fi
+          echo "$line"
+        done < "$CLAUDE_MD"
+      } > "$CLAUDE_MD.clean"
+      mv "$CLAUDE_MD.clean" "$CLAUDE_MD"
+      rm -f "$CLAUDE_MD.tmp" "$CLAUDE_MD.tmp2" 2>/dev/null || true
+    fi
+    REMOVED+=("UltraThink section from CLAUDE.md")
+  fi
+
+  # 5. Remove UltraThink hook entries from settings.json
+  SETTINGS="$CLAUDE_DIR/settings.json"
+  if [[ -f "$SETTINGS" ]] && grep -q "ultrathink-" "$SETTINGS" 2>/dev/null; then
+    if $DRY_RUN; then
+      log_dry "would remove UltraThink hooks from $SETTINGS"
+    else
+      CLEAN_JS="
+const fs = require('fs');
+const s = JSON.parse(fs.readFileSync('$SETTINGS', 'utf-8'));
+if (s.hooks) {
+  for (const event of Object.keys(s.hooks)) {
+    s.hooks[event] = (s.hooks[event] || []).filter(entry => {
+      const cmds = (entry.hooks || []).map(h => h.command || '');
+      return !cmds.some(c => c.includes('ultrathink-'));
+    });
+    if (s.hooks[event].length === 0) delete s.hooks[event];
+  }
+  if (Object.keys(s.hooks).length === 0) delete s.hooks;
+}
+fs.writeFileSync('$SETTINGS', JSON.stringify(s, null, 2) + '\n');
+"
+      node -e "$CLEAN_JS" 2>/dev/null && true
+    fi
+    REMOVED+=("UltraThink hooks from settings.json")
+  fi
+
+  # 6. Remove ~/.ultrathink/ (with confirmation)
+  if [[ -d "$ULTRA_DATA" ]]; then
+    if $DRY_RUN; then
+      log_dry "would prompt to remove $ULTRA_DATA"
+    elif $AUTO_YES; then
+      rm -rf "$ULTRA_DATA"
+      REMOVED+=("~/.ultrathink/ directory")
+    else
+      echo ""
+      echo -en "  Remove ${BOLD}~/.ultrathink/${NC} (vault, config, decisions)? ${RED}This is irreversible.${NC} [y/N] "
+      read -r confirm
+      if [[ "$confirm" =~ ^[Yy]$ ]]; then
+        rm -rf "$ULTRA_DATA"
+        REMOVED+=("~/.ultrathink/ directory")
+      else
+        log_info "Kept ~/.ultrathink/"
+      fi
+    fi
+  fi
+
+  # Print summary
+  echo ""
+  if [[ ${#REMOVED[@]} -gt 0 ]]; then
+    log_ok "Removed ${#REMOVED[@]} items:"
+    for item in "${REMOVED[@]}"; do
+      echo "    - $item"
+    done
+  else
+    log_info "Nothing to remove"
+  fi
+  echo ""
   exit 0
 fi
+
+# ════════════════════════════════════════════════════════════════════════════
+# ── INSTALL ──
+# ════════════════════════════════════════════════════════════════════════════
 
 echo ""
 log_info "Installing UltraThink ${BOLD}OSS${NC} tier"
@@ -89,9 +307,9 @@ log_ok "jq available"
 # ── Step 2: Create directories ──
 log_step 2 "Creating directory structure"
 
-mkdir -p "$CLAUDE_DIR/skills" "$CLAUDE_DIR/hooks"
-mkdir -p "$ULTRA_DATA/forge/projects" "$ULTRA_DATA/decisions/projects"
-mkdir -p "$VAULT_PATH/memories" "$VAULT_PATH/decisions" "$VAULT_PATH/_templates"
+dry_mkdir "$CLAUDE_DIR/skills" "$CLAUDE_DIR/hooks"
+dry_mkdir "$ULTRA_DATA/forge/projects" "$ULTRA_DATA/decisions/projects"
+dry_mkdir "$VAULT_PATH/memories" "$VAULT_PATH/decisions" "$VAULT_PATH/_templates"
 
 log_ok "~/.claude/ and ~/.ultrathink/ ready"
 
@@ -106,10 +324,10 @@ for skill_dir in "$ULTRA_ROOT/.claude/skills"/*/; do
     log_warn "Skipping skill '$skill_name' — existing directory"
     continue
   fi
-  ln -sf "$skill_dir" "$target"
+  dry_ln "$skill_dir" "$target"
   ((skill_count++))
 done
-ln -sf "$ULTRA_ROOT/.claude/skills/_registry.json" "$CLAUDE_DIR/skills/_registry.json"
+dry_ln "$ULTRA_ROOT/.claude/skills/_registry.json" "$CLAUDE_DIR/skills/_registry.json"
 log_ok "Linked $skill_count skills"
 
 # ── Step 4: Symlink references + agents ──
@@ -117,17 +335,17 @@ log_step 4 "Linking references and agents"
 
 # References
 if [[ -d "$CLAUDE_DIR/references" && ! -L "$CLAUDE_DIR/references" ]]; then
-  mv "$CLAUDE_DIR/references" "$CLAUDE_DIR/references.bak.$(date +%s)"
+  run_cmd mv "$CLAUDE_DIR/references" "$CLAUDE_DIR/references.bak.$(date +%s)"
 fi
-ln -sf "$ULTRA_ROOT/.claude/references" "$CLAUDE_DIR/references"
+dry_ln "$ULTRA_ROOT/.claude/references" "$CLAUDE_DIR/references"
 ref_count=$(find "$ULTRA_ROOT/.claude/references/" -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
 log_ok "Linked $ref_count references"
 
 # Agents
 if [[ -d "$CLAUDE_DIR/agents" && ! -L "$CLAUDE_DIR/agents" ]]; then
-  mv "$CLAUDE_DIR/agents" "$CLAUDE_DIR/agents.bak.$(date +%s)"
+  run_cmd mv "$CLAUDE_DIR/agents" "$CLAUDE_DIR/agents.bak.$(date +%s)"
 fi
-ln -sf "$ULTRA_ROOT/.claude/agents" "$CLAUDE_DIR/agents"
+dry_ln "$ULTRA_ROOT/.claude/agents" "$CLAUDE_DIR/agents"
 log_ok "Linked agents"
 
 # ── Step 5: Symlink hooks ──
@@ -146,7 +364,7 @@ hook_count=0
 for hook in $SHARED_HOOKS; do
   src="$ULTRA_ROOT/.claude/hooks/$hook"
   [[ -f "$src" ]] || continue
-  ln -sf "$src" "$CLAUDE_DIR/hooks/ultrathink-$hook"
+  dry_ln "$src" "$CLAUDE_DIR/hooks/ultrathink-$hook"
   ((hook_count++))
 done
 
@@ -156,7 +374,10 @@ log_ok "Linked $hook_count hooks"
 log_step 6 "Writing configuration"
 
 # UltraThink config
-cat > "$ULTRA_DATA/config.json" << EOF
+if $DRY_RUN; then
+  log_dry "write file: $ULTRA_DATA/config.json"
+else
+  cat > "$ULTRA_DATA/config.json" << EOF
 {
   "tier": "oss",
   "version": "2.0.0",
@@ -178,21 +399,47 @@ cat > "$ULTRA_DATA/config.json" << EOF
   }
 }
 EOF
+fi
 log_ok "Wrote ~/.ultrathink/config.json (tier=oss)"
 
 # Write DB URL to .env if provided
 if [[ -n "$DB_URL" ]]; then
   if [[ ! -f "$ULTRA_ROOT/.env" ]]; then
-    echo "DATABASE_URL=$DB_URL" > "$ULTRA_ROOT/.env"
+    if $DRY_RUN; then
+      log_dry "write DATABASE_URL to .env"
+    else
+      echo "DATABASE_URL=$DB_URL" > "$ULTRA_ROOT/.env"
+    fi
     log_ok "Wrote DATABASE_URL to .env"
   fi
 fi
 
-# CLAUDE.md — OSS identity
+# CLAUDE.md — OSS identity (opt-in)
 CLAUDE_MD="$CLAUDE_DIR/CLAUDE.md"
+SKIP_IDENTITY=false
 
-if ! grep -q "UltraThink" "$CLAUDE_MD" 2>/dev/null; then
-  cat >> "$CLAUDE_MD" << EOF
+if $NO_IDENTITY; then
+  SKIP_IDENTITY=true
+  log_info "Skipping CLAUDE.md identity section (--no-identity)"
+elif grep -q "UltraThink" "$CLAUDE_MD" 2>/dev/null; then
+  SKIP_IDENTITY=true
+  log_info "CLAUDE.md already has UltraThink section — skipping"
+elif ! $AUTO_YES && ! $DRY_RUN; then
+  echo ""
+  echo -en "  UltraThink wants to add its identity section to ${BOLD}~/.claude/CLAUDE.md${NC}"
+  echo -en "\n  This affects all Claude Code sessions. Proceed? [y/N] "
+  read -r confirm
+  if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
+    SKIP_IDENTITY=true
+    log_info "Skipped CLAUDE.md identity section"
+  fi
+fi
+
+if ! $SKIP_IDENTITY; then
+  if $DRY_RUN; then
+    log_dry "would append UltraThink section to $CLAUDE_MD"
+  else
+    cat >> "$CLAUDE_MD" << EOF
 
 ---
 
@@ -203,19 +450,23 @@ Registry: \`~/.claude/skills/_registry.json\` ($skill_count skills across 4 laye
 References in \`~/.claude/references/\` — read on demand, not auto-loaded.
 Data directory: \`~/.ultrathink/\` (vault, forge state, decisions).
 EOF
+  fi
   log_ok "Appended UltraThink section to CLAUDE.md"
-else
-  log_info "CLAUDE.md already has UltraThink section — skipping"
 fi
 
 # Merge hooks into settings.json
 SETTINGS="$CLAUDE_DIR/settings.json"
-if [[ ! -f "$SETTINGS" ]]; then
-  echo '{}' > "$SETTINGS"
+if ! $DRY_RUN; then
+  if [[ ! -f "$SETTINGS" ]]; then
+    echo '{}' > "$SETTINGS"
+  fi
 fi
 
 if ! grep -q "ultrathink-privacy-hook" "$SETTINGS" 2>/dev/null; then
-  HOOKS_JS="
+  if $DRY_RUN; then
+    log_dry "would add UltraThink hooks to $SETTINGS"
+  else
+    HOOKS_JS="
 const fs = require('fs');
 const s = JSON.parse(fs.readFileSync('$SETTINGS', 'utf-8'));
 if (!s.hooks) s.hooks = {};
@@ -237,13 +488,17 @@ add('PreCompact', null, '$HOME/.claude/hooks/ultrathink-pre-compact.sh', 10000);
 
 fs.writeFileSync('$SETTINGS', JSON.stringify(s, null, 2) + '\n');
 "
-  node -e "$HOOKS_JS" 2>/dev/null && log_ok "Added hooks to settings.json" || log_warn "Could not merge hooks — add manually"
+    node -e "$HOOKS_JS" 2>/dev/null && log_ok "Added hooks to settings.json" || log_warn "Could not merge hooks — add manually"
+  fi
 else
   log_info "settings.json already has UltraThink hooks — skipping"
 fi
 
 # Vault templates
-cat > "$VAULT_PATH/_templates/memory.md" << 'EOF'
+if $DRY_RUN; then
+  log_dry "write vault templates to $VAULT_PATH/_templates/"
+else
+  cat > "$VAULT_PATH/_templates/memory.md" << 'EOF'
 ---
 id: mem_{{id}}
 type: memory
@@ -263,7 +518,7 @@ tags: []
 - [[]]
 EOF
 
-cat > "$VAULT_PATH/_templates/decision.md" << 'EOF'
+  cat > "$VAULT_PATH/_templates/decision.md" << 'EOF'
 ---
 id: dec_{{id}}
 type: decision
@@ -284,11 +539,20 @@ Why this decision was made.
 ## Related
 - [[]]
 EOF
+fi
 
 log_ok "Wrote vault templates"
 
 # ── Step 7: Smoke test ──
 log_step 7 "Running smoke test"
+
+if $DRY_RUN; then
+  log_dry "skipping smoke test in dry-run mode"
+  echo ""
+  log_warn "DRY RUN complete — no files were modified"
+  echo ""
+  exit 0
+fi
 
 ERRORS=0
 

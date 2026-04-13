@@ -329,13 +329,7 @@ fi
 if [[ -z "$GSD_ACTIVE" && -z "$AGENTS_ACTIVE" ]]; then
 L2="  "
 
-# Tekiō wheel spins
-WHEEL_COUNT=""
-WHEEL_CACHE="$CACHE_DIR/wheel-count"
-[[ -f "$WHEEL_CACHE" ]] && WHEEL_COUNT=$(cat "$WHEEL_CACHE" 2>/dev/null)
-if [[ -n "$WHEEL_COUNT" && "$WHEEL_COUNT" != "0" ]]; then
-  L2+="\033[38;5;215m☸ ${WHEEL_COUNT} spins${RESET}  "
-fi
+# Adaptive learning stats — available in Core tier
 
 # Memories
 if [[ -n "$WEEK_MEMORIES" && "$WEEK_MEMORIES" != "null" ]]; then

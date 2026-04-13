@@ -143,11 +143,10 @@ else
 
       # Non-critical stats — all fire-and-forget
       WEEKLY_SCRIPT="$ULTRA_ROOT/memory/scripts/weekly-stats.ts"
-      WHEEL_SCRIPT="$ULTRA_ROOT/memory/scripts/wheel-count.ts"
       CONTEXT_TREE_SCRIPT="$ULTRA_ROOT/memory/scripts/context-tree-summary.ts"
 
       timeout 10 npx tsx "$WEEKLY_SCRIPT" > /tmp/ultrathink-status/weekly-stats 2>/dev/null || true
-      [[ -f "$WHEEL_SCRIPT" ]] && timeout 10 npx tsx "$WHEEL_SCRIPT" > /tmp/ultrathink-status/wheel-count 2>/dev/null || true
+      # Adaptive learning stats — available in Core tier
       [[ -f "$CONTEXT_TREE_SCRIPT" ]] && timeout 10 npx tsx "$CONTEXT_TREE_SCRIPT" > /tmp/ultrathink-status/context-tree 2>/dev/null || true
     ) &
   else
@@ -159,10 +158,9 @@ else
   if [[ -x "$NOTIFY_SCRIPT" ]]; then
     (
       # Gather stats for the notification
-      WHEEL_N=$(cat /tmp/ultrathink-status/wheel-count 2>/dev/null || echo "?")
       MEM_LINE=$(cat /tmp/ultrathink-status/weekly-stats 2>/dev/null || echo "")
       MEM_N=$(echo "$MEM_LINE" | cut -d'|' -f1 2>/dev/null || echo "?")
-      START_MSG="▶ New session started\n\n**☸ Tekiō:** ${WHEEL_N} adaptations active\n**Memories:** ${MEM_N}\n**Project:** $(basename "$ULTRA_ROOT")"
+      START_MSG="▶ New session started\n\n**Memories:** ${MEM_N}\n**Project:** $(basename "$ULTRA_ROOT")"
       bash "$NOTIFY_SCRIPT" "$START_MSG" "discord" "normal" 2>/dev/null || true
     ) &
   fi

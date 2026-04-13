@@ -12,7 +12,13 @@ async function main() {
   const { getClient } = await import("../src/client.js");
   const sql = getClient();
 
-  const mems = await sql`SELECT id, title, wing, hall FROM memories WHERE is_archived = false AND title IS NOT NULL`;
+  const mems =
+    (await sql`SELECT id, title, wing, hall FROM memories WHERE is_archived = false AND title IS NOT NULL`) as {
+      id: string;
+      title: string;
+      wing: string;
+      hall: string;
+    }[];
   const byTitle = new Map<string, string>();
   for (const m of mems) byTitle.set(m.title, m.id);
 
@@ -94,7 +100,7 @@ async function main() {
     ORDER BY mr.relation_type, ms.title
   `;
   console.log("\nRelation map:");
-  for (const r of summary) {
+  for (const r of summary as { src: string; relation_type: string; tgt: string }[]) {
     console.log("  " + r.src + " --[" + r.relation_type + "]--> " + r.tgt);
   }
 

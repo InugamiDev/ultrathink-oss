@@ -54,23 +54,10 @@ fi
 echo ""
 echo "Step 3: Installing dependencies..."
 
+# npm workspaces (dashboard, memory, videos) are installed from root
 npm install
-echo "  Root dependencies — OK"
+echo "  All dependencies (root + workspaces) — OK"
 
-cd dashboard
-npm install
-echo "  Dashboard dependencies — OK"
-cd ..
-
-cd memory
-npm install
-echo "  Memory dependencies — OK"
-cd ..
-
-cd code-intel
-npm install
-echo "  Code-intel dependencies — OK"
-cd ..
 
 # Step 4: Make hooks executable
 echo ""

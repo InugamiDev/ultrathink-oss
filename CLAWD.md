@@ -35,11 +35,6 @@ Add to `~/.openclaw/openclaw.json` under `mcpServers`:
     "command": "npx",
     "args": ["tsx", "<ULTRATHINK_ROOT>/memory/scripts/memory-runner.ts", "mcp-serve"],
     "env": { "DATABASE_URL": "<your-neon-url>" }
-  },
-  "ultrathink-code-intel": {
-    "command": "node",
-    "args": ["<ULTRATHINK_ROOT>/code-intel/dist/mcp-server.js"],
-    "env": { "DATABASE_URL": "<your-neon-url>" }
   }
 }
 ```
@@ -50,7 +45,6 @@ Add to `~/.openclaw/openclaw.json` under `mcpServers`:
 |-------|-------|--------|
 | `ultrathink` | Core orchestrator — routes to skill mesh | Full |
 | `ultrathink_memory` | `memory-search`, `memory-save`, `memory-recall` | Full |
-| `ultrathink_code_intel` | `code-symbols`, `code-deps`, `code-dependents`, `code-impact` | Full |
 | `ultrathink_review` | Multi-pass quality gate | Suggest-only |
 
 ## UltraThink Skill Exposure

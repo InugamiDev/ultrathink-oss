@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { encodeAAAK, encodeMemoryAAAK, formatAdaptationsAAAK, compressionStats } from "../memory/src/aaak.js";
+import { encodeAAAK, encodeMemoryAAAK, compressionStats } from "../memory/src/aaak.js";
 
 describe("AAAK — Lossless Shorthand Dialect", () => {
   describe("encodeAAAK", () => {
@@ -86,35 +86,6 @@ describe("AAAK — Lossless Shorthand Dialect", () => {
       });
       // Short content should stay short
       expect(result.length).toBeLessThanOrEqual(22);
-    });
-  });
-
-  describe("formatAdaptationsAAAK", () => {
-    it("compresses Tekiō adaptations", () => {
-      const adaptations = [
-        {
-          category: "defensive",
-          adaptation_rule: "Never use git push --force on main branch",
-          times_applied: 3,
-          times_prevented: 7,
-        },
-        {
-          category: "learning",
-          adaptation_rule: "Use fileParallelism false for database-backed tests",
-          times_applied: 5,
-          times_prevented: 0,
-        },
-      ];
-      const result = formatAdaptationsAAAK(adaptations);
-      expect(result).toContain("TEKIŌ");
-      expect(result).toContain("DEF:");
-      expect(result).toContain("LRN:");
-      expect(result).toContain("3x");
-      expect(result).toContain("p7");
-    });
-
-    it("returns empty string for no adaptations", () => {
-      expect(formatAdaptationsAAAK([])).toBe("");
     });
   });
 

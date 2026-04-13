@@ -7,6 +7,13 @@ set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/hook-log.sh" 2>/dev/null || hook_log() { :; }
 
+# Silence toggle — /voice off creates this flag file.
+# Respected before any work, so disabling is instant and zero-overhead.
+if [[ -f "$HOME/.ultrathink/voice-disabled" ]]; then
+  hook_log "voice-announce" "skip" "disabled (/voice off)"
+  exit 0
+fi
+
 # Read stdin (Stop hook receives JSON with session_id, etc.)
 INPUT=$(cat 2>/dev/null || echo "{}")
 
@@ -62,7 +69,7 @@ COMPLETIONS=(
   "Complete."
 )
 # Pick one based on seconds (pseudo-random, no external deps)
-IDX=$(( $(date +%S) % ${#COMPLETIONS[@]} ))
+IDX=$(( 10#$(date +%S) % ${#COMPLETIONS[@]} ))
 OPENER="${COMPLETIONS[$IDX]}"
 
 if [[ -n "$TASK_CONTEXT" ]]; then

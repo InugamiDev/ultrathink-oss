@@ -20,6 +20,10 @@ export interface Memory {
   is_archived: boolean;
   is_compacted: boolean;
   tags?: string[];
+  layer?: number;
+  wing?: string;
+  hall?: string;
+  token_estimate?: number;
 }
 
 export interface CreateMemoryInput {

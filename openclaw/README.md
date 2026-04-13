@@ -1,6 +1,6 @@
 # UltraThink for OpenClaw
 
-Expose UltraThink's skill mesh, memory system, and code intelligence to OpenClaw agents via MCP.
+Expose UltraThink's skill mesh and memory system to OpenClaw agents via MCP.
 
 ## Quick Start
 
@@ -30,7 +30,6 @@ cp -r skills/* ~/.openclaw/skills/
 |-------|-------------|
 | `ultrathink` | Core orchestrator — routes prompts to UltraThink's skill mesh |
 | `ultrathink-memory` | Query and save to UltraThink's persistent memory |
-| `ultrathink-code-intel` | Cross-file dependency graphs, impact analysis |
 | `ultrathink-review` | Multi-pass code review powered by UltraThink's quality gate |
 
 ### MCP Servers
@@ -38,7 +37,6 @@ cp -r skills/* ~/.openclaw/skills/
 | Server | Tools | Purpose |
 |--------|-------|---------|
 | `ultrathink-memory` | `memory-search`, `memory-save`, `memory-recall` | Persistent memory access |
-| `ultrathink-code-intel` | `code-symbols`, `code-deps`, `code-dependents`, `code-impact` | Code graph queries |
 
 ## Architecture
 
@@ -47,9 +45,7 @@ OpenClaw Agent
     │
     ├─ SKILL.md (ultrathink) ── teaches agent how to use UltraThink
     │
-    ├─ MCP: ultrathink-memory ── Neon Postgres memory backend
-    │
-    └─ MCP: ultrathink-code-intel ── AST-based code graph
+    └─ MCP: ultrathink-memory ── Neon Postgres memory backend
 ```
 
 ## Requirements

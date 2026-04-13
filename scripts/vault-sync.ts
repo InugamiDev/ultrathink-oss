@@ -438,7 +438,7 @@ vault/
 └── experience/      ← WHAT happened
     ├── sessions/    ← Session summaries (L3)
     ├── outcomes/    ← What worked/didn't (L3)
-    └── errors/      ← Failure patterns → feeds Tekiō (L3)
+    └── errors/      ← Failure patterns (L3)
 \`\`\`
 
 ## File Format

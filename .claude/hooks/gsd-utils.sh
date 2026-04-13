@@ -255,7 +255,7 @@ gsd_check_verification() {
   local verification="$planning_dir/VERIFICATION.md"
 
   if [[ ! -f "$verification" ]]; then
-    echo "⚠ No VERIFICATION.md found — run gsd-verify first"
+    echo "⚠ No VERIFICATION.md found — run 'gsd verify' first"
     return 1
   fi
 
