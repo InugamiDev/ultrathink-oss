@@ -301,7 +301,11 @@ fi
 log_ok "Node.js $NODE_V"
 
 if ! command -v jq &>/dev/null; then
-  log_error "jq required — brew install jq"
+  if [[ "$(uname)" == "Darwin" ]]; then
+    log_error "jq required — brew install jq"
+  else
+    log_error "jq required — sudo apt install jq (Debian/Ubuntu) or sudo dnf install jq (Fedora)"
+  fi
   exit 1
 fi
 log_ok "jq available"
