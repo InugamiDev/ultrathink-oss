@@ -6,17 +6,22 @@
 # State tracked per-session in /tmp/ultrathink-gateguard-<pid>/
 # Session expires after 30 minutes of inactivity.
 
-set -euo pipefail
+set -eo pipefail
 
 HOOK_ID="ut:pre:gateguard"
 
-# Load flags system
-HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# Resolve symlinks to find real hook directory (installed as ultrathink-*.sh symlinks)
+SELF="${BASH_SOURCE[0]}"
+[[ -L "$SELF" ]] && SELF="$(readlink "$SELF" 2>/dev/null || echo "$SELF")"
+HOOK_DIR="$(cd "$(dirname "$SELF")" && pwd)"
+
 source "$HOOK_DIR/hook-flags.sh" 2>/dev/null || true
 source "$HOOK_DIR/hook-log.sh" 2>/dev/null || hook_log() { :; }
 
 # GateGuard runs at standard+ profile
-ut_should_run "$HOOK_ID" "standard" 2>/dev/null || exit 0
+if type ut_should_run &>/dev/null; then
+  ut_should_run "$HOOK_ID" "standard" || exit 0
+fi
 
 hook_log "gateguard" "started"
 

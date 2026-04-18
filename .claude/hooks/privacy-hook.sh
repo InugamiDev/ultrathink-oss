@@ -3,13 +3,20 @@
 # PreToolUse hook that checks file paths against blocked patterns.
 # Receives JSON on stdin from Claude Code with tool_name and tool_input.
 
-set -euo pipefail
+set -eo pipefail
 
-source "$(dirname "${BASH_SOURCE[0]}")/hook-log.sh" 2>/dev/null || hook_log() { :; }
-source "$(dirname "${BASH_SOURCE[0]}")/hook-flags.sh" 2>/dev/null || true
+# Resolve symlinks to find real hook directory
+SELF="${BASH_SOURCE[0]}"
+[[ -L "$SELF" ]] && SELF="$(readlink "$SELF" 2>/dev/null || echo "$SELF")"
+HOOK_DIR="$(cd "$(dirname "$SELF")" && pwd)"
+
+source "$HOOK_DIR/hook-log.sh" 2>/dev/null || hook_log() { :; }
+source "$HOOK_DIR/hook-flags.sh" 2>/dev/null || true
 
 # Privacy runs at ALL profiles (even minimal) — it's a safety hook
-ut_should_run "ut:pre:privacy" "minimal" 2>/dev/null || exit 0
+if type ut_should_run &>/dev/null; then
+  ut_should_run "ut:pre:privacy" "minimal" || exit 0
+fi
 
 hook_log "privacy" "started"
 
