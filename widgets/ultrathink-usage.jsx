@@ -1,8 +1,8 @@
 /**
- * UltraThink Usage Widget for Übersicht
+ * UltraThink Usage Widget for Übersicht (macOS)
  *
  * Shows: Anthropic usage limits (5hr + weekly + sonnet), memory stats,
- * session activity, x2 promo detection, reset timers, project breakdown
+ * session activity, reset timers, project breakdown
  * Tabbed interface: Usage | Activity | Memory
  *
  * Install: brew install --cask ubersicht
@@ -14,7 +14,10 @@ export const refreshFrequency = 60 * 1000;
 
 // Shell command — fetches Anthropic usage API + UltraThink DB stats
 export const command = `
-  export PATH="/Users/inugami/.nvm/versions/node/v24.12.0/bin:$PATH"
+  # Auto-detect Node.js — try common locations
+  for np in "$HOME/.nvm/versions/node"/*/bin /usr/local/bin /opt/homebrew/bin; do
+    [ -x "$np/node" ] && export PATH="$np:$PATH" && break
+  done
 
   CACHE="/tmp/ultrathink-status/anthropic-usage.json"
 
@@ -27,7 +30,6 @@ export const command = `
       -H "Authorization: Bearer $TOKEN" \\
       -H "anthropic-beta: oauth-2025-04-20" \\
       -H "Content-Type: application/json" 2>/dev/null || echo '{}')
-    # Use fresh data if valid, otherwise fall back to cache
     if echo "$FRESH" | jq -e '.five_hour' >/dev/null 2>&1; then
       USAGE="$FRESH"
       mkdir -p /tmp/ultrathink-status 2>/dev/null
@@ -39,9 +41,13 @@ export const command = `
     USAGE=$(cat "$CACHE")
   fi
 
-  # 2. UltraThink DB stats
-  cd /Users/inugami/Documents/GitHub/InuVerse/ai-agents/ultrathink
-  DB_STATS=$(npx tsx memory/scripts/usage-report.ts 2>/dev/null || echo '{}')
+  # 2. UltraThink DB stats — resolve project root from config
+  ULTRA_ROOT=$(jq -r '.source_repo // empty' "$HOME/.ultrathink/config.json" 2>/dev/null)
+  [ -z "$ULTRA_ROOT" ] && ULTRA_ROOT="$HOME/ultrathink"
+  DB_STATS='{}'
+  if [ -d "$ULTRA_ROOT/memory" ]; then
+    DB_STATS=$(cd "$ULTRA_ROOT" && npx tsx memory/scripts/usage-report.ts 2>/dev/null || echo '{}')
+  fi
 
   # 3. Combine
   jq -n --argjson usage "$USAGE" --argjson db "$DB_STATS" '{ usage: $usage, db: $db }'
@@ -62,11 +68,9 @@ export const className = `
 export const initialState = { tab: "usage" };
 
 export const updateState = (event, previousState) => {
-  // Custom dispatch events (tab switching)
   if (event.type === "SET_TAB") {
     return { ...previousState, tab: event.tab };
   }
-  // Default: command output (no event.type from Übersicht)
   if (event.output !== undefined) {
     return { ...previousState, output: event.output, error: event.error };
   }
@@ -137,63 +141,17 @@ function formatReset(isoStr) {
       countdown = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
     }
   }
-  const vn = resetDate.toLocaleString("en-US", {
-    timeZone: "Asia/Ho_Chi_Minh",
+  const local = resetDate.toLocaleString("en-US", {
     weekday: "short",
     hour: "numeric",
     minute: "2-digit",
     hour12: true,
   });
-  return { countdown, label: vn };
-}
-
-function getX2Status() {
-  const now = new Date();
-  const promoEnd = new Date("2026-03-28T00:00:00-04:00");
-  if (now >= promoEnd) return { active: false };
-  const et = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
-  const day = et.getDay();
-  const hour = et.getHours();
-  const isOffPeak = day === 0 || day === 6 || hour < 8 || hour >= 14;
-
-  let windowEnd = null;
-  if (isOffPeak) {
-    if (day === 0 || day === 6) {
-      const daysToMon = day === 0 ? 1 : 2;
-      windowEnd = new Date(et);
-      windowEnd.setDate(windowEnd.getDate() + daysToMon);
-      windowEnd.setHours(8, 0, 0, 0);
-    } else if (hour < 8) {
-      windowEnd = new Date(et);
-      windowEnd.setHours(8, 0, 0, 0);
-    } else {
-      windowEnd = new Date(et);
-      if (day === 5) {
-        windowEnd.setDate(windowEnd.getDate() + 3);
-      } else {
-        windowEnd.setDate(windowEnd.getDate() + 1);
-      }
-      windowEnd.setHours(8, 0, 0, 0);
-    }
-  }
-
-  let remaining = "";
-  if (windowEnd) {
-    const diff = windowEnd - et;
-    const hrs = Math.floor(diff / 3600000);
-    const mins = Math.floor((diff % 3600000) / 60000);
-    remaining = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
-  }
-
-  const promoLeft = promoEnd - now;
-  const promoDays = Math.floor(promoLeft / 86400000);
-  const promoEndsIn = `${promoDays}d`;
-
-  return { active: isOffPeak, remaining, promoEndsIn };
+  return { countdown, label: local };
 }
 
 function sparkline(values, color) {
-  const blocks = ["▁", "▂", "▃", "▄", "▅", "▆", "▇", "█"];
+  const blocks = ["\u2581", "\u2582", "\u2583", "\u2584", "\u2585", "\u2586", "\u2587", "\u2588"];
   const max = Math.max(...values, 1);
   const chars = values.map((v) => blocks[Math.min(Math.floor((v / max) * 7), 7)]);
   return (
@@ -201,7 +159,7 @@ function sparkline(values, color) {
   );
 }
 
-function UsageBar({ label, used, resetAt, x2 }) {
+function UsageBar({ label, used, resetAt }) {
   const left = Math.max(0, 100 - Math.round(used));
   const color = colorForPct(left);
   const reset = formatReset(resetAt);
@@ -236,7 +194,7 @@ function UsageBar({ label, used, resetAt, x2 }) {
       </div>
       {reset.label && (
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: "3px", paddingLeft: "58px" }}>
-          <span style={{ fontSize: "9px", color: c.dim }}>resets {reset.label} (VN)</span>
+          <span style={{ fontSize: "9px", color: c.dim }}>resets {reset.label}</span>
           <span style={{ fontSize: "9px", color: c.dim }}>in {reset.countdown}</span>
         </div>
       )}
@@ -338,46 +296,17 @@ function TabBar({ active, dispatch }) {
   );
 }
 
-function UsageTab({ usage, u5h, u7d, uSonnet, uOpus, extraUsage, x2, hasUsage, hasDb, sessions, memory }) {
-  // Calculate usage left for hero cards
+function UsageTab({ usage, u5h, u7d, uSonnet, uOpus, extraUsage, hasUsage, hasDb, sessions, memory }) {
   const left5h = u5h ? Math.max(0, 100 - Math.round(u5h.utilization)) : null;
   const left7d = u7d ? Math.max(0, 100 - Math.round(u7d.utilization)) : null;
 
   return (
     <div>
-      {/* x2 Promo Banner */}
-      {x2.active && (
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            background: "rgba(168,85,247,0.08)",
-            border: "1px solid rgba(168,85,247,0.2)",
-            borderRadius: "8px",
-            padding: "8px 10px",
-            marginBottom: "14px",
-            fontSize: "10px",
-            color: "#c084fc",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <span style={{ fontSize: "14px" }}>⚡</span>
-            <div>
-              <div style={{ fontWeight: "700" }}>x2 usage active</div>
-              <div style={{ fontSize: "9px", color: "#a78bfa", marginTop: "1px" }}>
-                window ends in {x2.remaining} · promo ends in {x2.promoEndsIn}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Usage Bars */}
       {hasUsage && (
         <div style={{ marginBottom: "14px" }}>
           <SectionLabel>Usage Remaining</SectionLabel>
-          {u5h && <UsageBar label="5 hour" used={u5h.utilization} resetAt={u5h.resets_at} x2={x2.active} />}
+          {u5h && <UsageBar label="5 hour" used={u5h.utilization} resetAt={u5h.resets_at} />}
           {u7d && <UsageBar label="weekly" used={u7d.utilization} resetAt={u7d.resets_at} />}
           {uSonnet && uSonnet.utilization != null && (
             <UsageBar label="sonnet" used={uSonnet.utilization} resetAt={uSonnet.resets_at} />
@@ -395,25 +324,25 @@ function UsageTab({ usage, u5h, u7d, uSonnet, uOpus, extraUsage, x2, hasUsage, h
 
       <Divider />
 
-      {/* Hero Stats: sessions, 5hr left, weekly left, new memories */}
+      {/* Hero Stats */}
       <div style={{ display: "flex", gap: "10px", marginBottom: "14px" }}>
         {hasDb && (
           <StatCard
             value={sessions?.totals?.thisWeek || 0}
             label="sessions"
             color={c.amber}
-            sub={`${sessions?.totals?.allTime || "—"} all-time`}
+            sub={`${sessions?.totals?.allTime || "\u2014"} all-time`}
           />
         )}
         {left5h !== null ? (
           <StatCard value={`${left5h}%`} label="5hr left" color={colorForPct(left5h)} />
         ) : (
-          <StatCard value="—" label="5hr left" color={c.dim} />
+          <StatCard value="\u2014" label="5hr left" color={c.dim} />
         )}
         {left7d !== null ? (
           <StatCard value={`${left7d}%`} label="weekly left" color={colorForPct(left7d)} />
         ) : (
-          <StatCard value="—" label="weekly left" color={c.dim} />
+          <StatCard value="\u2014" label="weekly left" color={c.dim} />
         )}
         {hasDb && (
           <StatCard
@@ -577,7 +506,7 @@ function MemoryTab({ hasDb, memory }) {
         <StatCard value={Number(memory.active || 0).toLocaleString()} label="active" color={c.green} />
         <StatCard value={Number(memory.archived || 0).toLocaleString()} label="archived" color={c.dim} />
         <StatCard value={Number(memory.relations || 0).toLocaleString()} label="relations" color={c.blue} />
-        <StatCard value={memory.avgImportance || "—"} label="avg imp" color={c.amber} />
+        <StatCard value={memory.avgImportance || "\u2014"} label="avg imp" color={c.amber} />
       </div>
 
       <div style={{ display: "flex", gap: "10px", marginBottom: "14px" }}>
@@ -724,10 +653,9 @@ export const render = (state, dispatch) => {
     );
   }
 
-  const { usage, db, wheel } = data || {};
+  const { usage, db } = data || {};
   const hasUsage = usage && (usage.five_hour || usage.seven_day);
   const hasDb = db && db.sessions && db.memory;
-  const wheelCount = wheel || 0;
 
   if (!hasUsage && !hasDb) {
     return (
@@ -742,7 +670,6 @@ export const render = (state, dispatch) => {
 
   const now = new Date();
   const timeStr = `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`;
-  const x2 = getX2Status();
 
   // Usage
   const u5h = usage?.five_hour;
@@ -789,37 +716,7 @@ export const render = (state, dispatch) => {
           <span style={{ fontSize: "14px", fontWeight: "700", color: c.purple }}>ultrathink</span>
           <span style={{ fontSize: "10px", color: c.dim, fontWeight: "400" }}> dashboard</span>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-          {wheelCount > 0 && (
-            <span
-              style={{
-                fontSize: "10px",
-                fontWeight: "600",
-                color: "#f59e0b",
-                background: "rgba(245,158,11,0.1)",
-                padding: "2px 6px",
-                borderRadius: "4px",
-              }}
-            >
-              ☸ {wheelCount}
-            </span>
-          )}
-          {x2.active && (
-            <span
-              style={{
-                fontSize: "10px",
-                fontWeight: "700",
-                color: "#c084fc",
-                background: "rgba(168,85,247,0.15)",
-                padding: "2px 6px",
-                borderRadius: "4px",
-              }}
-            >
-              ⚡x2
-            </span>
-          )}
-          <span style={{ fontSize: "10px", color: c.dim }}>{timeStr}</span>
-        </div>
+        <span style={{ fontSize: "10px", color: c.dim }}>{timeStr}</span>
       </div>
 
       {/* Tab Bar */}
@@ -834,7 +731,6 @@ export const render = (state, dispatch) => {
           uSonnet={uSonnet}
           uOpus={uOpus}
           extraUsage={extraUsage}
-          x2={x2}
           hasUsage={hasUsage}
           hasDb={hasDb}
           sessions={sessions}
@@ -866,10 +762,10 @@ export const render = (state, dispatch) => {
           paddingTop: "10px",
         }}
       >
-        {hasDb && `${sessions?.totals?.allTime || "—"} all-time · ${Number(memory?.archived || 0)} archived`}
+        {hasDb && `${sessions?.totals?.allTime || "\u2014"} all-time \u00b7 ${Number(memory?.archived || 0)} archived`}
         {hasUsage &&
           u7d &&
-          ` · resets ${new Date(u7d.resets_at).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}`}
+          ` \u00b7 resets ${new Date(u7d.resets_at).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" })}`}
       </div>
     </div>
   );
