@@ -470,36 +470,37 @@ if ! $DRY_RUN; then
   fi
 fi
 
-if ! grep -q "ultrathink-privacy-hook" "$SETTINGS" 2>/dev/null; then
-  if $DRY_RUN; then
-    log_dry "would add UltraThink hooks to $SETTINGS"
-  else
-    HOOKS_JS="
+if $DRY_RUN; then
+  log_dry "would add UltraThink hooks to $SETTINGS"
+else
+  HOOKS_JS="
 const fs = require('fs');
 const s = JSON.parse(fs.readFileSync('$SETTINGS', 'utf-8'));
 if (!s.hooks) s.hooks = {};
 
-const add = (event, matcher, cmd, timeout) => {
+// intent: deduplicate hooks by id — skip any hook whose id already exists
+// status: done
+// confidence: high
+const add = (event, id, description, matcher, cmd, timeout) => {
   if (!s.hooks[event]) s.hooks[event] = [];
-  const entry = { hooks: [{ type: 'command', command: cmd }] };
+  // Skip if a hook with this id already exists
+  if (s.hooks[event].some(e => e.id === id)) return;
+  const entry = { id, description, hooks: [{ type: 'command', command: cmd }] };
   if (matcher) entry.matcher = matcher;
   if (timeout) entry.hooks[0].timeout = timeout;
   s.hooks[event].push(entry);
 };
 
-add('SessionStart', null, '$HOME/.claude/hooks/ultrathink-memory-session-start.sh', 10000);
-add('Stop', null, '$HOME/.claude/hooks/ultrathink-memory-session-end.sh', 5000);
-add('PreToolUse', 'Read|Edit|Write', '$HOME/.claude/hooks/ultrathink-privacy-hook.sh');
-add('PostToolUse', 'Edit|Write', '$HOME/.claude/hooks/ultrathink-format-check.sh');
-add('PostToolUse', 'Bash|Grep|Glob', '$HOME/.claude/hooks/ultrathink-search-cap.sh');
-add('PreCompact', null, '$HOME/.claude/hooks/ultrathink-pre-compact.sh', 10000);
+add('SessionStart', 'ut:session:start', 'UltraThink: load memory and adaptations on session start', null, '$HOME/.claude/hooks/ultrathink-memory-session-start.sh', 10000);
+add('Stop', 'ut:stop:session-end', 'UltraThink: persist session memory on stop', null, '$HOME/.claude/hooks/ultrathink-memory-session-end.sh', 5000);
+add('PreToolUse', 'ut:pre:privacy', 'UltraThink: enforce file-access privacy rules', 'Read|Edit|Write', '$HOME/.claude/hooks/ultrathink-privacy-hook.sh');
+add('PostToolUse', 'ut:post:format-check', 'UltraThink: validate formatting after edits', 'Edit|Write', '$HOME/.claude/hooks/ultrathink-format-check.sh');
+add('PostToolUse', 'ut:post:search-cap', 'UltraThink: cap search result output size', 'Bash|Grep|Glob', '$HOME/.claude/hooks/ultrathink-search-cap.sh');
+add('PreCompact', 'ut:pre:compact', 'UltraThink: save context before compaction', null, '$HOME/.claude/hooks/ultrathink-pre-compact.sh', 10000);
 
 fs.writeFileSync('$SETTINGS', JSON.stringify(s, null, 2) + '\n');
 "
-    node -e "$HOOKS_JS" 2>/dev/null && log_ok "Added hooks to settings.json" || log_warn "Could not merge hooks — add manually"
-  fi
-else
-  log_info "settings.json already has UltraThink hooks — skipping"
+  node -e "$HOOKS_JS" 2>/dev/null && log_ok "Added hooks to settings.json" || log_warn "Could not merge hooks — add manually"
 fi
 
 # Vault templates
