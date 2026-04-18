@@ -6,6 +6,11 @@
 set -euo pipefail
 
 source "$(dirname "${BASH_SOURCE[0]}")/hook-log.sh" 2>/dev/null || hook_log() { :; }
+source "$(dirname "${BASH_SOURCE[0]}")/hook-flags.sh" 2>/dev/null || true
+
+# Privacy runs at ALL profiles (even minimal) — it's a safety hook
+ut_should_run "ut:pre:privacy" "minimal" 2>/dev/null || exit 0
+
 hook_log "privacy" "started"
 
 # Read JSON input from stdin

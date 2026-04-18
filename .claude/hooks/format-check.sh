@@ -5,6 +5,12 @@
 
 set -euo pipefail
 
+HOOK_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$HOOK_DIR/hook-flags.sh" 2>/dev/null || true
+
+# Format check runs at minimal+ (basic code quality)
+ut_should_run "ut:post:format-check" "minimal" 2>/dev/null || exit 0
+
 # Read JSON input from stdin
 INPUT="$(cat)"
 

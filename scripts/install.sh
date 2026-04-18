@@ -365,6 +365,7 @@ SHARED_HOOKS+=" suggest-compact.sh context-monitor.sh tool-observe.sh"
 SHARED_HOOKS+=" agent-tracker-pre.sh progress-display.sh subagent-verify.sh"
 SHARED_HOOKS+=" gsd-utils.sh post-edit-quality.sh registry-sync.sh"
 SHARED_HOOKS+=" search-cap.sh vfs-enforce.sh"
+SHARED_HOOKS+=" gateguard.sh config-protection.sh batch-quality.sh hook-flags.sh"
 
 hook_count=0
 # shellcheck disable=SC2086
@@ -496,6 +497,10 @@ add('Stop', 'ut:stop:session-end', 'UltraThink: persist session memory on stop',
 add('PreToolUse', 'ut:pre:privacy', 'UltraThink: enforce file-access privacy rules', 'Read|Edit|Write', '$HOME/.claude/hooks/ultrathink-privacy-hook.sh');
 add('PostToolUse', 'ut:post:format-check', 'UltraThink: validate formatting after edits', 'Edit|Write', '$HOME/.claude/hooks/ultrathink-format-check.sh');
 add('PostToolUse', 'ut:post:search-cap', 'UltraThink: cap search result output size', 'Bash|Grep|Glob', '$HOME/.claude/hooks/ultrathink-search-cap.sh');
+add('PreToolUse', 'ut:pre:gateguard', 'UltraThink: enforce read-before-write (GateGuard)', 'Edit|Write|MultiEdit|Read', '$HOME/.claude/hooks/ultrathink-gateguard.sh');
+add('PreToolUse', 'ut:pre:config-protect', 'UltraThink: block linter/formatter config modifications', 'Edit|Write|MultiEdit', '$HOME/.claude/hooks/ultrathink-config-protection.sh');
+add('Stop', 'ut:stop:batch-quality', 'UltraThink: batch format + typecheck edited files', null, '$HOME/.claude/hooks/ultrathink-batch-quality.sh', 60000);
+add('PostToolUse', 'ut:post:batch-accumulate', 'UltraThink: track edited files for batch quality check', 'Edit|Write|MultiEdit', '$HOME/.claude/hooks/ultrathink-batch-quality.sh');
 add('PreCompact', 'ut:pre:compact', 'UltraThink: save context before compaction', null, '$HOME/.claude/hooks/ultrathink-pre-compact.sh', 10000);
 
 fs.writeFileSync('$SETTINGS', JSON.stringify(s, null, 2) + '\n');
