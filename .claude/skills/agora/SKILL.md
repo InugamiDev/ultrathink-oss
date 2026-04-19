@@ -1,6 +1,6 @@
 ---
 name: agora
-description: Agora Conversational AI Engine — real-time voice AI, RTC channels, ASR/LLM/TTS pipeline, and WebRTC integration patterns
+description: Build real-time communication apps using Agora SDKs (agora.io). Covers RTC (video/voice calling, live streaming, screen sharing), RTM (signaling, messaging, presence), Conversational AI (voice agents), Cloud Recording, Server Gateway, and token generation. Supports Web JS/TS, React, iOS Swift, Android Kotlin/Java, Go, Python. Triggers on Agora, agora.io, RTC, RTM, video calling, voice calling, real-time communication, screen sharing, Cloud Recording, agora-rtc-sdk-ng, agora-rtc-react, agora-rtm, Agora token generation, agora-agent-client-toolkit, AgoraVoiceAI, AgoraClient, useConversationalAI.
 layer: domain
 category: ai-ml
 triggers:
