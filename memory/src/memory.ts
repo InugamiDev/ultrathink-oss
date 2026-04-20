@@ -1,5 +1,6 @@
 import { randomUUID } from "crypto";
 import { getClient } from "./client.js";
+import { generateEmbedding } from "./embedding.js";
 import { enrichMemory, enrichQuery, expandQuerySynonyms } from "./enrich.js";
 
 export interface Memory {
@@ -73,10 +74,13 @@ export async function createMemory(input: CreateMemoryInput): Promise<Memory> {
   // Generate search enrichment (semantic keyword expansion)
   const enrichment = enrichMemory(input.content, input.category, tags.length > 0 ? tags : undefined);
 
+  // Optional: generate embedding if API key is configured
+  const embedding = await generateEmbedding(input.content).catch(() => null);
+
   if (tags.length === 0) {
     // No tags — simple single-query path
     const rows = await sql`
-      INSERT INTO memories (content, category, importance, confidence, scope, source, session_id, plan_id, file_path, search_enrichment)
+      INSERT INTO memories (content, category, importance, confidence, scope, source, session_id, plan_id, file_path, search_enrichment, embedding)
       VALUES (
         ${input.content},
         ${input.category},
@@ -87,7 +91,8 @@ export async function createMemory(input: CreateMemoryInput): Promise<Memory> {
         ${input.session_id ?? null},
         ${input.plan_id ?? null},
         ${input.file_path ?? null},
-        ${enrichment}
+        ${enrichment},
+        ${embedding}
       )
       RETURNING *
     `;
@@ -108,7 +113,7 @@ export async function createMemory(input: CreateMemoryInput): Promise<Memory> {
   const memoryId = randomUUID();
   const results = await sql.transaction((txn) => [
     txn`
-      INSERT INTO memories (id, content, category, importance, confidence, scope, source, session_id, plan_id, file_path, search_enrichment)
+      INSERT INTO memories (id, content, category, importance, confidence, scope, source, session_id, plan_id, file_path, search_enrichment, embedding)
       VALUES (
         ${memoryId},
         ${input.content},
@@ -120,7 +125,8 @@ export async function createMemory(input: CreateMemoryInput): Promise<Memory> {
         ${input.session_id ?? null},
         ${input.plan_id ?? null},
         ${input.file_path ?? null},
-        ${enrichment}
+        ${enrichment},
+        ${embedding}
       )
       RETURNING *
     `,
@@ -245,6 +251,9 @@ export async function semanticSearch(opts: {
   limit?: number;
   minImportance?: number;
   minSimilarity?: number;
+  after?: string;
+  before?: string;
+  lastDays?: number;
 }): Promise<(Memory & { similarity?: number })[]> {
   const sql = getClient();
   const limit = opts.limit ?? 15;
@@ -268,6 +277,9 @@ export async function semanticSearch(opts: {
       AND m.importance >= ${minImportance}
       AND (${opts.scope ?? null}::text IS NULL OR m.scope = ${opts.scope ?? null})
       AND m.search_vector @@ websearch_to_tsquery('english', ${opts.query})
+      ${opts.after ? sql`AND m.created_at >= ${opts.after}::timestamptz` : sql``}
+      ${opts.before ? sql`AND m.created_at <= ${opts.before}::timestamptz` : sql``}
+      ${opts.lastDays ? sql`AND m.created_at >= NOW() - ${opts.lastDays + " days"}::interval` : sql``}
     GROUP BY m.id
     ORDER BY ts_score DESC
     LIMIT ${limit}
@@ -299,6 +311,9 @@ export async function semanticSearch(opts: {
           OR similarity(m.content, ${enrichedQuery}) > ${minSimilarity}
           OR similarity(COALESCE(m.search_enrichment, ''), ${enrichedQuery}) > ${minSimilarity}
         )
+        ${opts.after ? sql`AND m.created_at >= ${opts.after}::timestamptz` : sql``}
+        ${opts.before ? sql`AND m.created_at <= ${opts.before}::timestamptz` : sql``}
+        ${opts.lastDays ? sql`AND m.created_at >= NOW() - ${opts.lastDays + " days"}::interval` : sql``}
       GROUP BY m.id
       ORDER BY sim DESC
       LIMIT ${limit}
@@ -326,6 +341,9 @@ export async function semanticSearch(opts: {
             AND m.importance >= ${minImportance}
             AND (${opts.scope ?? null}::text IS NULL OR m.scope = ${opts.scope ?? null})
             AND mt.tag = ANY(${allSynonyms})
+            ${opts.after ? sql`AND m.created_at >= ${opts.after}::timestamptz` : sql``}
+            ${opts.before ? sql`AND m.created_at <= ${opts.before}::timestamptz` : sql``}
+            ${opts.lastDays ? sql`AND m.created_at >= NOW() - ${opts.lastDays + " days"}::interval` : sql``}
           GROUP BY m.id
           ORDER BY m.importance DESC
           LIMIT ${limit}
@@ -365,6 +383,9 @@ export async function semanticSearch(opts: {
             AND (${opts.scope ?? null}::text IS NULL OR m.scope = ${opts.scope ?? null})
             AND (m.content ILIKE ANY(${patterns})
                  OR COALESCE(m.search_enrichment, '') ILIKE ANY(${patterns}))
+            ${opts.after ? sql`AND m.created_at >= ${opts.after}::timestamptz` : sql``}
+            ${opts.before ? sql`AND m.created_at <= ${opts.before}::timestamptz` : sql``}
+            ${opts.lastDays ? sql`AND m.created_at >= NOW() - ${opts.lastDays + " days"}::interval` : sql``}
           GROUP BY m.id
           ORDER BY m.importance DESC
           LIMIT ${limit}
@@ -392,6 +413,9 @@ export async function semanticSearch(opts: {
           AND (${opts.scope ?? null}::text IS NULL OR m.scope = ${opts.scope ?? null})
           AND (m.content ILIKE ${"%" + escapedQuery + "%"}
                OR COALESCE(m.search_enrichment, '') ILIKE ${"%" + escapedQuery + "%"})
+          ${opts.after ? sql`AND m.created_at >= ${opts.after}::timestamptz` : sql``}
+          ${opts.before ? sql`AND m.created_at <= ${opts.before}::timestamptz` : sql``}
+          ${opts.lastDays ? sql`AND m.created_at >= NOW() - ${opts.lastDays + " days"}::interval` : sql``}
         GROUP BY m.id
         ORDER BY m.importance DESC
         LIMIT ${limit}
@@ -420,6 +444,9 @@ export async function semanticSearch(opts: {
             AND m.importance >= ${minImportance}
             AND (${opts.scope ?? null}::text IS NULL OR m.scope = ${opts.scope ?? null})
             AND m.content ILIKE ${"%" + escapedDate + "%"}
+            ${opts.after ? sql`AND m.created_at >= ${opts.after}::timestamptz` : sql``}
+            ${opts.before ? sql`AND m.created_at <= ${opts.before}::timestamptz` : sql``}
+            ${opts.lastDays ? sql`AND m.created_at >= NOW() - ${opts.lastDays + " days"}::interval` : sql``}
           GROUP BY m.id
           ORDER BY m.importance DESC
           LIMIT ${limit}
@@ -516,7 +543,26 @@ export async function semanticSearch(opts: {
     }
   }
 
-  const sorted = ranked.sort((a, b) => b._relevance - a._relevance).slice(0, limit);
+  let sorted = ranked.sort((a, b) => b._relevance - a._relevance).slice(0, limit);
+
+  // If we have an embedding for the query, do a vector similarity boost
+  const queryEmbedding = await generateEmbedding(opts.query).catch(() => null);
+  if (queryEmbedding && sorted.length > 0) {
+    const ids = sorted.map((r) => r.id);
+    const vectorScores = await sql`
+      SELECT id, 1 - (embedding <=> ${JSON.stringify(queryEmbedding)}::vector) as vec_sim
+      FROM memories
+      WHERE id = ANY(${ids}) AND embedding IS NOT NULL
+    `;
+    const vecMap = new Map(vectorScores.map((v: any) => [v.id, parseFloat(v.vec_sim)]));
+    for (const r of sorted) {
+      const vecSim = vecMap.get(r.id);
+      if (vecSim) {
+        (r as any).similarity = ((r as any).similarity || 0) * 0.6 + vecSim * 0.4;
+      }
+    }
+    sorted.sort((a, b) => ((b as any).similarity || 0) - ((a as any).similarity || 0));
+  }
 
   // Enrich returned results: append tags to content for complete search results
   for (const r of sorted) {

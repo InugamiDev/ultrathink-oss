@@ -8,5 +8,298 @@
       "WebFetch"
     ],
     "deny": []
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "id": "ut:start:memory",
+        "description": "UltraThink: load memory context and adaptive learning rules",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/memory-session-start.sh",
+            "timeout": 25000
+          }
+        ]
+      },
+      {
+        "id": "ut:start:codeintel",
+        "description": "UltraThink: check code-intel index freshness",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/codeintel-session-check.sh",
+            "timeout": 8000
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "id": "ut:stop:memory",
+        "description": "UltraThink: flush pending memories to database",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/memory-session-end.sh",
+            "timeout": 25000
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/voice-announce.sh",
+            "timeout": 10000
+          }
+        ]
+      },
+      {
+        "id": "ut:stop:batch-quality",
+        "description": "UltraThink: batch format + typecheck edited files",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/batch-quality.sh",
+            "timeout": 60000
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "id": "ut:precompact:save",
+        "description": "UltraThink: save context before compaction",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/pre-compact.sh",
+            "timeout": 10000
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "id": "ut:prompt:analyze",
+        "description": "UltraThink: score skills and inject top matches",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/prompt-submit.sh",
+            "timeout": 5000
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "id": "ut:pre:privacy",
+        "description": "UltraThink: file access privacy check",
+        "matcher": "Read|Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/privacy-hook.sh",
+            "timeout": 5000
+          }
+        ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/agent-tracker-pre.sh",
+            "timeout": 2000
+          }
+        ]
+      },
+      {
+        "id": "ut:pre:vfs-enforce",
+        "description": "UltraThink: suggest VFS before full file reads",
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/vfs-enforce.sh",
+            "timeout": 2000
+          }
+        ]
+      },
+      {
+        "id": "ut:pre:gateguard",
+        "description": "UltraThink: enforce read-before-write (GateGuard)",
+        "matcher": "Edit|Write|MultiEdit|Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/gateguard.sh"
+          }
+        ]
+      },
+      {
+        "id": "ut:pre:config-protect",
+        "description": "UltraThink: block linter/formatter config modifications",
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/config-protection.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/post-edit-quality.sh",
+            "timeout": 15000
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/post-edit-codeintel.sh",
+            "timeout": 5000
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/memory-auto-save.sh",
+            "timeout": 3000
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/tool-observe.sh",
+            "timeout": 2000
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/context-monitor.sh",
+            "timeout": 2000
+          }
+        ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/progress-display.sh",
+            "timeout": 3000
+          }
+        ]
+      },
+      {
+        "matcher": "Agent",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/subagent-verify.sh",
+            "timeout": 20000
+          }
+        ]
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/suggest-compact.sh",
+            "timeout": 2000
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/post-edit-typecheck.sh",
+            "timeout": 15000
+          }
+        ]
+      },
+      {
+        "id": "ut:post:search-cap",
+        "description": "UltraThink: cap search results to prevent context flooding",
+        "matcher": "Bash|Grep|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/search-cap.sh",
+            "timeout": 2000
+          }
+        ]
+      },
+      {
+        "id": "ut:post:response-trim",
+        "description": "UltraThink: trim verbose tool output to save tokens",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/response-trim.sh",
+            "timeout": 2000
+          }
+        ]
+      },
+      {
+        "id": "ut:post:batch-accumulate",
+        "description": "UltraThink: track edited files for batch quality check",
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/batch-quality.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/tool-failure-log.sh",
+            "timeout": 3000
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/desktop-notify.sh",
+            "timeout": 3000
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": ".claude/hooks/statusline.sh",
+    "padding": 3
   }
 }

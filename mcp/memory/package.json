@@ -1,0 +1,14 @@
+{
+  "name": "@ultrathink/memory-mcp",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "MCP Memory Server for UltraThink — memory_save, memory_search, memory_recall, memory_link",
+  "main": "src/index.ts",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "@neondatabase/serverless": "^0.10.4",
+    "dotenv": "^16.4.7",
+    "zod": "^4.0.0"
+  }
+}

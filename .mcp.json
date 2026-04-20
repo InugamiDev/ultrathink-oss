@@ -8,6 +8,10 @@
     "code-intel": {
       "command": "node",
       "args": ["code-intel/dist/index.js"]
+    },
+    "memory": {
+      "command": "npx",
+      "args": ["tsx", "mcp/memory/src/index.ts"]
     }
   }
 }
