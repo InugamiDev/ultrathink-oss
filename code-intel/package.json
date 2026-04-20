@@ -1,0 +1,22 @@
+{
+  "name": "@ultrathink/code-intel",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Code intelligence layer — dependency graphs, impact analysis, semantic clustering via VFS + Neon Postgres",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "index": "node dist/indexer.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "@neondatabase/serverless": "^0.10.4",
+    "dotenv": "^16.4.7",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.3"
+  }
+}

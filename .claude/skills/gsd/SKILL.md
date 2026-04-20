@@ -176,7 +176,7 @@ After shipping, invoke `plan-archive` to close the loop:
 1. **Archive spec + plans** — Move SPEC.md, PLAN.md files, VERIFICATION.md to `.planning/archive/{date}-{title}/`
 2. **Version the spec** — If SPEC.md was updated during execution, diffs are preserved in `SPEC.changelog.md`
 3. **Extract docs** — Archived specs become project documentation in `.planning/docs/`
-4. **Lessons → Memory** — Patterns and anti-patterns feed into learn-pattern for future recall
+4. **Lessons → Tekiō** — Patterns and anti-patterns feed into wheel-learn (learning adaptations)
 5. **Journey journal** — Narrative retrospective stored in memory for future recall
 
 ### Spec Update Protocol (mid-execution)
@@ -300,6 +300,7 @@ User prompt → auto-trigger detects "build/implement" intent
            → gsd-execute (spawns executor agents per wave)
            → gsd-verify (spawns verifier agent)
            → learn-pattern (extract what we learned)
+           → Tekio (adapt from any failures)
 ```
 
 Context monitor hook tracks usage and warns at 65%/75% thresholds.

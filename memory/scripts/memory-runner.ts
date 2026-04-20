@@ -14,6 +14,8 @@
  *   relate            — Create memory relation
  *   graph             — Fetch memory graph for scope
  *   dedup             — Check if content is duplicate
+ *   identity          — Get user identity graph for a scope
+ *   identity-set      — Set a user preference in the identity graph
  *   conflicts         — Detect contradictory preferences (Prefers X vs Avoids X)
  *   resolve-conflict  — Resolve a conflict by archiving one preference
  *   compact-context   — Compressed session-start context (MemPalace format, 3KB cap)
@@ -30,9 +32,22 @@ import {
   findSimilar,
   createRelation,
   getMemoryGraph,
+  passesQualityGate,
   type CreateMemoryInput,
 } from "../src/memory.js";
 import { logHookEvent } from "../src/hooks.js";
+import {
+  ensureIdentityNode,
+  linkToIdentity,
+  setPreference,
+  getIdentity,
+  getAgentIdentity,
+  introspectRules,
+  syncInferredIdentity,
+  formatIdentityContext,
+  detectConflicts,
+  resolveConflict,
+} from "./identity.js";
 import {
   logSkillUsage,
   logToolUse,
@@ -42,6 +57,16 @@ import {
   listDecisions,
 } from "../src/analytics.js";
 import { enrichMemory } from "../src/enrich.js";
+import {
+  wheelTurn,
+  wheelLearn,
+  getActiveAdaptations,
+  formatAdaptations,
+  adaptFromCorrection,
+  getWheelStats,
+  recordPrevention,
+  type FailureEvent,
+} from "../src/adaptation.js";
 import { createJournal } from "../src/plans.js";
 import { createDecision } from "../src/decisions.js";
 import { recall } from "../src/recall.js";
@@ -95,10 +120,18 @@ async function sessionStart() {
   writeFileSync(getSessionFile(), sessionId);
   if (!existsSync(MEMORIES_DIR)) mkdirSync(MEMORIES_DIR, { recursive: true });
 
+  // Sync inferred identity from behavioral patterns (non-blocking)
+  try {
+    await syncInferredIdentity(scope);
+  } catch (err) {
+    console.error("Identity sync warning:", (err as Error).message);
+  }
+
   // Unified 4-layer recall — replaces 6-query parallel assembly
   const context = await recall(scope, {
     projectName,
     maxTokens: 900,
+    includeAdaptations: true,
     compact: false,
   });
 
@@ -120,6 +153,7 @@ async function recallOnly() {
   // Unified 4-layer recall (no session creation)
   const context = await recall(scope, {
     maxTokens: 900,
+    includeAdaptations: true,
     compact: false,
   });
 
@@ -177,34 +211,33 @@ async function sessionEnd() {
         byCategory[cat].push(m.content as string);
       }
 
-      const CATEGORY_PRIORITY = [
-        "decision",
-        "preference",
-        "correction-log",
-        "solution",
-        "architecture",
-        "pattern",
-        "insight",
-      ];
-      const sortedEntries = Object.entries(byCategory).sort(([a], [b]) => {
-        const ai = CATEGORY_PRIORITY.indexOf(a);
-        const bi = CATEGORY_PRIORITY.indexOf(b);
-        return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
-      });
+      const CATEGORY_PRIORITY = ["decision", "preference", "solution", "architecture", "pattern", "insight"];
+      // Skip correction-logs and session-summaries — they're noise in summaries
+      const filteredEntries = Object.entries(byCategory)
+        .filter(([cat]) => cat !== "correction-log" && cat !== "session-summary")
+        .sort(([a], [b]) => {
+          const ai = CATEGORY_PRIORITY.indexOf(a);
+          const bi = CATEGORY_PRIORITY.indexOf(b);
+          return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi);
+        });
 
-      const sections = sortedEntries.map(([cat, items]) => `[${cat}]: ${items.join("; ")}`).join("\n");
-      summaryParts.push(`Memories (${stats.count}):\n${sections}`);
+      if (filteredEntries.length > 0) {
+        const sections = filteredEntries.map(([cat, items]) => `[${cat}]: ${items.join("; ")}`).join("\n");
+        summaryParts.push(`Memories (${filteredEntries.length} categories):\n${sections}`);
+      }
     }
 
     // Part 2: Git activity (what files changed, recent commits)
     try {
       const { execFileSync } = await import("child_process");
 
+      // Get files changed since session started
       const [sessionRecord] = (await sql`
         SELECT started_at FROM sessions WHERE id = ${sessionId}
       `) as any[];
 
       if (sessionRecord) {
+        // Recent commits during this session
         const since = new Date(sessionRecord.started_at).toISOString();
         try {
           const commits = execFileSync("git", ["log", "--oneline", `--since=${since}`, "-10"], {
@@ -218,6 +251,7 @@ async function sessionEnd() {
           /* not a git repo */
         }
 
+        // Uncommitted changes (stat only)
         try {
           const diff = execFileSync("git", ["diff", "--stat", "HEAD"], {
             encoding: "utf-8",
@@ -338,6 +372,32 @@ async function sessionEnd() {
       // Non-critical — don't fail session end
     }
 
+    // Deactivate stale adaptations (30+ days old, never applied, not user corrections)
+    try {
+      await sql`
+        UPDATE adaptations SET is_active = false
+        WHERE is_active = true
+          AND last_applied_at IS NULL AND times_applied = 0
+          AND created_at < NOW() - INTERVAL '30 days'
+          AND (source_failure IS NULL OR (
+            source_failure NOT LIKE 'User correction%'
+            AND source_failure NOT LIKE 'Success pattern%'
+          ))
+      `;
+    } catch {
+      // Non-critical
+    }
+
+    // Clean up test/benchmark memories (scope=test should never persist)
+    try {
+      await sql`
+        UPDATE memories SET is_archived = true
+        WHERE scope = 'test' AND is_archived = false
+      `;
+    } catch {
+      // Non-critical
+    }
+
     // Only clean up session file if DB update succeeded
     if (dbUpdateSucceeded) {
       try {
@@ -379,6 +439,7 @@ async function save() {
   const sessionId = getSessionId();
 
   const input: CreateMemoryInput = {
+    title: (data as Record<string, unknown>).title as string | undefined,
     content: data.content as string,
     category: (data.category as string) || "insight",
     importance: (data.importance as number) ?? 5,
@@ -462,6 +523,8 @@ async function flush() {
     return ratio >= threshold;
   }
 
+  const prefCategories = ["preference", "style-preference", "tool-preference", "project-context", "workflow-pattern"];
+
   for (const { filePath, data } of pending) {
     try {
       // Fast exact-match check (O(1) via Set), then word-overlap for near-dupes
@@ -487,6 +550,11 @@ async function flush() {
         // Track newly created content for intra-batch dedup
         existingContents.push(input.content);
         existingSet.add(input.content.toLowerCase().trim());
+
+        // Auto-link preference-category memories to identity graph
+        if (prefCategories.includes(input.category) && input.scope) {
+          await linkToIdentity(created.id, input.category, input.scope);
+        }
 
         saved++;
       }
@@ -572,6 +640,42 @@ async function dedup() {
   );
 }
 
+async function identityGet() {
+  const scope = process.argv[3] || undefined;
+  const identity = await getIdentity(scope);
+  const formatted = formatIdentityContext(identity);
+  process.stdout.write(JSON.stringify({ identity, formatted }));
+}
+
+async function identitySet() {
+  const scope = process.argv[3];
+  const key = process.argv[4];
+  const value = process.argv[5];
+  const category = (process.argv[6] || "preference") as
+    | "preference"
+    | "style-preference"
+    | "tool-preference"
+    | "project-context"
+    | "workflow-pattern"
+    | "identity";
+  const strength = process.argv[7] ? parseFloat(process.argv[7]) : 0.8;
+
+  if (!scope || !key || !value) {
+    console.error("Usage: memory-runner.ts identity-set <scope> <key> <value> [category] [strength]");
+    process.exit(1);
+  }
+
+  // Identity category updates the root node name directly
+  if (category === "identity") {
+    await ensureIdentityNode(scope, value);
+    process.stdout.write(JSON.stringify({ status: "set", key, category: "identity" }));
+    return;
+  }
+
+  await setPreference(scope, key, value, category, strength);
+  process.stdout.write(JSON.stringify({ status: "set", key, category }));
+}
+
 function getSessionId(): string | null {
   try {
     return readFileSync(getSessionFile(), "utf-8").trim();
@@ -590,6 +694,7 @@ async function compactContext() {
   // Unified 4-layer recall in compact mode (3KB cap)
   const context = await recall(scope, {
     maxTokens: 750,
+    includeAdaptations: true,
     compact: true,
   });
 
@@ -606,6 +711,7 @@ async function aaakContext() {
   // AAAK mode: same budget as compact, but uses shorthand encoding
   const context = await recall(scope, {
     maxTokens: 750,
+    includeAdaptations: true,
     compact: true,
     aaak: true,
   });
@@ -731,6 +837,57 @@ async function main() {
     case "dedup":
       await dedup();
       break;
+    case "identity":
+      await identityGet();
+      break;
+    case "identity-set":
+      await identitySet();
+      break;
+    case "agent-rules": {
+      const ruleScope = args[0] || undefined;
+      const result = await introspectRules(ruleScope);
+      console.log(`Agent Rules (${result.rules.length}):`);
+      for (const r of result.rules) {
+        console.log(`  [imp:${r.importance}] ${r.content}`);
+      }
+      if (result.adaptations.length > 0) {
+        console.log(`\nDefensive Adaptations (${result.adaptations.length}):`);
+        for (const a of result.adaptations) {
+          console.log(`  [sev:${a.severity}] ${a.rule.slice(0, 120)}`);
+        }
+      }
+      process.stdout.write(JSON.stringify(result));
+      break;
+    }
+
+    case "conflicts": {
+      const scope = args[0] || process.cwd().split("/").slice(-2).join("/");
+      const conflicts = await detectConflicts(scope);
+      if (conflicts.length === 0) {
+        console.log("No preference conflicts found.");
+      } else {
+        console.log(`Found ${conflicts.length} conflict(s):\n`);
+        for (const c of conflicts) {
+          console.log(`  Subject: "${c.subject}"`);
+          console.log(`    + ${c.prefer.content} (id: ${c.prefer.id})`);
+          console.log(`    - ${c.avoid.content} (id: ${c.avoid.id})`);
+          console.log();
+        }
+      }
+      break;
+    }
+    case "resolve-conflict": {
+      const keepId = args[0];
+      const archiveId = args[1];
+      if (!keepId || !archiveId) {
+        console.error("Usage: memory-runner.ts resolve-conflict <keep_id> <archive_id>");
+        process.exit(1);
+      }
+      await resolveConflict(keepId, archiveId);
+      console.log(`Resolved: kept ${keepId}, archived ${archiveId}`);
+      break;
+    }
+
     // ── Analytics ──────────────────────────────────────────────────────────
 
     case "log-skill": {
@@ -865,6 +1022,151 @@ async function main() {
       break;
     }
 
+    // ── ☸ Tekiō — Cycle of Nova — Adaptation Commands ─────────────
+
+    case "wheel-turn": {
+      // Process a failure and create/apply an adaptation
+      // Usage: memory-runner.ts wheel-turn '<error>' '<context>' [tool] [scope]
+      const errMsg = args[0];
+      const errCtx = args[1] || "";
+      const tool = args[2] || "unknown";
+      const failScope = args[3] || undefined;
+      if (!errMsg) {
+        console.error("Usage: memory-runner.ts wheel-turn '<error>' '<context>' [tool] [scope]");
+        process.exit(1);
+      }
+      const failure: FailureEvent = {
+        error: errMsg,
+        context: errCtx,
+        tool,
+        scope: failScope,
+      };
+      const sqlW = getClient();
+      const result = await wheelTurn(sqlW, failure);
+      if (!result) {
+        // Filtered out — not worth learning
+        console.error("☸ SKIP — noise filtered, not worth learning");
+        break;
+      }
+      // Output notification for the hook to display
+      const icon = result.isNew ? "☸ NOVA — wheel turns" : "☸ ADAPTED";
+      const cat = result.adaptation.category.toUpperCase();
+      console.error(`${icon} [${cat}] → ${result.adaptation.adaptation_rule.slice(0, 120)}`);
+      console.error(`  Wheel position: ${result.wheelSpin} adaptations learned`);
+
+      // intent: Bridge high-severity defensive adaptations into the decisions system.
+      // Defensive adaptations are essentially "don't do X again" rules — they are
+      // operational decisions that should persist in the decisions table too, so they
+      // are surfaced by decision-aware queries and not just the Tekiō wheel context.
+      // status: done
+      // confidence: high
+      if (result.isNew && result.adaptation.category === "defensive" && result.adaptation.severity >= 7) {
+        try {
+          await createDecision({
+            rule: result.adaptation.adaptation_rule,
+            scope: "global",
+            source: "tekio",
+            priority: result.adaptation.severity,
+            context: `Auto-mirrored from Tekiō defensive adaptation (severity ${result.adaptation.severity}/10). Trigger: ${result.adaptation.trigger_pattern}`,
+            tags: ["auto-tekio", "defensive"],
+          });
+          console.error(`  → Mirrored to decisions system (severity ${result.adaptation.severity})`);
+        } catch (decErr) {
+          console.error(`  → Failed to mirror to decisions: ${(decErr as Error).message}`);
+        }
+      }
+
+      process.stdout.write(
+        JSON.stringify({
+          isNew: result.isNew,
+          wheelSpin: result.wheelSpin,
+          adaptation: result.adaptation,
+        })
+      );
+      break;
+    }
+
+    case "wheel-prevent": {
+      const preventId = process.argv[3];
+      if (!preventId) {
+        console.error("Usage: memory-runner.ts wheel-prevent <adaptation-id>");
+        process.exit(1);
+      }
+      const sqlP = getClient();
+      await recordPrevention(sqlP, preventId);
+      console.log(`☸ Prevention recorded for ${preventId.slice(0, 8)}`);
+      break;
+    }
+
+    case "wheel-stats": {
+      const sqlS = getClient();
+      const stats = await getWheelStats(sqlS);
+      console.log(`☸ Tekiō — Cycle of Nova — ${stats.total} adaptations`);
+      console.log(`  Defensive: ${stats.defensive} (immunity)`);
+      console.log(`  Auxiliary:  ${stats.auxiliary} (perception)`);
+      console.log(`  Offensive:  ${stats.offensive} (approach)`);
+      console.log(`  Learning:   ${stats.learning} (absorbed)`);
+      console.log(`  Applied: ${stats.totalApplied}x | Prevented: ${stats.totalPrevented}x`);
+      break;
+    }
+
+    case "wheel-list": {
+      const sqlL = getClient();
+      const adaptations = await getActiveAdaptations(sqlL);
+      for (const a of adaptations) {
+        const applied = a.times_applied > 0 ? ` [${a.times_applied}x]` : "";
+        console.log(`[${a.category.padEnd(10)}] ${a.trigger_pattern.slice(0, 60)}${applied}`);
+        console.log(`           → ${a.adaptation_rule.slice(0, 100)}`);
+      }
+      break;
+    }
+
+    case "wheel-learn": {
+      // Learn from a successful new pattern
+      // Usage: memory-runner.ts wheel-learn '<pattern>' '<insight>' [scope]
+      const learnPattern = args[0];
+      const learnInsight = args[1];
+      const learnScope = args[2] || undefined;
+      if (!learnPattern || !learnInsight) {
+        console.error("Usage: memory-runner.ts wheel-learn '<pattern>' '<insight>' [scope]");
+        process.exit(1);
+      }
+      const sqlLearn = getClient();
+      const learnResult = await wheelLearn(sqlLearn, {
+        pattern: learnPattern,
+        insight: learnInsight,
+        scope: learnScope,
+      });
+      if (learnResult.isNew) {
+        console.error(`☸ NOVA — wheel turns [LEARNING] — absorbed new pattern`);
+        console.error(`  Pattern: ${learnPattern.slice(0, 80)}`);
+        console.error(`  Insight: ${learnInsight.slice(0, 80)}`);
+      } else {
+        console.error(`☸ KNOWN — pattern already absorbed, reinforced`);
+      }
+      process.stdout.write(JSON.stringify(learnResult));
+      break;
+    }
+
+    case "wheel-correct": {
+      // Create adaptation from user correction
+      // Usage: memory-runner.ts wheel-correct '<wrong_approach>' '<correct_approach>' [scope]
+      const wrong = args[0];
+      const correct = args[1];
+      const corrScope = args[2] || undefined;
+      if (!wrong || !correct) {
+        console.error("Usage: memory-runner.ts wheel-correct '<wrong>' '<correct>' [scope]");
+        process.exit(1);
+      }
+      const sqlC = getClient();
+      const adaptation = await adaptFromCorrection(sqlC, wrong, correct, corrScope);
+      console.error(`☸ NOVA — wheel turns [DEFENSIVE] — learned from correction`);
+      console.error(`  Wrong: ${wrong.slice(0, 80)}`);
+      console.error(`  Right: ${correct.slice(0, 80)}`);
+      process.stdout.write(JSON.stringify(adaptation));
+      break;
+    }
+
     case "context-recall": {
       // Smart recall: search memories relevant to a specific context/task
       // Used by session-start to find memories based on what the user is working on
@@ -904,10 +1206,91 @@ async function main() {
       await aaakContext();
       break;
 
+    case "compact": {
+      const dryRun = process.argv[3] !== "--apply";
+      const sqlCompact = getClient();
+
+      console.log(`☸ Memory Consolidation ${dryRun ? "(DRY RUN — use --apply to execute)" : "(APPLYING)"}\n`);
+
+      // 1. Find similar memory pairs (>0.7 similarity)
+      const pairs = (await sqlCompact`
+        SELECT m1.id as id1, m1.title as t1, m1.importance as imp1, m1.access_count as ac1,
+               m2.id as id2, m2.title as t2, m2.importance as imp2, m2.access_count as ac2,
+               similarity(m1.content, m2.content) as sim
+        FROM memories m1
+        JOIN memories m2 ON m1.id < m2.id
+        WHERE m1.is_archived = false AND m2.is_archived = false
+          AND similarity(m1.content, m2.content) > 0.7
+        ORDER BY sim DESC
+        LIMIT 50
+      `) as any[];
+
+      if (pairs.length > 0) {
+        console.log(`## Duplicate pairs (${pairs.length}):`);
+        for (const p of pairs) {
+          const keepId = p.imp1 >= p.imp2 || p.ac1 >= p.ac2 ? p.id1 : p.id2;
+          const archiveId = keepId === p.id1 ? p.id2 : p.id1;
+          const keepTitle = keepId === p.id1 ? p.t1 : p.t2;
+          const archiveTitle = keepId === p.id1 ? p.t2 : p.t1;
+          console.log(`  ${(p.sim * 100).toFixed(0)}% similar: keep "${keepTitle}" → archive "${archiveTitle}"`);
+          if (!dryRun) {
+            await sqlCompact`UPDATE memories SET is_archived = true WHERE id = ${archiveId}`;
+          }
+        }
+      } else {
+        console.log("## No duplicate pairs found.");
+      }
+
+      // 2. Promote L3 patterns with 3+ access to L2
+      const promotable = (await sqlCompact`
+        SELECT id, title, category, access_count, layer
+        FROM memories
+        WHERE is_archived = false AND layer = 3 AND access_count >= 3
+      `) as any[];
+
+      if (promotable.length > 0) {
+        console.log(`\n## Promotable L3 → L2 (${promotable.length}):`);
+        for (const m of promotable) {
+          console.log(`  "${m.title}" (accessed ${m.access_count}x) → promote to L2`);
+          if (!dryRun) {
+            await sqlCompact`UPDATE memories SET layer = 2, importance = LEAST(importance + 2, 10) WHERE id = ${m.id}`;
+          }
+        }
+      } else {
+        console.log("\n## No L3 memories ready for promotion.");
+      }
+
+      // 3. Archive stale L3 (90+ days, 0 access)
+      const stale = (await sqlCompact`
+        SELECT id, title, category, created_at
+        FROM memories
+        WHERE is_archived = false AND layer = 3
+          AND access_count = 0
+          AND created_at < NOW() - INTERVAL '90 days'
+      `) as any[];
+
+      if (stale.length > 0) {
+        console.log(`\n## Stale L3 to archive (${stale.length}):`);
+        for (const m of stale) {
+          console.log(`  "${m.title}" (created ${new Date(m.created_at).toISOString().slice(0, 10)})`);
+          if (!dryRun) {
+            await sqlCompact`UPDATE memories SET is_archived = true WHERE id = ${m.id}`;
+          }
+        }
+      } else {
+        console.log("\n## No stale L3 memories.");
+      }
+
+      // 4. Summary
+      const [final] = (await sqlCompact`SELECT COUNT(*) as c FROM memories WHERE is_archived = false`) as any[];
+      console.log(`\n## Result: ${final.c} active memories${dryRun ? " (no changes made — use --apply)" : ""}`);
+      break;
+    }
+
     default:
       console.error(`Unknown command: ${command}`);
       console.error(
-        "Usage: memory-runner.ts <session-start|session-end|recall-only|save|flush|flush-decisions|search|relate|graph|dedup|conflicts|resolve-conflict|log-skill|log-tool|daily-stats|log-security|decision|decisions|journal|enrich-all|context-recall|preferences|compact-context>"
+        "Usage: memory-runner.ts <session-start|session-end|save|flush|search|compact|wheel-turn|wheel-prevent|wheel-stats|wheel-list>"
       );
       process.exit(1);
   }
