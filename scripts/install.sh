@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# intent: unified UltraThink installer — supports OSS and Core tiers
+# intent: UltraThink OSS installer — open source tier only
 # status: done
 # confidence: high
 set -euo pipefail
@@ -10,6 +10,8 @@ readonly ULTRA_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 readonly CLAUDE_DIR="$HOME/.claude"
 readonly ULTRA_DATA="$HOME/.ultrathink"
 readonly VERSION="3.0.0"
+readonly TIER="oss"
+readonly TIER_UPPER="OSS"
 
 readonly RED='\033[0;31m'   GREEN='\033[0;32m'
 readonly YELLOW='\033[0;33m' BLUE='\033[0;34m'
@@ -24,7 +26,7 @@ log_error() { echo -e "${RED}[ERROR]${NC} $*" >&2; }
 log_step()  { echo -e "\n${CYAN}${BOLD}[$1/$TOTAL_STEPS]${NC} $2"; }
 log_dry()   { echo -e "${YELLOW}[DRY]${NC}  $*"; }
 
-TOTAL_STEPS=7
+TOTAL_STEPS=8
 
 # ── Dry-run helpers ──
 run_cmd() {
@@ -40,47 +42,59 @@ dry_rm() {
   if $DRY_RUN; then log_dry "rm $*"; else rm "$@"; fi
 }
 
-# ── Auto-detect tier from repo structure ──
-auto_detect_tier() {
-  # Core has scripts/upgrade-to-builder.sh + scripts/parity-check.sh (never in OSS)
+# ── OSS tier guard ──
+guard_oss_only() {
+  # Block if someone tries to force core tier on the OSS repo
   if [[ -f "$ULTRA_ROOT/scripts/upgrade-to-builder.sh" ]]; then
-    echo "core"
-  else
-    echo "oss"
+    log_error "This is the Core repo — use the Core installer instead"
+    exit 1
   fi
 }
 
 # ── Parse args ──
-TIER=""
 DB_URL=""
 VAULT_PATH="$ULTRA_DATA/vault"
 UNINSTALL=false
+UPDATE=false
 DRY_RUN=false
 NO_IDENTITY=false
 AUTO_YES=false
+NO_PULL=false
 
 for arg in "$@"; do
   case "$arg" in
-    --tier=*)       TIER="${arg#*=}" ;;
-    --db=*)         DB_URL="${arg#*=}" ;;
-    --vault=*)      VAULT_PATH="${arg#*=}" ;;
-    --uninstall)    UNINSTALL=true ;;
-    --dry-run)      DRY_RUN=true ;;
-    --no-identity)  NO_IDENTITY=true ;;
-    --yes|-y)       AUTO_YES=true ;;
+    --tier=core)
+      log_error "Core tier is not available in UltraThink OSS."
+      log_info "Get Core at: https://github.com/InugamiDev/ultrathink-core"
+      exit 1 ;;
+    --tier=oss)      ;; # accepted, no-op (already OSS)
+    --db=*)          DB_URL="${arg#*=}" ;;
+    --vault=*)       VAULT_PATH="${arg#*=}" ;;
+    --uninstall)     UNINSTALL=true ;;
+    --update)        UPDATE=true ;;
+    --dry-run)       DRY_RUN=true ;;
+    --no-identity)   NO_IDENTITY=true ;;
+    --no-pull)       NO_PULL=true ;;
+    --yes|-y)        AUTO_YES=true ;;
     --help|-h)
       echo "Usage: install.sh [OPTIONS]"
       echo ""
       echo "Options:"
-      echo "  --tier=oss|core   Installation tier (auto-detected if omitted)"
       echo "  --db=URL          Neon Postgres connection string"
       echo "  --vault=PATH      Obsidian vault location (default: ~/.ultrathink/vault)"
       echo "  --no-identity     Skip adding UltraThink section to ~/.claude/CLAUDE.md"
+      echo "  --no-pull         Skip auto-pull even if git repo is behind"
       echo "  --yes, -y         Auto-approve all prompts"
       echo "  --dry-run         Print what would be changed without modifying anything"
+      echo "  --update          Pull latest changes and re-install"
       echo "  --uninstall       Remove UltraThink from ~/.claude/ and ~/.ultrathink/"
       echo "  --help, -h        Show this help"
+      echo ""
+      echo "This is UltraThink OSS. For Core features (Tekiō, Code Intelligence,"
+      echo "Agent Identity, Decision Engine), see: https://github.com/InugamiDev/ultrathink-core"
       exit 0 ;;
+    *)
+      log_warn "Unknown option: $arg (ignored)" ;;
   esac
 done
 
@@ -94,7 +108,7 @@ fi
 # ════════════════════════════════════════════════════════════════════════════
 if $UNINSTALL; then
   echo ""
-  log_info "Uninstalling UltraThink..."
+  log_info "Uninstalling UltraThink OSS..."
   REMOVED=()
 
   # 1. Remove skill symlinks
@@ -237,31 +251,88 @@ CLEANJS
 fi
 
 # ════════════════════════════════════════════════════════════════════════════
-# ── INSTALL ──
+# ── INSTALL / UPDATE ──
 # ════════════════════════════════════════════════════════════════════════════
 
-# Auto-detect tier if not specified
-if [[ -z "$TIER" ]]; then
-  TIER="$(auto_detect_tier)"
-  log_info "Auto-detected tier: ${BOLD}$TIER${NC}"
+guard_oss_only
+
+if $UPDATE; then
+  echo ""
+  log_info "Updating UltraThink OSS..."
 fi
-
-# Validate tier
-case "$TIER" in
-  oss|core) ;;
-  *)
-    log_error "Invalid tier: $TIER (must be oss or core)"
-    exit 1 ;;
-esac
-
-TIER_UPPER=$(echo "$TIER" | tr '[:lower:]' '[:upper:]')
 
 echo ""
 log_info "Installing UltraThink ${BOLD}${TIER_UPPER}${NC}"
 log_info "Source: $ULTRA_ROOT"
 
-# ── Step 1: Prerequisites ──
-log_step 1 "Checking prerequisites"
+# ── Step 1: Auto-pull (if git repo) ──
+log_step 1 "Checking for updates"
+
+PULLED=false
+if [[ -d "$ULTRA_ROOT/.git" ]] && command -v git &>/dev/null && ! $NO_PULL; then
+  cd "$ULTRA_ROOT"
+  CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
+
+  if [[ -n "$CURRENT_BRANCH" ]]; then
+    # Fetch latest without modifying working tree
+    if $DRY_RUN; then
+      log_dry "would run: git fetch origin $CURRENT_BRANCH"
+    else
+      git fetch origin "$CURRENT_BRANCH" 2>/dev/null || true
+    fi
+
+    LOCAL=$(git rev-parse HEAD 2>/dev/null || echo "")
+    REMOTE=$(git rev-parse "origin/$CURRENT_BRANCH" 2>/dev/null || echo "")
+
+    if [[ -n "$LOCAL" && -n "$REMOTE" && "$LOCAL" != "$REMOTE" ]]; then
+      # Check if we're behind (remote has commits we don't)
+      BEHIND=$(git rev-list --count HEAD.."origin/$CURRENT_BRANCH" 2>/dev/null || echo "0")
+      if [[ "$BEHIND" -gt 0 ]]; then
+        if $UPDATE || $AUTO_YES; then
+          if $DRY_RUN; then
+            log_dry "would run: git pull origin $CURRENT_BRANCH"
+          else
+            log_info "Pulling $BEHIND new commit(s)..."
+            git pull origin "$CURRENT_BRANCH" --ff-only 2>/dev/null && PULLED=true || {
+              log_warn "Fast-forward pull failed — you may have local changes"
+              log_info "Run 'git pull' manually to resolve, then re-run installer"
+            }
+          fi
+        else
+          log_warn "$BEHIND update(s) available — run with --update to pull, or --no-pull to skip"
+        fi
+      else
+        log_ok "Already up to date"
+      fi
+    else
+      log_ok "Already up to date"
+    fi
+  else
+    log_info "Not on a branch — skipping update check"
+  fi
+else
+  if $NO_PULL; then
+    log_info "Skipping update check (--no-pull)"
+  elif [[ ! -d "$ULTRA_ROOT/.git" ]]; then
+    log_info "Not a git repo — skipping update check"
+  else
+    log_info "git not available — skipping update check"
+  fi
+fi
+
+if $PULLED; then
+  log_ok "Updated to latest"
+  # Re-read version if it changed
+  if [[ -f "$ULTRA_ROOT/package.json" ]] && command -v node &>/dev/null; then
+    NEW_VERSION=$(node -e "console.log(require('$ULTRA_ROOT/package.json').version || '3.0.0')" 2>/dev/null || echo "$VERSION")
+    if [[ "$NEW_VERSION" != "$VERSION" ]]; then
+      log_info "Version: $VERSION → $NEW_VERSION"
+    fi
+  fi
+fi
+
+# ── Step 2: Prerequisites ──
+log_step 2 "Checking prerequisites"
 
 if ! command -v claude &>/dev/null && ! command -v claude-code &>/dev/null; then
   log_warn "Claude Code CLI not found — install from https://claude.ai/download"
@@ -285,21 +356,17 @@ if ! command -v jq &>/dev/null; then
 fi
 log_ok "jq available"
 
-# ── Step 2: Create directories ──
-log_step 2 "Creating directory structure"
+# ── Step 3: Create directories ──
+log_step 3 "Creating directory structure"
 
 dry_mkdir "$CLAUDE_DIR/skills" "$CLAUDE_DIR/hooks"
 dry_mkdir "$ULTRA_DATA/forge/projects" "$ULTRA_DATA/decisions/projects"
 dry_mkdir "$VAULT_PATH/memories" "$VAULT_PATH/decisions" "$VAULT_PATH/_templates"
 
-if [[ "$TIER" == "core" ]]; then
-  dry_mkdir "$VAULT_PATH/identity" "$VAULT_PATH/forge" "$VAULT_PATH/adaptations"
-fi
-
 log_ok "~/.claude/ and ~/.ultrathink/ ready"
 
-# ── Step 3: Symlink skills ──
-log_step 3 "Linking skills"
+# ── Step 4: Symlink skills ──
+log_step 4 "Linking skills"
 
 skill_count=0
 for skill_dir in "$ULTRA_ROOT/.claude/skills"/*/; do
@@ -315,8 +382,8 @@ done
 dry_ln "$ULTRA_ROOT/.claude/skills/_registry.json" "$CLAUDE_DIR/skills/_registry.json"
 log_ok "Linked $skill_count skills"
 
-# ── Step 4: Symlink references + agents ──
-log_step 4 "Linking references and agents"
+# ── Step 5: Symlink references + agents ──
+log_step 5 "Linking references and agents"
 
 if [[ -d "$CLAUDE_DIR/references" && ! -L "$CLAUDE_DIR/references" ]]; then
   run_cmd mv "$CLAUDE_DIR/references" "$CLAUDE_DIR/references.bak.$(date +%s)"
@@ -331,25 +398,27 @@ fi
 dry_ln "$ULTRA_ROOT/.claude/agents" "$CLAUDE_DIR/agents"
 log_ok "Linked agents"
 
-# ── Step 5: Symlink hooks (tier-aware) ──
-log_step 5 "Linking hooks"
+# ── Step 6: Symlink hooks (OSS only — no Core hooks) ──
+log_step 6 "Linking hooks"
 
-# Shared hooks (both tiers)
-SHARED_HOOKS="privacy-hook.sh format-check.sh notify.sh memory-auto-save.sh"
-SHARED_HOOKS+=" memory-session-start.sh memory-session-end.sh pre-compact.sh"
-SHARED_HOOKS+=" prompt-analyzer.ts prompt-submit.sh hook-log.sh statusline.sh"
-SHARED_HOOKS+=" suggest-compact.sh context-monitor.sh tool-observe.sh"
-SHARED_HOOKS+=" agent-tracker-pre.sh progress-display.sh subagent-verify.sh"
-SHARED_HOOKS+=" gsd-utils.sh post-edit-quality.sh registry-sync.sh"
-SHARED_HOOKS+=" search-cap.sh vfs-enforce.sh"
-SHARED_HOOKS+=" gateguard.sh config-protection.sh batch-quality.sh hook-flags.sh"
+# OSS hooks only — no Tekiō, no code-intel, no decision engine
+OSS_HOOKS="privacy-hook.sh format-check.sh notify.sh memory-auto-save.sh"
+OSS_HOOKS+=" memory-session-start.sh memory-session-end.sh pre-compact.sh"
+OSS_HOOKS+=" prompt-analyzer.ts prompt-submit.sh hook-log.sh statusline.sh"
+OSS_HOOKS+=" suggest-compact.sh context-monitor.sh tool-observe.sh"
+OSS_HOOKS+=" agent-tracker-pre.sh progress-display.sh subagent-verify.sh"
+OSS_HOOKS+=" gsd-utils.sh post-edit-quality.sh registry-sync.sh"
+OSS_HOOKS+=" search-cap.sh vfs-enforce.sh"
+OSS_HOOKS+=" gateguard.sh config-protection.sh batch-quality.sh hook-flags.sh"
 
-# Core-only hooks (Tekiō, code-intel, decision engine)
-CORE_HOOKS="tool-failure-log.sh codeintel-session-check.sh post-edit-codeintel.sh"
-CORE_HOOKS+=" decision-inject.sh forge-hydrate.sh decision-extract.sh"
+# Core-only hooks that must NEVER be installed from OSS
+# (even if files somehow exist in the repo)
+CORE_ONLY_HOOKS="tool-failure-log.sh codeintel-session-check.sh post-edit-codeintel.sh"
+CORE_ONLY_HOOKS+=" decision-inject.sh forge-hydrate.sh decision-extract.sh"
+CORE_ONLY_HOOKS+=" decision-engine.ts builder-gate.sh builder-session.sh tekio-prevent.sh"
 
 hook_count=0
-IFS=' ' read -ra HOOK_ARR <<< "$SHARED_HOOKS"
+IFS=' ' read -ra HOOK_ARR <<< "$OSS_HOOKS"
 for hook in "${HOOK_ARR[@]}"; do
   src="$ULTRA_ROOT/.claude/hooks/$hook"
   [[ -f "$src" ]] || continue
@@ -357,20 +426,20 @@ for hook in "${HOOK_ARR[@]}"; do
   hook_count=$((hook_count+1))
 done
 
-if [[ "$TIER" == "core" ]]; then
-  IFS=' ' read -ra CORE_ARR <<< "$CORE_HOOKS"
-  for hook in "${CORE_ARR[@]}"; do
-    src="$ULTRA_ROOT/.claude/hooks/$hook"
-    [[ -f "$src" ]] || continue
-    dry_ln "$src" "$CLAUDE_DIR/hooks/ultrathink-$hook"
-    hook_count=$((hook_count+1))
-  done
-fi
+# Safety: remove any Core hooks that might have been installed previously
+IFS=' ' read -ra BLOCKED_ARR <<< "$CORE_ONLY_HOOKS"
+for hook in "${BLOCKED_ARR[@]}"; do
+  target="$CLAUDE_DIR/hooks/ultrathink-$hook"
+  if [[ -L "$target" || -f "$target" ]]; then
+    dry_rm "$target"
+    log_warn "Removed Core-only hook: ultrathink-$hook (not available in OSS)"
+  fi
+done
 
-log_ok "Linked $hook_count hooks"
+log_ok "Linked $hook_count hooks (OSS tier)"
 
-# ── Step 6: Configure ──
-log_step 6 "Writing configuration"
+# ── Step 7: Configure ──
+log_step 7 "Writing configuration"
 
 if $DRY_RUN; then
   log_dry "write file: $ULTRA_DATA/config.json"
@@ -400,7 +469,7 @@ if [[ -n "$DB_URL" ]]; then
   fi
 fi
 
-# CLAUDE.md — tier-specific identity (opt-in)
+# CLAUDE.md — OSS identity (opt-in)
 CLAUDE_MD="$CLAUDE_DIR/CLAUDE.md"
 SKIP_IDENTITY=false
 
@@ -439,7 +508,7 @@ EOF
   log_ok "Appended UltraThink section to CLAUDE.md"
 fi
 
-# Merge hooks into settings.json (with dedup by id)
+# Merge hooks into settings.json (OSS hooks only — no Core hook IDs)
 SETTINGS="$CLAUDE_DIR/settings.json"
 if ! $DRY_RUN; then
   [[ -f "$SETTINGS" ]] || echo '{}' > "$SETTINGS"
@@ -451,7 +520,6 @@ else
   cat > /tmp/ut-install-hooks.js << 'HOOKJS'
 const fs = require('fs');
 const settingsPath = process.argv[2];
-const tier = process.argv[3];
 const s = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
 s.hooks = s.hooks || {};
 
@@ -464,9 +532,21 @@ const add = (event, id, description, matcher, cmd, timeout) => {
   s.hooks[event].push(entry);
 };
 
+// Remove any Core-only hooks that may exist from a prior Core install
+const coreOnlyIds = [
+  'ut:post:codeintel', 'ut:session:codeintel',
+  'ut:post:tool-failure', 'ut:session:decisions'
+];
+for (const event of Object.keys(s.hooks)) {
+  s.hooks[event] = (s.hooks[event] || []).filter(entry => {
+    return !(entry.id && coreOnlyIds.includes(entry.id));
+  });
+  if (s.hooks[event].length === 0) delete s.hooks[event];
+}
+
 const H = process.env.HOME;
 
-// Shared hooks (all tiers)
+// OSS hooks only
 add('SessionStart', 'ut:session:start', 'UltraThink: load memory on session start', null, H+'/.claude/hooks/ultrathink-memory-session-start.sh', 10000);
 add('Stop', 'ut:stop:session-end', 'UltraThink: persist session memory on stop', null, H+'/.claude/hooks/ultrathink-memory-session-end.sh', 5000);
 add('PreToolUse', 'ut:pre:privacy', 'UltraThink: enforce file-access privacy rules', 'Read|Edit|Write', H+'/.claude/hooks/ultrathink-privacy-hook.sh');
@@ -478,17 +558,9 @@ add('Stop', 'ut:stop:batch-quality', 'UltraThink: batch format + typecheck edite
 add('PostToolUse', 'ut:post:batch-accumulate', 'UltraThink: track edited files for batch quality check', 'Edit|Write|MultiEdit', H+'/.claude/hooks/ultrathink-batch-quality.sh');
 add('PreCompact', 'ut:pre:compact', 'UltraThink: save context before compaction', null, H+'/.claude/hooks/ultrathink-pre-compact.sh', 10000);
 
-// Core-only hooks
-if (tier === 'core') {
-  add('PostToolUse', 'ut:post:codeintel', 'UltraThink: incremental code-intel reindex after edits', 'Edit|Write', H+'/.claude/hooks/ultrathink-post-edit-codeintel.sh');
-  add('SessionStart', 'ut:session:codeintel', 'UltraThink: check code-intel index freshness', null, H+'/.claude/hooks/ultrathink-codeintel-session-check.sh', 15000);
-  add('PostToolUse', 'ut:post:tool-failure', 'UltraThink: log tool failures for Tekiō adaptation', null, H+'/.claude/hooks/ultrathink-tool-failure-log.sh');
-  add('SessionStart', 'ut:session:decisions', 'UltraThink: inject decision rules on start', null, H+'/.claude/hooks/ultrathink-decision-inject.sh', 5000);
-}
-
 fs.writeFileSync(settingsPath, JSON.stringify(s, null, 2) + '\n');
 HOOKJS
-  node /tmp/ut-install-hooks.js "$SETTINGS" "$TIER" 2>/dev/null && log_ok "Added hooks to settings.json" || log_warn "Could not merge hooks — add manually"
+  node /tmp/ut-install-hooks.js "$SETTINGS" 2>/dev/null && log_ok "Added hooks to settings.json" || log_warn "Could not merge hooks — add manually"
   rm -f /tmp/ut-install-hooks.js
 fi
 
@@ -541,8 +613,8 @@ fi
 
 log_ok "Wrote vault templates"
 
-# ── Step 7: Smoke test ──
-log_step 7 "Running smoke test"
+# ── Step 8: Smoke test ──
+log_step 8 "Running smoke test"
 
 if $DRY_RUN; then
   log_dry "skipping smoke test in dry-run mode"
@@ -610,22 +682,22 @@ else
   ((ERRORS++))
 fi
 
-# Core-specific checks
-if [[ "$TIER" == "core" ]]; then
-  if [[ -f "$ULTRA_ROOT/.env" ]] && grep -q "DATABASE_URL" "$ULTRA_ROOT/.env" 2>/dev/null; then
-    log_ok "Core: .env has DATABASE_URL"
-  else
-    log_warn "Core: no DATABASE_URL in .env — memory/code-intel need it"
+# OSS-specific: verify no Core artifacts leaked
+LEAKED=false
+for core_hook in tool-failure-log.sh codeintel-session-check.sh post-edit-codeintel.sh decision-inject.sh; do
+  if [[ -L "$CLAUDE_DIR/hooks/ultrathink-$core_hook" || -f "$CLAUDE_DIR/hooks/ultrathink-$core_hook" ]]; then
+    log_warn "Core artifact found: ultrathink-$core_hook (should not exist in OSS)"
+    LEAKED=true
   fi
-  if [[ -d "$ULTRA_ROOT/code-intel" ]]; then
-    log_ok "Core: code-intel present"
-  fi
+done
+if ! $LEAKED; then
+  log_ok "OSS boundary: clean (no Core artifacts)"
 fi
 
 echo ""
 if [[ "$ERRORS" -eq 0 ]]; then
   echo -e "${GREEN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-  echo -e "${GREEN}${BOLD}  UltraThink $TIER_UPPER installed successfully!${NC}"
+  echo -e "${GREEN}${BOLD}  UltraThink OSS installed successfully!${NC}"
   echo -e "${GREEN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 else
   echo -e "${YELLOW}${BOLD}  UltraThink installed with $ERRORS warning(s)${NC}"
@@ -644,5 +716,6 @@ if [[ -d "$VAULT_PATH" ]]; then
   echo "  Open $VAULT_PATH in Obsidian to browse your memory graph."
 fi
 echo ""
+echo "  To update:    $0 --update"
 echo "  To uninstall: $0 --uninstall"
 echo ""
