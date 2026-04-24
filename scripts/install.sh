@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# intent: UltraThink OSS installer — deploys to ~/.claude/ + ~/.ultrathink/
+# intent: unified UltraThink installer — supports OSS and Core tiers
 # status: done
-# next: none
 # confidence: high
 set -euo pipefail
 IFS=$'\n\t'
@@ -10,6 +9,7 @@ readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly ULTRA_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 readonly CLAUDE_DIR="$HOME/.claude"
 readonly ULTRA_DATA="$HOME/.ultrathink"
+readonly VERSION="3.0.0"
 
 readonly RED='\033[0;31m'   GREEN='\033[0;32m'
 readonly YELLOW='\033[0;33m' BLUE='\033[0;34m'
@@ -27,51 +27,31 @@ log_dry()   { echo -e "${YELLOW}[DRY]${NC}  $*"; }
 TOTAL_STEPS=7
 
 # ── Dry-run helpers ──
-# When DRY_RUN=true, commands that modify the filesystem are replaced with log output.
 run_cmd() {
-  if $DRY_RUN; then
-    log_dry "would run: $*"
-  else
-    "$@"
-  fi
+  if $DRY_RUN; then log_dry "would run: $*"; else "$@"; fi
 }
-
 dry_ln() {
-  if $DRY_RUN; then
-    log_dry "ln -sfn $1 -> $2"
-  else
-    # -n: if target is an existing symlink to a directory, replace it
-    #     instead of following it and creating a nested link inside.
-    ln -sfn "$1" "$2"
-  fi
+  if $DRY_RUN; then log_dry "ln -sfn $1 -> $2"; else ln -sfn "$1" "$2"; fi
 }
-
 dry_mkdir() {
-  if $DRY_RUN; then
-    log_dry "mkdir -p $*"
-  else
-    mkdir -p "$@"
-  fi
+  if $DRY_RUN; then log_dry "mkdir -p $*"; else mkdir -p "$@"; fi
 }
-
 dry_rm() {
-  if $DRY_RUN; then
-    log_dry "rm $*"
-  else
-    rm "$@"
-  fi
+  if $DRY_RUN; then log_dry "rm $*"; else rm "$@"; fi
 }
 
-dry_write() {
-  local dest="$1"
-  if $DRY_RUN; then
-    log_dry "write file: $dest"
+# ── Auto-detect tier from repo structure ──
+auto_detect_tier() {
+  # Core has scripts/upgrade-to-builder.sh + scripts/parity-check.sh (never in OSS)
+  if [[ -f "$ULTRA_ROOT/scripts/upgrade-to-builder.sh" ]]; then
+    echo "core"
   else
-    cat > "$dest"
+    echo "oss"
   fi
 }
 
 # ── Parse args ──
+TIER=""
 DB_URL=""
 VAULT_PATH="$ULTRA_DATA/vault"
 UNINSTALL=false
@@ -81,16 +61,18 @@ AUTO_YES=false
 
 for arg in "$@"; do
   case "$arg" in
+    --tier=*)       TIER="${arg#*=}" ;;
+    --db=*)         DB_URL="${arg#*=}" ;;
+    --vault=*)      VAULT_PATH="${arg#*=}" ;;
     --uninstall)    UNINSTALL=true ;;
     --dry-run)      DRY_RUN=true ;;
     --no-identity)  NO_IDENTITY=true ;;
     --yes|-y)       AUTO_YES=true ;;
-    --db=*)         DB_URL="${arg#*=}" ;;
-    --vault=*)      VAULT_PATH="${arg#*=}" ;;
     --help|-h)
       echo "Usage: install.sh [OPTIONS]"
       echo ""
       echo "Options:"
+      echo "  --tier=oss|core   Installation tier (auto-detected if omitted)"
       echo "  --db=URL          Neon Postgres connection string"
       echo "  --vault=PATH      Obsidian vault location (default: ~/.ultrathink/vault)"
       echo "  --no-identity     Skip adding UltraThink section to ~/.claude/CLAUDE.md"
@@ -107,7 +89,9 @@ if $DRY_RUN; then
   log_warn "DRY RUN — no files will be modified"
 fi
 
-# ── Uninstall ──
+# ════════════════════════════════════════════════════════════════════════════
+# ── UNINSTALL ──
+# ════════════════════════════════════════════════════════════════════════════
 if $UNINSTALL; then
   echo ""
   log_info "Uninstalling UltraThink..."
@@ -144,55 +128,32 @@ if $UNINSTALL; then
     fi
   done
 
-  # 4. Remove UltraThink section from CLAUDE.md (between markers)
+  # 4. Remove UltraThink section from CLAUDE.md
   CLAUDE_MD="$CLAUDE_DIR/CLAUDE.md"
   if [[ -f "$CLAUDE_MD" ]] && grep -q "## UltraThink Integration" "$CLAUDE_MD" 2>/dev/null; then
     if $DRY_RUN; then
       log_dry "would remove UltraThink section from $CLAUDE_MD"
     else
-      # Remove from "---\n\n## UltraThink Integration" to the next "---" or EOF
-      # Use awk: skip lines between the UltraThink heading and the next major section
-      awk '
-        /^---$/ && saw_ut_heading { skip=0; next }
-        /^## UltraThink Integration/ { saw_ut_heading=1; skip=1; next }
-        skip && /^---$/ { skip=0; next }
-        # Also skip the "---" line immediately before the heading
-        !skip { buffer=$0 }
-        !skip && !/^---$/ { if (NR>1 && prev_was_separator && next_is_ut) {} else print; prev_was_separator=0 }
-      ' "$CLAUDE_MD" > "$CLAUDE_MD.tmp" 2>/dev/null || true
-
-      # Simpler approach: use sed to remove the block
-      # Pattern: "---\n\n## UltraThink Integration (OSS tier)\n...\nData directory:..."
-      sed '/^---$/,/^---$/{
-        /^## UltraThink Integration/,/^Data directory:.*/{d}
-      }' "$CLAUDE_MD" > "$CLAUDE_MD.tmp2" 2>/dev/null || true
-
-      # Most reliable: Python-style line-by-line removal
-      # Remove everything from the "---" before "## UltraThink Integration" to the end of that block
       {
         in_ut_block=false
         found_separator=false
         separator_line=""
         while IFS= read -r line; do
           if [[ "$line" == "---" ]] && ! $in_ut_block; then
-            # Peek: save separator, check if next non-empty line is UltraThink heading
             separator_line="$line"
             found_separator=true
             continue
           fi
           if $found_separator; then
             if [[ -z "$line" ]]; then
-              # blank line after ---, keep buffering
               separator_line="${separator_line}"$'\n'"$line"
               continue
             elif [[ "$line" =~ ^"## UltraThink Integration" ]]; then
-              # Entering UltraThink block — drop the separator and skip
               in_ut_block=true
               found_separator=false
               separator_line=""
               continue
             else
-              # Not UltraThink — flush the buffered separator
               echo "$separator_line"
               echo "$line"
               found_separator=false
@@ -201,7 +162,6 @@ if $UNINSTALL; then
             fi
           fi
           if $in_ut_block; then
-            # Skip until we hit an empty line followed by a new section, or EOF
             if [[ "$line" =~ ^"## " ]] || [[ "$line" == "---" ]]; then
               in_ut_block=false
               echo "$line"
@@ -212,7 +172,6 @@ if $UNINSTALL; then
         done < "$CLAUDE_MD"
       } > "$CLAUDE_MD.clean"
       mv "$CLAUDE_MD.clean" "$CLAUDE_MD"
-      rm -f "$CLAUDE_MD.tmp" "$CLAUDE_MD.tmp2" 2>/dev/null || true
     fi
     REMOVED+=("UltraThink section from CLAUDE.md")
   fi
@@ -223,12 +182,14 @@ if $UNINSTALL; then
     if $DRY_RUN; then
       log_dry "would remove UltraThink hooks from $SETTINGS"
     else
-      CLEAN_JS="
+      cat > /tmp/ut-clean-hooks.js << 'CLEANJS'
 const fs = require('fs');
-const s = JSON.parse(fs.readFileSync('$SETTINGS', 'utf-8'));
+const p = process.argv[2];
+const s = JSON.parse(fs.readFileSync(p, 'utf-8'));
 if (s.hooks) {
   for (const event of Object.keys(s.hooks)) {
     s.hooks[event] = (s.hooks[event] || []).filter(entry => {
+      if (entry.id && entry.id.startsWith('ut:')) return false;
       const cmds = (entry.hooks || []).map(h => h.command || '');
       return !cmds.some(c => c.includes('ultrathink-'));
     });
@@ -236,9 +197,10 @@ if (s.hooks) {
   }
   if (Object.keys(s.hooks).length === 0) delete s.hooks;
 }
-fs.writeFileSync('$SETTINGS', JSON.stringify(s, null, 2) + '\n');
-"
-      node -e "$CLEAN_JS" 2>/dev/null && true
+fs.writeFileSync(p, JSON.stringify(s, null, 2) + '\n');
+CLEANJS
+      node /tmp/ut-clean-hooks.js "$SETTINGS" 2>/dev/null && true
+      rm -f /tmp/ut-clean-hooks.js
     fi
     REMOVED+=("UltraThink hooks from settings.json")
   fi
@@ -263,13 +225,10 @@ fs.writeFileSync('$SETTINGS', JSON.stringify(s, null, 2) + '\n');
     fi
   fi
 
-  # Print summary
   echo ""
   if [[ ${#REMOVED[@]} -gt 0 ]]; then
     log_ok "Removed ${#REMOVED[@]} items:"
-    for item in "${REMOVED[@]}"; do
-      echo "    - $item"
-    done
+    for item in "${REMOVED[@]}"; do echo "    - $item"; done
   else
     log_info "Nothing to remove"
   fi
@@ -281,8 +240,24 @@ fi
 # ── INSTALL ──
 # ════════════════════════════════════════════════════════════════════════════
 
+# Auto-detect tier if not specified
+if [[ -z "$TIER" ]]; then
+  TIER="$(auto_detect_tier)"
+  log_info "Auto-detected tier: ${BOLD}$TIER${NC}"
+fi
+
+# Validate tier
+case "$TIER" in
+  oss|core) ;;
+  *)
+    log_error "Invalid tier: $TIER (must be oss or core)"
+    exit 1 ;;
+esac
+
+TIER_UPPER=$(echo "$TIER" | tr '[:lower:]' '[:upper:]')
+
 echo ""
-log_info "Installing UltraThink ${BOLD}OSS${NC} tier"
+log_info "Installing UltraThink ${BOLD}${TIER_UPPER}${NC}"
 log_info "Source: $ULTRA_ROOT"
 
 # ── Step 1: Prerequisites ──
@@ -317,6 +292,10 @@ dry_mkdir "$CLAUDE_DIR/skills" "$CLAUDE_DIR/hooks"
 dry_mkdir "$ULTRA_DATA/forge/projects" "$ULTRA_DATA/decisions/projects"
 dry_mkdir "$VAULT_PATH/memories" "$VAULT_PATH/decisions" "$VAULT_PATH/_templates"
 
+if [[ "$TIER" == "core" ]]; then
+  dry_mkdir "$VAULT_PATH/identity" "$VAULT_PATH/forge" "$VAULT_PATH/adaptations"
+fi
+
 log_ok "~/.claude/ and ~/.ultrathink/ ready"
 
 # ── Step 3: Symlink skills ──
@@ -339,7 +318,6 @@ log_ok "Linked $skill_count skills"
 # ── Step 4: Symlink references + agents ──
 log_step 4 "Linking references and agents"
 
-# References
 if [[ -d "$CLAUDE_DIR/references" && ! -L "$CLAUDE_DIR/references" ]]; then
   run_cmd mv "$CLAUDE_DIR/references" "$CLAUDE_DIR/references.bak.$(date +%s)"
 fi
@@ -347,17 +325,16 @@ dry_ln "$ULTRA_ROOT/.claude/references" "$CLAUDE_DIR/references"
 ref_count=$(find "$ULTRA_ROOT/.claude/references/" -name "*.md" 2>/dev/null | wc -l | tr -d ' ')
 log_ok "Linked $ref_count references"
 
-# Agents
 if [[ -d "$CLAUDE_DIR/agents" && ! -L "$CLAUDE_DIR/agents" ]]; then
   run_cmd mv "$CLAUDE_DIR/agents" "$CLAUDE_DIR/agents.bak.$(date +%s)"
 fi
 dry_ln "$ULTRA_ROOT/.claude/agents" "$CLAUDE_DIR/agents"
 log_ok "Linked agents"
 
-# ── Step 5: Symlink hooks ──
+# ── Step 5: Symlink hooks (tier-aware) ──
 log_step 5 "Linking hooks"
 
-# OSS hooks
+# Shared hooks (both tiers)
 SHARED_HOOKS="privacy-hook.sh format-check.sh notify.sh memory-auto-save.sh"
 SHARED_HOOKS+=" memory-session-start.sh memory-session-end.sh pre-compact.sh"
 SHARED_HOOKS+=" prompt-analyzer.ts prompt-submit.sh hook-log.sh statusline.sh"
@@ -367,8 +344,11 @@ SHARED_HOOKS+=" gsd-utils.sh post-edit-quality.sh registry-sync.sh"
 SHARED_HOOKS+=" search-cap.sh vfs-enforce.sh"
 SHARED_HOOKS+=" gateguard.sh config-protection.sh batch-quality.sh hook-flags.sh"
 
+# Core-only hooks (Tekiō, code-intel, decision engine)
+CORE_HOOKS="tool-failure-log.sh codeintel-session-check.sh post-edit-codeintel.sh"
+CORE_HOOKS+=" decision-inject.sh forge-hydrate.sh decision-extract.sh"
+
 hook_count=0
-# shellcheck disable=SC2086
 IFS=' ' read -ra HOOK_ARR <<< "$SHARED_HOOKS"
 for hook in "${HOOK_ARR[@]}"; do
   src="$ULTRA_ROOT/.claude/hooks/$hook"
@@ -377,39 +357,36 @@ for hook in "${HOOK_ARR[@]}"; do
   hook_count=$((hook_count+1))
 done
 
+if [[ "$TIER" == "core" ]]; then
+  IFS=' ' read -ra CORE_ARR <<< "$CORE_HOOKS"
+  for hook in "${CORE_ARR[@]}"; do
+    src="$ULTRA_ROOT/.claude/hooks/$hook"
+    [[ -f "$src" ]] || continue
+    dry_ln "$src" "$CLAUDE_DIR/hooks/ultrathink-$hook"
+    hook_count=$((hook_count+1))
+  done
+fi
+
 log_ok "Linked $hook_count hooks"
 
 # ── Step 6: Configure ──
 log_step 6 "Writing configuration"
 
-# UltraThink config
 if $DRY_RUN; then
   log_dry "write file: $ULTRA_DATA/config.json"
 else
   cat > "$ULTRA_DATA/config.json" << EOF
 {
-  "tier": "oss",
-  "version": "2.0.0",
+  "tier": "$TIER",
+  "version": "$VERSION",
   "installed_at": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
   "source_repo": "$ULTRA_ROOT",
   "vault_path": "$VAULT_PATH",
-  "database_url": "${DB_URL:-}",
-  "evaluator": {
-    "use_playwright": false,
-    "test_command": "npm run test",
-    "build_command": "npm run build",
-    "criteria_weights": {
-      "functionality": 0.4,
-      "design": 0.2,
-      "craft": 0.2,
-      "originality": 0.2
-    },
-    "pass_threshold": 0.7
-  }
+  "database_url": "${DB_URL:-}"
 }
 EOF
 fi
-log_ok "Wrote ~/.ultrathink/config.json (tier=oss)"
+log_ok "Wrote ~/.ultrathink/config.json (tier=$TIER)"
 
 # Write DB URL to .env if provided
 if [[ -n "$DB_URL" ]]; then
@@ -423,7 +400,7 @@ if [[ -n "$DB_URL" ]]; then
   fi
 fi
 
-# CLAUDE.md — OSS identity (opt-in)
+# CLAUDE.md — tier-specific identity (opt-in)
 CLAUDE_MD="$CLAUDE_DIR/CLAUDE.md"
 SKIP_IDENTITY=false
 
@@ -435,8 +412,7 @@ elif grep -q "UltraThink" "$CLAUDE_MD" 2>/dev/null; then
   log_info "CLAUDE.md already has UltraThink section — skipping"
 elif ! $AUTO_YES && ! $DRY_RUN; then
   echo ""
-  echo -en "  UltraThink wants to add its identity section to ${BOLD}~/.claude/CLAUDE.md${NC}"
-  echo -en "\n  This affects all Claude Code sessions. Proceed? [y/N] "
+  echo -en "  Add UltraThink identity to ${BOLD}~/.claude/CLAUDE.md${NC}? [y/N] "
   read -r confirm
   if [[ ! "$confirm" =~ ^[Yy]$ ]]; then
     SKIP_IDENTITY=true
@@ -452,7 +428,7 @@ if ! $SKIP_IDENTITY; then
 
 ---
 
-## UltraThink Integration (OSS tier)
+## UltraThink Integration ($TIER_UPPER tier)
 
 UltraThink is your active agent harness. Skills in \`~/.claude/skills/<name>/SKILL.md\`.
 Registry: \`~/.claude/skills/_registry.json\` ($skill_count skills across 4 layers).
@@ -463,28 +439,24 @@ EOF
   log_ok "Appended UltraThink section to CLAUDE.md"
 fi
 
-# Merge hooks into settings.json
+# Merge hooks into settings.json (with dedup by id)
 SETTINGS="$CLAUDE_DIR/settings.json"
 if ! $DRY_RUN; then
-  if [[ ! -f "$SETTINGS" ]]; then
-    echo '{}' > "$SETTINGS"
-  fi
+  [[ -f "$SETTINGS" ]] || echo '{}' > "$SETTINGS"
 fi
 
 if $DRY_RUN; then
   log_dry "would add UltraThink hooks to $SETTINGS"
 else
-  HOOKS_JS="
+  cat > /tmp/ut-install-hooks.js << 'HOOKJS'
 const fs = require('fs');
-const s = JSON.parse(fs.readFileSync('$SETTINGS', 'utf-8'));
-if (!s.hooks) s.hooks = {};
+const settingsPath = process.argv[2];
+const tier = process.argv[3];
+const s = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
+s.hooks = s.hooks || {};
 
-// intent: deduplicate hooks by id — skip any hook whose id already exists
-// status: done
-// confidence: high
 const add = (event, id, description, matcher, cmd, timeout) => {
-  if (!s.hooks[event]) s.hooks[event] = [];
-  // Skip if a hook with this id already exists
+  s.hooks[event] = s.hooks[event] || [];
   if (s.hooks[event].some(e => e.id === id)) return;
   const entry = { id, description, hooks: [{ type: 'command', command: cmd }] };
   if (matcher) entry.matcher = matcher;
@@ -492,20 +464,32 @@ const add = (event, id, description, matcher, cmd, timeout) => {
   s.hooks[event].push(entry);
 };
 
-add('SessionStart', 'ut:session:start', 'UltraThink: load memory and adaptations on session start', null, '$HOME/.claude/hooks/ultrathink-memory-session-start.sh', 10000);
-add('Stop', 'ut:stop:session-end', 'UltraThink: persist session memory on stop', null, '$HOME/.claude/hooks/ultrathink-memory-session-end.sh', 5000);
-add('PreToolUse', 'ut:pre:privacy', 'UltraThink: enforce file-access privacy rules', 'Read|Edit|Write', '$HOME/.claude/hooks/ultrathink-privacy-hook.sh');
-add('PostToolUse', 'ut:post:format-check', 'UltraThink: validate formatting after edits', 'Edit|Write', '$HOME/.claude/hooks/ultrathink-format-check.sh');
-add('PostToolUse', 'ut:post:search-cap', 'UltraThink: cap search result output size', 'Bash|Grep|Glob', '$HOME/.claude/hooks/ultrathink-search-cap.sh');
-add('PreToolUse', 'ut:pre:gateguard', 'UltraThink: enforce read-before-write (GateGuard)', 'Edit|Write|MultiEdit|Read', '$HOME/.claude/hooks/ultrathink-gateguard.sh');
-add('PreToolUse', 'ut:pre:config-protect', 'UltraThink: block linter/formatter config modifications', 'Edit|Write|MultiEdit', '$HOME/.claude/hooks/ultrathink-config-protection.sh');
-add('Stop', 'ut:stop:batch-quality', 'UltraThink: batch format + typecheck edited files', null, '$HOME/.claude/hooks/ultrathink-batch-quality.sh', 60000);
-add('PostToolUse', 'ut:post:batch-accumulate', 'UltraThink: track edited files for batch quality check', 'Edit|Write|MultiEdit', '$HOME/.claude/hooks/ultrathink-batch-quality.sh');
-add('PreCompact', 'ut:pre:compact', 'UltraThink: save context before compaction', null, '$HOME/.claude/hooks/ultrathink-pre-compact.sh', 10000);
+const H = process.env.HOME;
 
-fs.writeFileSync('$SETTINGS', JSON.stringify(s, null, 2) + '\n');
-"
-  node -e "$HOOKS_JS" 2>/dev/null && log_ok "Added hooks to settings.json" || log_warn "Could not merge hooks — add manually"
+// Shared hooks (all tiers)
+add('SessionStart', 'ut:session:start', 'UltraThink: load memory on session start', null, H+'/.claude/hooks/ultrathink-memory-session-start.sh', 10000);
+add('Stop', 'ut:stop:session-end', 'UltraThink: persist session memory on stop', null, H+'/.claude/hooks/ultrathink-memory-session-end.sh', 5000);
+add('PreToolUse', 'ut:pre:privacy', 'UltraThink: enforce file-access privacy rules', 'Read|Edit|Write', H+'/.claude/hooks/ultrathink-privacy-hook.sh');
+add('PostToolUse', 'ut:post:format-check', 'UltraThink: validate formatting after edits', 'Edit|Write', H+'/.claude/hooks/ultrathink-format-check.sh');
+add('PostToolUse', 'ut:post:search-cap', 'UltraThink: cap search result output size', 'Bash|Grep|Glob', H+'/.claude/hooks/ultrathink-search-cap.sh');
+add('PreToolUse', 'ut:pre:gateguard', 'UltraThink: enforce read-before-write (GateGuard)', 'Edit|Write|MultiEdit|Read', H+'/.claude/hooks/ultrathink-gateguard.sh');
+add('PreToolUse', 'ut:pre:config-protect', 'UltraThink: block linter/formatter config modifications', 'Edit|Write|MultiEdit', H+'/.claude/hooks/ultrathink-config-protection.sh');
+add('Stop', 'ut:stop:batch-quality', 'UltraThink: batch format + typecheck edited files', null, H+'/.claude/hooks/ultrathink-batch-quality.sh', 60000);
+add('PostToolUse', 'ut:post:batch-accumulate', 'UltraThink: track edited files for batch quality check', 'Edit|Write|MultiEdit', H+'/.claude/hooks/ultrathink-batch-quality.sh');
+add('PreCompact', 'ut:pre:compact', 'UltraThink: save context before compaction', null, H+'/.claude/hooks/ultrathink-pre-compact.sh', 10000);
+
+// Core-only hooks
+if (tier === 'core') {
+  add('PostToolUse', 'ut:post:codeintel', 'UltraThink: incremental code-intel reindex after edits', 'Edit|Write', H+'/.claude/hooks/ultrathink-post-edit-codeintel.sh');
+  add('SessionStart', 'ut:session:codeintel', 'UltraThink: check code-intel index freshness', null, H+'/.claude/hooks/ultrathink-codeintel-session-check.sh', 15000);
+  add('PostToolUse', 'ut:post:tool-failure', 'UltraThink: log tool failures for Tekiō adaptation', null, H+'/.claude/hooks/ultrathink-tool-failure-log.sh');
+  add('SessionStart', 'ut:session:decisions', 'UltraThink: inject decision rules on start', null, H+'/.claude/hooks/ultrathink-decision-inject.sh', 5000);
+}
+
+fs.writeFileSync(settingsPath, JSON.stringify(s, null, 2) + '\n');
+HOOKJS
+  node /tmp/ut-install-hooks.js "$SETTINGS" "$TIER" 2>/dev/null && log_ok "Added hooks to settings.json" || log_warn "Could not merge hooks — add manually"
+  rm -f /tmp/ut-install-hooks.js
 fi
 
 # Vault templates
@@ -626,16 +610,29 @@ else
   ((ERRORS++))
 fi
 
+# Core-specific checks
+if [[ "$TIER" == "core" ]]; then
+  if [[ -f "$ULTRA_ROOT/.env" ]] && grep -q "DATABASE_URL" "$ULTRA_ROOT/.env" 2>/dev/null; then
+    log_ok "Core: .env has DATABASE_URL"
+  else
+    log_warn "Core: no DATABASE_URL in .env — memory/code-intel need it"
+  fi
+  if [[ -d "$ULTRA_ROOT/code-intel" ]]; then
+    log_ok "Core: code-intel present"
+  fi
+fi
+
 echo ""
 if [[ "$ERRORS" -eq 0 ]]; then
   echo -e "${GREEN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-  echo -e "${GREEN}${BOLD}  UltraThink OSS installed successfully!${NC}"
+  echo -e "${GREEN}${BOLD}  UltraThink $TIER_UPPER installed successfully!${NC}"
   echo -e "${GREEN}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 else
   echo -e "${YELLOW}${BOLD}  UltraThink installed with $ERRORS warning(s)${NC}"
 fi
 
 echo ""
+echo "  Tier:       $TIER_UPPER"
 echo "  Skills:     $skill_count in ~/.claude/skills/"
 echo "  Hooks:      $hook_count in ~/.claude/hooks/"
 echo "  References: $ref_count in ~/.claude/references/"
