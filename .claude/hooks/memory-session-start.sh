@@ -47,14 +47,7 @@ if [[ -n "${CLAUDE_ENV_FILE:-}" ]]; then
   fi
 fi
 
-# Detect if this is a post-compact restart
-SOURCE=$(echo "$INPUT" | jq -r '.source // ""' 2>/dev/null || echo "")
-SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // ""' 2>/dev/null || echo "")
-
-# Export CC_SESSION_ID for process-scoped session file isolation
-export CC_SESSION_ID="$SESSION_ID"
-
-# ── Vault sync: import Obsidian edits before memory recall ──
+# ── Vault sync: import user's Obsidian edits before memory recall ──
 VAULT_DIR="$HOME/.ultrathink/vault"
 VAULT_SYNC="$ULTRA_ROOT/scripts/vault-sync.ts"
 if [[ -d "$VAULT_DIR" && -f "$VAULT_SYNC" ]]; then
@@ -62,6 +55,13 @@ if [[ -d "$VAULT_DIR" && -f "$VAULT_SYNC" ]]; then
     hook_log "session-start" "vault-sync-warning" "vault-to-db failed, continuing"
   fi
 fi
+
+# Detect if this is a post-compact restart
+SOURCE=$(echo "$INPUT" | jq -r '.source // ""' 2>/dev/null || echo "")
+SESSION_ID=$(echo "$INPUT" | jq -r '.session_id // ""' 2>/dev/null || echo "")
+
+# Export CC_SESSION_ID for process-scoped session file isolation
+export CC_SESSION_ID="$SESSION_ID"
 
 if [[ "$SOURCE" == "compact" ]]; then
   # --- Post-compact path ---
@@ -121,7 +121,7 @@ else
     identity=$(echo "$ctx" | grep -o '\*\*Identity:\*\* [^*]*' | sed 's/\*\*Identity:\*\* //' | head -1 || true)
     if [[ -n "$identity" ]]; then
       CC_SID=$(echo "$INPUT" | jq -r '.session_id // ""' 2>/dev/null | head -c 12)
-      if [[ -n "${CC_SID:-}" ]]; then
+      if [[ -n "$CC_SID" ]]; then
         mkdir -p /tmp/ultrathink-status 2>/dev/null || true
         echo "$identity" > "/tmp/ultrathink-status/identity-$CC_SID" 2>/dev/null || true
       fi
@@ -136,17 +136,24 @@ else
     (
       cd "$ULTRA_ROOT"
       # Preferences for prompt-analyzer skill boosting
-      if [[ -n "${CC_SID:-}" ]]; then
+      if [[ -n "$CC_SID" ]]; then
         raw_prefs=$(npx tsx "$RUNNER" preferences 2>/dev/null) || raw_prefs='[]'
         echo "$raw_prefs" > "/tmp/ultrathink-status/preferences-${CC_SID}.json"
       fi
 
+      # Cache active Tekiō adaptations for PreToolUse prevention checks
+      CACHE_SCRIPT="$ULTRA_ROOT/memory/scripts/cache-adaptations.ts"
+      if [[ -f "$CACHE_SCRIPT" ]]; then
+        timeout 10 npx tsx "$CACHE_SCRIPT" > /tmp/ultrathink-status/adaptations-cache.json 2>/dev/null || echo '[]' > /tmp/ultrathink-status/adaptations-cache.json
+      fi
+
       # Non-critical stats — all fire-and-forget
       WEEKLY_SCRIPT="$ULTRA_ROOT/memory/scripts/weekly-stats.ts"
+      WHEEL_SCRIPT="$ULTRA_ROOT/memory/scripts/wheel-count.ts"
       CONTEXT_TREE_SCRIPT="$ULTRA_ROOT/memory/scripts/context-tree-summary.ts"
 
       timeout 10 npx tsx "$WEEKLY_SCRIPT" > /tmp/ultrathink-status/weekly-stats 2>/dev/null || true
-      # Adaptive learning stats — available in Core tier
+      [[ -f "$WHEEL_SCRIPT" ]] && timeout 10 npx tsx "$WHEEL_SCRIPT" > /tmp/ultrathink-status/wheel-count 2>/dev/null || true
       [[ -f "$CONTEXT_TREE_SCRIPT" ]] && timeout 10 npx tsx "$CONTEXT_TREE_SCRIPT" > /tmp/ultrathink-status/context-tree 2>/dev/null || true
     ) &
   else
@@ -158,9 +165,10 @@ else
   if [[ -x "$NOTIFY_SCRIPT" ]]; then
     (
       # Gather stats for the notification
+      WHEEL_N=$(cat /tmp/ultrathink-status/wheel-count 2>/dev/null || echo "?")
       MEM_LINE=$(cat /tmp/ultrathink-status/weekly-stats 2>/dev/null || echo "")
       MEM_N=$(echo "$MEM_LINE" | cut -d'|' -f1 2>/dev/null || echo "?")
-      START_MSG="▶ New session started\n\n**Memories:** ${MEM_N}\n**Project:** $(basename "$ULTRA_ROOT")"
+      START_MSG="▶ New session started\n\n**☸ Tekiō:** ${WHEEL_N} adaptations active\n**Memories:** ${MEM_N}\n**Project:** $(basename "$ULTRA_ROOT")"
       bash "$NOTIFY_SCRIPT" "$START_MSG" "discord" "normal" 2>/dev/null || true
     ) &
   fi

@@ -1,41 +1,45 @@
-# /forge — Product Builder Pipeline
+# /forge — Product Builder Pipeline (GSD Template)
 
-> `idea → clarify → feasibility → plan → build → validate → improve → ship`
+> GSD template for product-building lifecycle. Forge = GSD with product-specific presets.
+> `clarify → feasibility → plan = gsd-plan | build = gsd-execute | validate = gsd-verify | improve = gsd-execute (fix wave) | ship = gsd post-verify`
+
+## Relationship to GSD
+
+Forge is **not a separate workflow** — it's a GSD template/preset with product-building phases.
+All execution flows through GSD primitives:
+
+| Forge Phase | GSD Equivalent |
+|-------------|----------------|
+| clarify → feasibility → plan | gsd-plan |
+| build | gsd-execute |
+| validate | gsd-verify |
+| improve | gsd-execute (fix wave) |
+| ship | gsd post-verify |
 
 ## Trigger
 
-- `/forge`, `/forge <idea>`, "build product", "build app", "create app", "ship"
-- Invoked when user has a product idea and wants structured execution
+- Keywords: "forge", "build product", "build app", "create app", "ship", "from idea to product"
+- When user has a product idea and wants structured execution
 
-## How It Works
+## Modes
 
-Forge is a **7-phase pipeline** that turns an idea into a shipped product. Each phase has clear inputs, outputs, and exit criteria. State persists to disk so work survives compaction and session restarts.
+- `--guided` (DEFAULT): Step-by-step, plain language, explains each phase before executing
+- `--builder`: Enforced phase gates, validation required, auto-decision extraction
+- `--full`: No gates, experienced users, maximum speed
 
-**Always guided**: explains each step in plain language before executing.
+## State
 
----
+Forge state persists at `~/.ultrathink/forge/projects/<hash>.json` where hash = first 8 chars of SHA256 of the project working directory path.
 
-## State Management
+**Read state at session start.** If forge-state exists for current project, resume from last stage.
 
-**State file**: `~/.ultrathink/forge/projects/<hash>.json`
-**Hash**: first 8 chars of `echo -n "$PWD" | shasum -a 256`
-
-### On `/forge` invocation:
-1. Compute hash from current working directory
-2. Check if state file exists
-3. If exists → show progress summary, ask "Continue from [stage]?" or "Start fresh?"
-4. If not → create state file, enter CLARIFY
-
-### State updates:
-- Write state after EVERY phase transition and feature completion
-- Include timestamp in `updated` field
-- Append phase transitions to `history` array
-
+**State format (JSON — never Markdown):**
 ```json
 {
   "project": "descriptive-slug",
   "project_path": "/absolute/path",
   "stage": "clarify|feasibility|plan|build|validate|improve|ship|complete",
+  "mode": "guided|builder|full",
   "created": "ISO-8601",
   "updated": "ISO-8601",
   "spec": {
@@ -64,159 +68,153 @@ Forge is a **7-phase pipeline** that turns an idea into a shipped product. Each 
     "originality": null,
     "overall": null
   },
+  "decisions": [],
   "history": []
 }
 ```
 
----
-
 ## Phase 1: CLARIFY
 
-**Goal**: Understand what we're building and for whom.
+Ask the user 3-5 targeted questions to understand the product:
+1. **Who** is the target user?
+2. **What** specific problem does this solve?
+3. **Why** is this better than existing solutions?
+4. **What** is the MVP scope? (what's the ONE thing it must do?)
+5. **What** stack preference? (or let forge decide)
 
-Ask:
-1. **Who** is the target user? *(so we design for real needs, not assumptions)*
-2. **What** specific problem does this solve? *(one sentence, forces clarity)*
-3. **Why** is this better than what exists? *(validates the idea has a reason to exist)*
-4. **What** is the MVP scope? *(the ONE thing it must do — prevents scope creep)*
-5. **Stack preference?** *(or say "you decide" and forge picks based on the problem)*
+In `--guided` mode: Explain why each question matters. Use plain language.
 
-**Exit criteria**: All 5 answers captured → write to `spec` → advance to FEASIBILITY.
-
----
+Output: Update `spec` in forge-state.json.
 
 ## Phase 2: FEASIBILITY
 
-**Goal**: Honest assessment before investing build time.
+Score the idea:
+- **Tech complexity** (1-5): How hard to build?
+- **Novelty** (1-5): Does this exist already? What's new?
+- **Time estimate**: Realistic timeline with the chosen stack
+- **Risk factors**: What could go wrong?
 
-Score:
-| Dimension | Scale | Question |
-|-----------|-------|----------|
-| Tech complexity | 1-5 | How hard to build with this stack? |
-| Novelty | 1-5 | What's genuinely new here? |
-| Time estimate | hours/days | Realistic with chosen stack |
-| Risk factors | list | What could block or derail this? |
+In `--builder` mode: If `feasibility_score < 3`, STOP. Ask user to refine the idea or adjust scope.
 
-Present the scores to the user. If complexity is high (4-5), flag it and suggest scope reduction.
-
-**Exit criteria**: Scores written to `spec.feasibility_score` and `spec.complexity_score` → user confirms "proceed" → advance to PLAN.
-
----
+Output: Update `spec.feasibility_score` and `spec.complexity_score`.
 
 ## Phase 3: PLAN
 
-**Goal**: Break the product into buildable atomic features.
+Generate a phased roadmap:
+- 3-5 phases, each with 5-10 atomic features
+- Each feature has a clear pass/fail test
+- Order by dependency (build foundations first)
+- Assign features to sprints
 
-Generate:
-- **3-5 phases**, ordered by dependency (foundations first)
-- **5-10 features per phase**, each with a clear pass/fail test
-- Show one phase at a time, explain each feature in plain language
-- Ask **"Ready to proceed?"** before finalizing
+Use existing skills: invoke `/plan` for task decomposition, `/scout` for tech research.
 
-Use `/plan` for task decomposition, `/scout` for tech research if needed.
+In `--guided` mode: Show one phase at a time. Explain what each feature does in plain language. Ask "Ready to proceed?" before continuing.
 
-**Exit criteria**: User approves the plan → write `phases` array (all features `passes: false`) → advance to BUILD.
-
----
+Output: Update `phases` array in forge-state.json. Each feature starts with `"passes": false`.
 
 ## Phase 4: BUILD
 
-**Goal**: Implement features one at a time, test each, commit each.
-
 For each feature in the current phase:
-1. **Explain** what you're about to build and why
-2. **Build** it (write code, create files, install deps)
-3. **Test** — run the project's test command
-4. **Pass** → set `feature.passes = true`, commit: `feat(forge): <phase>.<feature> — <description>`
-5. **Fail** → fix and retry (max 3 attempts)
+1. Read the feature spec from forge-state
+2. Build it (write code, create files, install deps)
+3. Run the project's test command
+4. If tests pass → set `feature.passes = true`, commit, move to next
+5. If tests fail → fix and retry (max 3 attempts per feature)
 
-Rules:
-- **One feature at a time.** Never build multiple simultaneously.
-- **Commit after each feature.** Small, reviewable commits.
-- Chain skills as needed: `/react`, `/nextjs`, `/tailwindcss`, `/drizzle`, etc.
-- Update state after each feature completion.
+Chain existing skills as needed: `/react`, `/nextjs`, `/tailwindcss`, `/drizzle`, `/api-designer`, etc.
 
-When all features in a phase pass → advance to VALIDATE.
+**One feature at a time.** Never build multiple features simultaneously.
+**Commit after each feature.** Message: `feat(forge): <phase>.<feature> — <description>`
 
----
+In `--guided` mode: Before building each feature, explain what you're about to do and why.
+
+Output: Update `phases[n].features[m].passes` after each feature.
 
 ## Phase 5: VALIDATE
 
-**Goal**: Verify the phase actually works as a whole.
-
-Run:
-1. `npm run build` (or equivalent) — must succeed
-2. `npm run test` (or equivalent) — must pass
+Run the evaluator against the current phase:
+1. `npm run build` — must succeed
+2. `npm run test` — must pass
 3. Structural checks: files exist, routes respond, no console errors
+4. If user has configured Playwright in `~/.ultrathink/config.json` → run click-through tests
 
-Score (0-1 each):
-| Dimension | What it measures |
-|-----------|-----------------|
-| Functionality | Does it work as specified? |
-| Design | Is the UI/UX acceptable? |
-| Craft | Code quality, error handling, no debug artifacts |
-| Originality | Does it deliver the unique value prop? |
+Scoring (0-1 each):
+- **Functionality**: Does it work as specified?
+- **Design**: Is the UI/UX acceptable?
+- **Craft**: Code quality, no console.log, proper error handling
+- **Originality**: Does it deliver the unique value prop?
 
-**Exit criteria**: All scores ≥ 0.7 → advance to next phase's BUILD (or SHIP if last phase). Any score < 0.7 → enter IMPROVE.
+In `--builder` mode: Must score above `pass_threshold` (default 0.7) to proceed. If below → auto-enter IMPROVE phase.
 
----
+Output: Update `evaluation` in forge-state.json.
 
 ## Phase 6: IMPROVE
 
-**Goal**: Fix what validation caught.
+Fix validation failures:
+1. Read evaluation scores and failure details
+2. Prioritize by impact (functionality > design > craft > originality)
+3. Fix issues one at a time
+4. Re-validate after fixes
 
-1. Read scores and failure details from state
-2. Prioritize: functionality > design > craft > originality
-3. Fix one issue at a time
-4. Re-run VALIDATE after fixes
-
-**Loop**: IMPROVE → VALIDATE, max 3 cycles. If still failing after 3 → ask user how to proceed.
-
----
+Loop: IMPROVE → VALIDATE until passing or max 3 improvement cycles.
 
 ## Phase 7: SHIP
 
-**Goal**: Prepare for deployment.
-
-1. Generate/update `README.md` with setup instructions
+Prepare for deployment:
+1. Generate/update README.md with setup instructions
 2. Create PR if on a feature branch
 3. List deployment steps for the chosen stack
 4. Generate launch checklist
-5. Walk through each step — explain what deployment means
 
-**Exit criteria**: User confirms shipped → set `stage: "complete"`.
+In `--guided` mode: Walk through each step. Explain what deployment means. Help with any unfamiliar steps.
 
----
+Output: Set `stage: "complete"` in forge-state.json.
 
-## Flow Diagram
+## Phase Gates (Builder mode only)
 
 ```
-CLARIFY ──[spec done]──→ FEASIBILITY ──[user confirms]──→ PLAN
-                                                            │
-                                                    [user approves]
-                                                            ▼
-SHIP ←──[all phases done]── VALIDATE ←──────────── BUILD
-                               │                      ↑
-                          [score < 0.7]                │
-                               ▼                       │
-                            IMPROVE ───[re-validate]───┘
+CLARIFY ──[spec complete]──→ FEASIBILITY ──[score ≥ 3]──→ PLAN
+  ↑                                                          │
+  └──[refine idea]                                           │
+                                                             ▼
+SHIP ←──[eval ≥ threshold]──── VALIDATE ←──── BUILD ←── [plan approved]
+                                  │                         ↑
+                                  └──→ IMPROVE ─────────────┘
 ```
 
-**Cannot skip phases.** Cannot BUILD without approved PLAN. Cannot SHIP without passing VALIDATE.
+Gates are enforced by checking forge-state before entering each phase.
+Cannot skip phases. Cannot enter BUILD without approved PLAN.
+Cannot enter SHIP without passing VALIDATE.
 
----
+## Decision Extraction (Builder mode)
 
-## Directory Setup
+When the user corrects forge's output during any phase:
+- Extract the correction as a decision rule
+- Save to `~/.ultrathink/decisions/projects/<hash>.json`
+- Apply in future forge sessions for this project
 
-On first forge invocation, ensure these exist:
-```bash
-mkdir -p ~/.ultrathink/forge/projects
-```
+Example:
+- User: "No, use Drizzle not Prisma for this project"
+- Extracted decision: `{ "rule": "Use Drizzle ORM, not Prisma", "scope": "<project-path>", "source": "user" }`
 
 ## Resuming
 
-On any `/forge` call in a project with existing state:
-- Show: project name, current stage, phase progress (X/Y features done)
-- Ask: "Continue?" or "Start fresh?"
+When starting a new session in a project that has forge-state:
+1. Read `~/.ultrathink/forge/projects/<hash>.json`
+2. Display current stage and progress
+3. Ask: "Continue from [stage]?" or "Start fresh?"
 
-Starting fresh archives the old state to `<hash>-<timestamp>.json`.
+The `forge-hydrate.sh` hook handles this automatically at session start.
+
+## Forge Utility Functions
+
+To compute project hash:
+```bash
+echo -n "$PWD" | shasum -a 256 | cut -c1-8
+```
+
+To read forge state:
+```bash
+HASH=$(echo -n "$PWD" | shasum -a 256 | cut -c1-8)
+STATE="$HOME/.ultrathink/forge/projects/${HASH}.json"
+```

@@ -239,7 +239,7 @@ Content: "[Question] → [Consensus prediction] (confidence: X/10, base case: Y%
 
 Also save as a **decision** if it informs a real choice:
 ```bash
-npx tsx memory/scripts/memory-runner.ts decision "[title]" "[prediction summary]" "[context]"
+npx tsx ./memory/scripts/memory-runner.ts decision "[title]" "[prediction summary]" "[context]"
 ```
 
 ---

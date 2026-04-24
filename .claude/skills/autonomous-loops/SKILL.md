@@ -156,5 +156,5 @@ Every autonomous loop MUST have:
 
 - Use `cost-aware-pipeline` skill for model routing within loops (Sonnet for coding passes, Opus for review)
 - Use `subagent-driven-development` for the RFC-DAG pattern's parallel phase
-- Log loop outcomes to memory system for future learning
+- Log loop outcomes to memory system for Tekiō adaptation
 - Use VFS for cheap file scanning within watch loops (avoid full reads per iteration)

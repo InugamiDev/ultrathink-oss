@@ -15,7 +15,7 @@ Set up UltraThink in the current project or globally.
 Run the global installer:
 
 ```bash
-~/Documents/GitHub/InuVerse/ai-agents/ultrathink/scripts/init-global.sh
+"${ULTRATHINK_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}/scripts/init-global.sh"
 ```
 
 This symlinks all skills, rules, agents, and hooks into `~/.claude/` so every Claude Code session has UltraThink.
@@ -25,7 +25,7 @@ This symlinks all skills, rules, agents, and hooks into `~/.claude/` so every Cl
 Remove UltraThink from global config:
 
 ```bash
-~/Documents/GitHub/InuVerse/ai-agents/ultrathink/scripts/init-global.sh --uninstall
+"${ULTRATHINK_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}/scripts/init-global.sh" --uninstall
 ```
 
 ## Default (local project init)
@@ -33,7 +33,7 @@ Remove UltraThink from global config:
 Symlink UltraThink into the current project's `.claude/` directory:
 
 ```bash
-ULTRA="$HOME/Documents/GitHub/InuVerse/ai-agents/ultrathink"
+ULTRA="${ULTRATHINK_DIR:-$HOME/Documents/GitHub/InuVerse/ai-agents/ultrathink}"
 PROJECT_DIR="$(pwd)"
 
 # Create .claude directory if needed

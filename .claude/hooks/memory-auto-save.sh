@@ -1,250 +1,88 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -eo pipefail
 umask 077
 
-# memory-auto-save.sh — PostToolUse hook for auto-memory creation.
-# Fires after Edit/Write/Bash tool calls.
+# memory-auto-save.sh — PostToolUse hook
 #
-# NOISE REDUCTION: Only auto-captures meaningful events:
-# - Bash errors (exit_status != 0) — save command + error output
-# - Schema/config/migration changes — architectural changes only
-# - New file creation (Write tool) — first edit to a new file
-# For everything else, Claude writes memories intentionally via `save` command.
+# intent: Auto-save decisions when Edit/Write contains decision language
+# status: done
+# confidence: high
+#
+# Detects decision patterns in tool input and saves to memory via memory-runner.
+# Rate-limited: max 1 auto-save per 120 seconds.
+# Only triggers on Edit/Write — not Read, Bash, Glob, etc.
 
 INPUT=$(cat)
+TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // ""' 2>/dev/null)
 
-TOOL_NAME=$(echo "$INPUT" | jq -r '.tool_name // ""')
-TOOL_INPUT=$(echo "$INPUT" | jq -r '.tool_input // "{}"')
-TOOL_OUTPUT=$(echo "$INPUT" | jq -r '.tool_output // ""')
-
-# Only process Edit, Write, Bash
+# Only trigger on Edit/Write
 case "$TOOL_NAME" in
-  Edit|Write|Bash) ;;
+  Edit|Write|MultiEdit) ;;
   *) echo '{}'; exit 0 ;;
 esac
 
-MEMORIES_DIR="/tmp/ultrathink-memories"
-mkdir -p "$MEMORIES_DIR"
+# ── Resolve paths ──
+HOOK_SOURCE="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || realpath "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
+HOOK_DIR="$(cd "$(dirname "$HOOK_SOURCE")" && pwd)"
+ULTRA_ROOT="$(cd "$HOOK_DIR/../.." && pwd)"
+RUNNER="$ULTRA_ROOT/memory/scripts/memory-runner.ts"
 
-PROJECT_SCOPE=$(pwd | rev | cut -d'/' -f1-2 | rev)
-PROJECT_ROOT=$(pwd)
-
-# Read session ID from session-scoped file
-SESSION_ID=""
-CC_SID=$(echo "$INPUT" | jq -r '.session_id // ""' 2>/dev/null | head -c 12)
-if [[ -n "$CC_SID" && -f "/tmp/ultrathink-session-${CC_SID}" ]]; then
-  SESSION_ID=$(cat "/tmp/ultrathink-session-${CC_SID}" 2>/dev/null || true)
-elif [[ -f /tmp/ultrathink-session-id ]]; then
-  SESSION_ID=$(cat /tmp/ultrathink-session-id 2>/dev/null || true)
+# ── Load .env ──
+if [[ -z "${DATABASE_URL:-}" && -f "$ULTRA_ROOT/.env" ]]; then
+  while IFS= read -r line; do
+    [[ -z "$line" || "$line" =~ ^# ]] && continue
+    key="${line%%=*}"
+    value="${line#*=}"
+    export "$key"="$value"
+  done < "$ULTRA_ROOT/.env"
 fi
 
-TIMESTAMP=$(date +%s)
-TOOL_LOWER=$(echo "$TOOL_NAME" | tr '[:upper:]' '[:lower:]')
+[[ -z "${DATABASE_URL:-}" ]] && { echo '{}'; exit 0; }
 
-# Convert absolute path to project-relative
-rel_path() {
-  local abs="$1"
-  echo "${abs#${PROJECT_ROOT}/}"
-}
+# ── Rate limit: 1 decision per 120s ──
+RATE_FILE="/tmp/ultrathink-last-decision-save"
+if [[ -f "$RATE_FILE" ]]; then
+  LAST_TS=$(cat "$RATE_FILE" 2>/dev/null || echo "0")
+  NOW_TS=$(date +%s)
+  if [[ $((NOW_TS - LAST_TS)) -lt 120 ]]; then
+    echo '{}'; exit 0
+  fi
+fi
 
-case "$TOOL_NAME" in
-  Edit|Write)
-    FILE_PATH=$(echo "$TOOL_INPUT" | jq -r '.file_path // ""')
-    if [[ -z "$FILE_PATH" ]]; then
-      echo '{}'; exit 0
-    fi
+# ── Extract content from tool input ──
+# For Edit: new_string contains the decision; for Write: content
+NEW_STRING=$(echo "$INPUT" | jq -r '.tool_input.new_string // .tool_input.content // ""' 2>/dev/null | head -c 2000)
+FILE_PATH=$(echo "$INPUT" | jq -r '.tool_input.file_path // ""' 2>/dev/null)
 
-    # Skip noise: lock files, build output, node_modules, .next, dist
-    case "$FILE_PATH" in
-      *node_modules/*|*.next/*|*dist/*|*build/*|*.lock|*lock.json|*.min.js|*.min.css)
-        echo '{}'; exit 0 ;;
-    esac
+# Need actual text content, not JSON structure
+[[ -z "$NEW_STRING" || "$NEW_STRING" == "null" ]] && { echo '{}'; exit 0; }
 
-    # NOISE REDUCTION: Only save for architectural files
-    # Skip regular component/page/style edits — those are just normal work
-    SHOULD_SAVE=false
-    CATEGORY="architecture"
-    IMPORTANCE=5
+# ── Check for decision language ──
+DECISION_PATTERNS="(switch(ed|ing)? (to|from)|let'?s use|don'?t use|instead of|decided to|going with|replaced .* with|migrated? (to|from)|chose |prefer |upgraded? (to|from))"
 
-    case "$FILE_PATH" in
-      *migration*|*.sql)        SHOULD_SAVE=true; IMPORTANCE=7 ;;
-      *schema*|*model*)         SHOULD_SAVE=true; IMPORTANCE=6 ;;
-      *.env*)                   SHOULD_SAVE=false; IMPORTANCE=6 ;;  # .env files may contain secrets — never auto-capture
-      *CLAUDE.md|*SKILL.md)     SHOULD_SAVE=true; IMPORTANCE=5 ;;
-      *registry*)               SHOULD_SAVE=true; IMPORTANCE=5 ;;
-      *hook*|*middleware*)       SHOULD_SAVE=true; IMPORTANCE=5 ;;
-      *.config.*|*config/*.*)   SHOULD_SAVE=true; IMPORTANCE=5 ;;
-      *docker*|*Dockerfile*)    SHOULD_SAVE=true; IMPORTANCE=5 ;;
-      *route*|*api/*)           SHOULD_SAVE=true; IMPORTANCE=5; CATEGORY="pattern" ;;
-    esac
+if ! echo "$NEW_STRING" | grep -qiE "$DECISION_PATTERNS"; then
+  echo '{}'; exit 0
+fi
 
-    # Write tool creating a NEW file — always interesting.
-    # Since this is a PostToolUse hook, the file already exists by the time we run.
-    # Detect "new file" by checking: (1) tool_output contains "created", or
-    # (2) file is untracked in git, or (3) file was created within the last 5 seconds.
-    if [[ "$TOOL_NAME" == "Write" ]]; then
-      IS_NEW_FILE=false
+# ── Extract the decision phrase ──
+DECISION_LINE=$(echo "$NEW_STRING" | grep -iE "$DECISION_PATTERNS" | head -1 | head -c 200)
+[[ -z "$DECISION_LINE" ]] && { echo '{}'; exit 0; }
 
-      # Wait for file to appear on disk (up to 500ms) — Write may still be flushing
-      if [[ ! -f "$FILE_PATH" ]]; then
-        for _retry in 1 2 3 4 5; do
-          sleep 0.1
-          [[ -f "$FILE_PATH" ]] && break
-        done
-      fi
+# Clean: strip code artifacts, keep only readable text
+CLEAN_LINE=$(echo "$DECISION_LINE" | sed 's/[^a-zA-Z0-9 ._,;:/-]//g' | sed 's/  */ /g' | head -c 70)
+[[ ${#CLEAN_LINE} -lt 10 ]] && { echo '{}'; exit 0; }
 
-      if [[ ! -f "$FILE_PATH" ]]; then
-        # File never appeared — skip gracefully, log to stderr for debugging
-        echo "[memory-auto-save] WARN: file not found after 500ms: $FILE_PATH" >&2
-        echo '{}'; exit 0
-      fi
+TITLE="Decision: $CLEAN_LINE"
+SCOPE=$(pwd | rev | cut -d'/' -f1-2 | rev)
 
-      # Method 1: tool_output contains "created" (Claude reports "Created file ...")
-      if echo "$TOOL_OUTPUT" | grep -qi 'created\|new file'; then
-        IS_NEW_FILE=true
-      fi
+# ── Save to DB (async, non-blocking) ──
+(
+  date +%s > "$RATE_FILE" 2>/dev/null || true
 
-      # Method 2: file is untracked in git (new, never committed)
-      if [[ "$IS_NEW_FILE" != "true" ]] && command -v git &>/dev/null; then
-        GIT_STATUS=$(git status --porcelain -- "$FILE_PATH" 2>/dev/null || true)
-        if [[ "$GIT_STATUS" == "??"* ]]; then
-          IS_NEW_FILE=true
-        fi
-      fi
-
-      # Method 3: file birth/mod time within last 5 seconds (recently created)
-      if [[ "$IS_NEW_FILE" != "true" ]]; then
-        FILE_MOD=$(stat -f %m "$FILE_PATH" 2>/dev/null || stat -c %Y "$FILE_PATH" 2>/dev/null || echo "0")
-        NOW=$(date +%s)
-        if (( NOW - FILE_MOD <= 5 )); then
-          # Could be new or just edited — check if git knows about it
-          if command -v git &>/dev/null; then
-            # If git ls-files returns empty, this file has never been committed
-            GIT_KNOWN=$(git ls-files -- "$FILE_PATH" 2>/dev/null || true)
-            if [[ -z "$GIT_KNOWN" ]]; then
-              IS_NEW_FILE=true
-            fi
-          fi
-        fi
-      fi
-
-      if [[ "$IS_NEW_FILE" == "true" ]]; then
-        SHOULD_SAVE=true
-        IMPORTANCE=5
-        CATEGORY="pattern"
-      fi
-    fi
-
-    if [[ "$SHOULD_SAVE" != "true" ]]; then
-      echo '{}'; exit 0
-    fi
-
-    REL_PATH=$(rel_path "$FILE_PATH")
-    SLUG=$(basename "$FILE_PATH" | tr '.' '-' | tr '[:upper:]' '[:lower:]')
-
-    # Extract change context from Edit tool
-    CHANGE_CTX=""
-    if [[ "$TOOL_NAME" == "Edit" ]]; then
-      OLD_STR=$(echo "$TOOL_INPUT" | jq -r '.old_string // ""' 2>/dev/null | head -c 80)
-      NEW_STR=$(echo "$TOOL_INPUT" | jq -r '.new_string // ""' 2>/dev/null | head -c 80)
-      if [[ -n "$OLD_STR" && -n "$NEW_STR" ]]; then
-        CHANGE_CTX=" — changed '${OLD_STR}' → '${NEW_STR}'"
-      fi
-    fi
-
-    # Dedup: skip if a memory with the same slug was written in the last 60 seconds
-    if find "$MEMORIES_DIR" -name "*-${SLUG}.json" -mmin -1 2>/dev/null | grep -q .; then
-      echo '{}'; exit 0
-    fi
-
-    jq -n \
-      --arg content "Modified ${REL_PATH}${CHANGE_CTX}" \
-      --arg category "$CATEGORY" \
-      --argjson importance "$IMPORTANCE" \
-      --arg scope "$PROJECT_SCOPE" \
-      --arg source "auto-memory-$TOOL_LOWER" \
-      --arg session_id "$SESSION_ID" \
-      --arg slug "$SLUG" \
-      --arg tool "$TOOL_LOWER" \
-      '{
-        content: $content,
-        category: $category,
-        importance: $importance,
-        confidence: 0.7,
-        scope: $scope,
-        source: $source,
-        session_id: $session_id,
-        tags: ["#auto", ("#" + $tool), ("#" + $slug)]
-      }' > "$MEMORIES_DIR/${TIMESTAMP}-${SLUG}.json"
-    ;;
-
-  Bash)
-    COMMAND=$(echo "$TOOL_INPUT" | jq -r '.command // ""')
-    EXIT_STATUS=$(echo "$INPUT" | jq -r '.tool_result.exit_status // 0' 2>/dev/null || echo "0")
-
-    # NOISE REDUCTION: Only save bash errors and high-impact commands
-    SHOULD_SAVE=false
-    BASH_CATEGORY="solution"
-    BASH_IMPORTANCE=4
-
-    # Save errors ONLY if we have meaningful error output (not just "Exit code 1")
-    if [[ "$EXIT_STATUS" != "0" && "$EXIT_STATUS" != "null" ]]; then
-      # Get error output length — skip saving if output is too short to be useful
-      ERROR_LEN=$(echo "$TOOL_OUTPUT" | wc -c | tr -d ' ')
-      if [[ "$ERROR_LEN" -gt 30 ]]; then
-        SHOULD_SAVE=true
-        BASH_IMPORTANCE=6
-        BASH_CATEGORY="solution"
-      fi
-      # Skip bare "Exit code N" with no useful error context
-    fi
-
-    # Save high-impact commands
-    case "$COMMAND" in
-      *install*|*add*)                SHOULD_SAVE=true; BASH_IMPORTANCE=5; BASH_CATEGORY="architecture" ;;
-      *deploy*|*push*|*publish*)      SHOULD_SAVE=true; BASH_IMPORTANCE=6; BASH_CATEGORY="architecture" ;;
-      *migrate*|*seed*)               SHOULD_SAVE=true; BASH_IMPORTANCE=6; BASH_CATEGORY="architecture" ;;
-      *docker*|*kubectl*)             SHOULD_SAVE=true; BASH_IMPORTANCE=5; BASH_CATEGORY="architecture" ;;
-      *rm*-rf*|*drop*|*delete*table*) SHOULD_SAVE=true; BASH_IMPORTANCE=7; BASH_CATEGORY="architecture" ;;
-    esac
-
-    if [[ "$SHOULD_SAVE" != "true" ]]; then
-      echo '{}'; exit 0
-    fi
-
-    CMD_TRUNC=$(echo "$COMMAND" | head -c 200)
-    SLUG="bash-$(echo "$COMMAND" | head -c 30 | tr ' /:' '-' | tr -cd '[:alnum:]-')"
-
-    # Include error output for failed commands
-    ERROR_CTX=""
-    if [[ "$EXIT_STATUS" != "0" && "$EXIT_STATUS" != "null" ]]; then
-      ERROR_OUTPUT=$(echo "$TOOL_OUTPUT" | head -c 200)
-      ERROR_CTX=" [exit=$EXIT_STATUS] ${ERROR_OUTPUT}"
-    fi
-
-    # Dedup: skip if a memory with the same slug was written in the last 60 seconds
-    if find "$MEMORIES_DIR" -name "*-${SLUG}.json" -mmin -1 2>/dev/null | grep -q .; then
-      echo '{}'; exit 0
-    fi
-
-    jq -n \
-      --arg content "Ran command: ${CMD_TRUNC}${ERROR_CTX}" \
-      --arg scope "$PROJECT_SCOPE" \
-      --arg source "auto-memory-bash" \
-      --arg session_id "$SESSION_ID" \
-      --arg category "$BASH_CATEGORY" \
-      --argjson importance "$BASH_IMPORTANCE" \
-      '{
-        content: $content,
-        category: $category,
-        importance: $importance,
-        confidence: 0.6,
-        scope: $scope,
-        source: $source,
-        session_id: $session_id,
-        tags: ["#auto", "#bash"]
-      }' > "$MEMORIES_DIR/${TIMESTAMP}-${SLUG}.json"
-    ;;
-esac
+  cd "$ULTRA_ROOT"
+  SAFE_CONTENT=$(echo "$DECISION_LINE" | jq -Rs '.')
+  npx tsx "$RUNNER" save "{\"title\":\"$TITLE\",\"content\":${SAFE_CONTENT},\"category\":\"decision\",\"importance\":7,\"scope\":\"$SCOPE\"}" 2>/dev/null || true
+) &
 
 echo '{}'
+exit 0

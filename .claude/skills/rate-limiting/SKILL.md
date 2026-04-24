@@ -95,3 +95,48 @@ export async function POST(req: Request) {
 - **Graceful degradation**: Wrap `ratelimit.limit()` in try/catch — allow requests through if Redis is unreachable
 - **Edge runtimes**: `@upstash/ratelimit` + `@upstash/redis` work on Vercel Edge, Cloudflare Workers, Deno Deploy (no Node APIs needed)
 - **Multi-tier**: Combine global (middleware) + per-route (API handler) limits for layered protection
+
+## Algorithm Comparison
+
+| Algorithm | Best For | Pros | Cons |
+|-----------|----------|------|------|
+| Fixed Window | Simple APIs | Easy, low memory | Burst at boundaries |
+| Sliding Window Counter | Most APIs | Low memory, smooth | Slight approximation |
+| Token Bucket | Bursty traffic | Allows controlled bursts | More complex |
+| Leaky Bucket | Steady output rate | Smooth, predictable | No burst allowance |
+
+## Tier-Based Quota Management
+
+```typescript
+const TIERS: Record<string, { requestsPerMinute: number; requestsPerDay: number; burstSize: number }> = {
+  free:       { requestsPerMinute: 20,    requestsPerDay: 1_000,     burstSize: 5 },
+  pro:        { requestsPerMinute: 100,   requestsPerDay: 50_000,    burstSize: 20 },
+  enterprise: { requestsPerMinute: 1_000, requestsPerDay: 1_000_000, burstSize: 100 },
+};
+```
+
+Check per-minute rate limit first, then daily quota. Return the most restrictive result.
+
+## Per-Endpoint Rate Limits
+
+```typescript
+const ENDPOINT_LIMITS: Record<string, { limit: number; windowMs: number }> = {
+  'POST /api/auth/login':    { limit: 5,   windowMs: 60_000 },
+  'POST /api/auth/register': { limit: 3,   windowMs: 3600_000 },
+  'POST /api/upload':        { limit: 10,  windowMs: 60_000 },
+  'GET /api/search':         { limit: 30,  windowMs: 60_000 },
+  'GET /api/*':              { limit: 100, windowMs: 60_000 },
+  'POST /api/*':             { limit: 50,  windowMs: 60_000 },
+};
+```
+
+## Best Practices
+
+1. **Choose algorithm by use case** -- Token bucket for burst-tolerant APIs, sliding window for steady enforcement
+2. **Always return rate limit headers** -- `RateLimit-Limit`, `RateLimit-Remaining`, `RateLimit-Reset`
+3. **Use `Retry-After` on 429s** -- Clients need to know when to retry
+4. **Rate limit by multiple dimensions** -- Per-user, per-IP, per-endpoint, per-tier
+5. **Protect auth endpoints aggressively** -- 5-10/min for login, register, password reset
+6. **Use atomic Redis operations** -- Lua scripts to prevent race conditions
+7. **Fail open** -- If Redis is down, allow requests through rather than blocking all users
+8. **Monitor 429 rates** -- High rates indicate abuse or limits set too low

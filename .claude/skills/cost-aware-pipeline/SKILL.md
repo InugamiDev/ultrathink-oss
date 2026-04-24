@@ -165,4 +165,4 @@ Generate with Sonnet, review with Opus. Fix with Sonnet. Repeat until Opus appro
 - Use with `context-budget` to audit where tokens are being consumed
 - VFS reduces token consumption by 60-98% — always prefer over full file reads
 - Memory system avoids re-discovering context across sessions (amortized cost)
-- Memory system tracks cost patterns: if a loop consistently overruns budget, lessons are stored for future sessions
+- Tekiō tracks cost patterns: if a loop consistently overruns budget, it adapts

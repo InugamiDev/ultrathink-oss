@@ -14,6 +14,11 @@ SID=$(echo "$input" | jq -r '.session_id // ""' | head -c 12)
 CACHE_DIR="/tmp/ultrathink-status"
 mkdir -p "$CACHE_DIR" 2>/dev/null || true
 
+IDENTITY=""
+if [[ -n "$SID" && -f "$CACHE_DIR/identity-$SID" ]]; then
+  IDENTITY=$(cat "$CACHE_DIR/identity-$SID" 2>/dev/null)
+fi
+
 SKILLS=""
 if [[ -n "$SID" && -f "$CACHE_DIR/skills-$SID" ]]; then
   SKILLS=$(cat "$CACHE_DIR/skills-$SID" 2>/dev/null)
@@ -97,6 +102,7 @@ RESET='\033[0m'
 DIM='\033[2m'
 BOLD='\033[1m'
 LAVENDER='\033[38;5;141m'
+PEACH='\033[38;5;216m'
 SKY='\033[38;5;117m'
 MINT='\033[38;5;121m'
 AMBER='\033[38;5;214m'
@@ -120,6 +126,9 @@ SEP=" ${SLATE}·${RESET} "
 
 # === Line 1: Branding + Model + Gauges ===
 L1="${BOLD}${LAVENDER}✦ ultrathink${RESET}"
+if [[ -n "$IDENTITY" ]]; then
+  L1+=" ${PEACH}${IDENTITY}${RESET}"
+fi
 
 SHORT_MODEL=$(echo "$MODEL" | sed 's/Claude //')
 L1+="${SEP}${SKY}${SHORT_MODEL}${RESET}"
@@ -270,6 +279,14 @@ fi
 if [[ -z "$GSD_ACTIVE" && -z "$AGENTS_ACTIVE" ]]; then
 L2="  "
 
+# Tekiō wheel spins
+WHEEL_COUNT=""
+WHEEL_CACHE="$CACHE_DIR/wheel-count"
+[[ -f "$WHEEL_CACHE" ]] && WHEEL_COUNT=$(cat "$WHEEL_CACHE" 2>/dev/null)
+if [[ -n "$WHEEL_COUNT" && "$WHEEL_COUNT" != "0" ]]; then
+  L2+="\033[38;5;215m☸ ${WHEEL_COUNT} spins${RESET}  "
+fi
+
 # Memories
 if [[ -n "$WEEK_MEMORIES" && "$WEEK_MEMORIES" != "null" ]]; then
   L2+="${STEEL}${WEEK_MEMORIES} memories${RESET}  "
@@ -352,6 +369,9 @@ if [[ -f "$ACTIVITY_FILE" ]]; then
       format-check:done)    LABEL="code formatted" ;;
       pre-compact:done)     LABEL="compacting conversation" ;;
       agent-tracker*:done)  LABEL="tracking agent" ;;
+      tool-failure*:error)  LABEL="tool error caught" ;;
+      tool-failure*:done)   LABEL="learning from error" ;;
+      memory-auto-save:done) LABEL="captured memory" ;;
     esac
 
     [[ -z "$LABEL" ]] && continue

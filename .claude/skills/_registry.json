@@ -3368,7 +3368,7 @@
     },
     {
       "name": "learn-pattern",
-      "description": "Extract reusable engineering patterns from the current session and store as persistent memories",
+      "description": "Extract reusable engineering patterns from the current session and store as Tekio adaptations or persistent memories",
       "layer": "utility",
       "category": "learning",
       "triggers": [

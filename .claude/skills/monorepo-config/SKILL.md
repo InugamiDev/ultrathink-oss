@@ -1,6 +1,6 @@
 ---
 name: monorepo-config
-description: Monorepo configuration — shared configs, package publishing, internal packages, versioning strategies
+description: Monorepo configuration — shared configs, package publishing, internal packages, versioning strategies, Git optimization (sparse checkout, worktrees, LFS)
 layer: domain
 category: build-tools
 triggers:
@@ -10,6 +10,13 @@ triggers:
   - "monorepo config"
   - "workspace config"
   - "changesets"
+  - "git monorepo"
+  - "sparse checkout"
+  - "git worktree"
+  - "shallow clone"
+  - "large repo"
+  - "git lfs"
+  - "monorepo"
 inputs:
   - "Monorepo structure and workspace setup needs"
   - "Shared configuration requirements across packages"
@@ -21,12 +28,11 @@ outputs:
   - "Changesets versioning setup"
   - "Internal package build and linking strategies"
 linksTo:
-  - monorepo
   - turborepo
   - pnpm
   - nx
-linkedFrom:
-  - monorepo
+  - git-workflow
+linkedFrom: []
 preferredNextSkills:
   - turborepo
   - pnpm
@@ -457,3 +463,87 @@ export default config;
 | Running `pnpm install` in a package subdirectory | Creates a separate lockfile | Always run `pnpm install` from the monorepo root |
 | Publishing without Changesets | Version bumps are manual and error-prone | Use Changesets for automated, consistent versioning |
 | Content paths missing shared UI | Tailwind misses classes from workspace packages | Add `../../packages/ui/src/**/*.{ts,tsx}` to content array |
+
+## Git Strategies for Large Monorepos
+
+### Sparse Checkout
+
+Work with only a subset of the repository tree:
+
+```bash
+# Clone with sparse checkout (cone mode -- recommended)
+git clone --sparse --filter=blob:none https://github.com/org/monorepo.git
+cd monorepo
+git sparse-checkout add packages/web packages/shared libs/utils
+```
+
+**CI (GitHub Actions):**
+
+```yaml
+- uses: actions/checkout@v4
+  with:
+    sparse-checkout: |
+      packages/web
+      packages/shared
+      package.json
+      pnpm-lock.yaml
+    sparse-checkout-cone-mode: true
+    fetch-depth: 1
+```
+
+### Shallow & Treeless Clones
+
+```bash
+# Shallow clone (fast CI, no history)
+git clone --depth=1 --single-branch https://github.com/org/monorepo.git
+
+# Treeless clone (full history, blobs on demand -- best balance)
+git clone --filter=blob:none https://github.com/org/monorepo.git
+```
+
+| Strategy | Clone Time | Full History | Blame/Bisect |
+|----------|-----------|--------------|--------------|
+| Full clone | Slow | Yes | Yes |
+| `--depth=1` | Fast | No | No |
+| `--filter=blob:none` | Medium | Yes | Yes (on demand) |
+| `--filter=blob:none --sparse` | Fast | Yes (sparse) | Yes |
+
+### Git Worktrees
+
+Work on multiple branches simultaneously without stashing:
+
+```bash
+git worktree add ../monorepo-feature-x feature/new-auth
+git worktree add -b hotfix/urgent ../monorepo-hotfix main
+git worktree list
+git worktree remove ../monorepo-feature-x
+```
+
+### Git LFS
+
+Track large binary files without bloating the repo:
+
+```bash
+git lfs install
+git lfs track "*.psd" "*.mp4" "assets/models/**"
+```
+
+### Performance Tuning
+
+```bash
+git config core.fsmonitor true
+git config core.untrackedCache true
+git commit-graph write --reachable
+git maintenance start
+git config protocol.version 2
+git config fetch.parallel 4
+```
+
+### Git Pitfalls
+
+| Pitfall | Fix |
+|---------|-----|
+| `--depth=1` then `git blame` | Use `--filter=blob:none` instead |
+| Forgetting lockfile in sparse checkout | Always include root config files |
+| LFS pointers in CI | Add `git lfs install` step or `lfs: true` |
+| Worktree on same branch | Use `git worktree add -b new-branch` |

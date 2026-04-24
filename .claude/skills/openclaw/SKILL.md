@@ -16,6 +16,7 @@ OpenClaw Agent
     │
     ├─ openclaw/skills/ultrathink/SKILL.md      → skill mesh routing
     ├─ openclaw/skills/ultrathink-memory/        → persistent memory via MCP
+    ├─ openclaw/skills/ultrathink-code-intel/    → code graph via MCP
     └─ openclaw/skills/ultrathink-review/        → quality gate
 ```
 

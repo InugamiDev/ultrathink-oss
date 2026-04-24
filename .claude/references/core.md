@@ -68,6 +68,11 @@ Every token in = money spent. Follow these rules to minimize waste:
 - For complex tasks: use `plan` mode to align once, then execute without re-explaining.
 - Reference files by path, not by quoting content.
 
+### Task Tracking (mandatory)
+- **2+ steps = TaskCreate** before any code. No exceptions.
+- Update tasks to `in_progress` / `completed` as you go.
+- Tasks survive compaction — use them as your progress anchor.
+
 ## Conversation Hygiene
 
 - Don't repeat information the user already knows

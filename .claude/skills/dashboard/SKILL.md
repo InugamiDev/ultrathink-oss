@@ -12,14 +12,14 @@ Start the UltraThink Next.js dashboard.
 
 ## Dashboard location
 
-The dashboard source is at `~/Documents/GitHub/InuVerse/ai-agents/ultrathink/dashboard/`.
+The dashboard source is at `${ULTRATHINK_DIR}/dashboard/` (defaults to `~/Documents/GitHub/InuVerse/ai-agents/ultrathink`).
 
 ## Actions
 
 **Start the dashboard:**
 
 ```bash
-cd ~/Documents/GitHub/InuVerse/ai-agents/ultrathink && ./scripts/dashboard.sh
+cd "${ULTRATHINK_DIR:-$HOME/Documents/GitHub/InuVerse/ai-agents/ultrathink}" && ./scripts/dashboard.sh
 ```
 
 The dashboard runs at **http://localhost:3333** with these pages:

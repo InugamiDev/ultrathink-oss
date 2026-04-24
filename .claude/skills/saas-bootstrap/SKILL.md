@@ -31,7 +31,7 @@ outputs: |
   Full Next.js 15 App Router project tree (28+ files) including:
   src/app/ route groups, src/lib/ (auth, db, stripe, email), src/components/,
   src/hooks/, src/types/, middleware.ts, .github/workflows/, .env.example,
-  scripts/setup.sh
+  scripts/setup.sh (generated at runtime during scaffolding, not pre-existing)
 preferredNextSkills:
   - brandkit-gen
   - ship
@@ -306,7 +306,7 @@ RESEND_API_KEY=
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 ```
 
-Generate `scripts/setup.sh` that:
+Generate `scripts/setup.sh` at runtime (this file does not pre-exist — it is scaffolded during Phase 8) that:
 1. Installs deps (`pnpm install`)
 2. Creates `.env.local` from `.env.example`
 3. Runs DB migrations (`drizzle-kit migrate`)

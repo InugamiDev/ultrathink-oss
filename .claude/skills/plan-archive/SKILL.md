@@ -136,7 +136,7 @@ This prevents incomplete work from being archived as "done".
 11. **Create the archive entry** using the template below.
 12. **Write to memory** -- Store the archive and journey journal where they can be retrieved by future plan, research, or brainstorm invocations.
 13. **Update kanban** -- If there is an active kanban board, mark the plan's tasks as archived/completed.
-14. **Feed lessons to memory** -- Extract patterns and anti-patterns via `learn-pattern` skill.
+14. **Feed lessons to Tekiō** -- Extract patterns and anti-patterns via `learn-pattern` skill. Successes become offensive adaptations; failures turn the wheel.
 15. **Clean up progress** -- Remove `/tmp/ultrathink-progress-*` bridge files.
 16. **Notify the user** -- Summarize what was archived and any high-value lessons.
 
