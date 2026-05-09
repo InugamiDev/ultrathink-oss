@@ -8,7 +8,7 @@ Usage: `/project-switch [project-name-or-path]`
 
 ### 1. List available project scopes
 ```bash
-cd /Users/inugami/Documents/GitHub/InuVerse/ai-agents/ultrathink && npx tsx -e "
+cd "$(git rev-parse --show-toplevel)" && npx tsx -e "
 import { config } from 'dotenv';
 import { resolve, join } from 'path';
 config({ path: join(resolve(import.meta.dirname, '../..'), '.env') });
@@ -36,7 +36,7 @@ If the user provided a project name/path argument:
 - Show project summary
 
 ```bash
-cd /Users/inugami/Documents/GitHub/InuVerse/ai-agents/ultrathink && npx tsx -e "
+cd "$(git rev-parse --show-toplevel)" && npx tsx -e "
 import { config } from 'dotenv';
 import { resolve, join } from 'path';
 config({ path: join(resolve(import.meta.dirname, '../..'), '.env') });

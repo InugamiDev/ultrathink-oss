@@ -113,10 +113,7 @@ export function GalaxyControls({
                          focus-visible:ring-2 focus-visible:ring-[var(--color-accent)]
                          ${active ? "text-[var(--color-text)]" : "text-[var(--color-text-dim)] opacity-50"}`}
             >
-              <span
-                className="w-2.5 h-2.5 rounded-full shrink-0"
-                style={{ backgroundColor: CATEGORY_COLORS[cat] }}
-              />
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: CATEGORY_COLORS[cat] }} />
               {CATEGORY_LABELS[cat]}
             </button>
           );

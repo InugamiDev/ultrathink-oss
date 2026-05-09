@@ -6,7 +6,7 @@ Archive low-value memories, merge duplicates, and reclaim memory quality.
 
 ### 1. Identify compaction candidates
 ```bash
-cd /Users/inugami/Documents/GitHub/InuVerse/ai-agents/ultrathink && npx tsx -e "
+cd "$(git rev-parse --show-toplevel)" && npx tsx -e "
 import { config } from 'dotenv';
 import { resolve, join } from 'path';
 config({ path: join(resolve(import.meta.dirname, '../..'), '.env') });
@@ -89,7 +89,7 @@ Present the findings:
 ### 3. Execute compaction
 Archive junk memories immediately:
 ```bash
-cd /Users/inugami/Documents/GitHub/InuVerse/ai-agents/ultrathink && npx tsx -e "
+cd "$(git rev-parse --show-toplevel)" && npx tsx -e "
 import { config } from 'dotenv';
 import { resolve, join } from 'path';
 config({ path: join(resolve(import.meta.dirname, '../..'), '.env') });

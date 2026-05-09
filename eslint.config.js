@@ -28,5 +28,28 @@ export default tseslint.config(
       "@typescript-eslint/no-require-imports": "off",
     },
   },
+  {
+    files: ["**/wailsjs/**/*.js", "**/wailsjs/**/*.ts"],
+    languageOptions: {
+      globals: {
+        window: "readonly",
+        document: "readonly",
+        fetch: "readonly",
+        setTimeout: "readonly",
+        setInterval: "readonly",
+        confirm: "readonly",
+        Node: "readonly",
+        Terminal: "readonly",
+        FitAddon: "readonly",
+        WebLinksAddon: "readonly",
+        location: "readonly",
+        WebSocket: "readonly",
+        ResizeObserver: "readonly",
+      },
+    },
+    rules: {
+      "@typescript-eslint/no-namespace": "off",
+    },
+  },
   { ignores: ["node_modules/", ".next/", "**/dist/", "dashboard/.next/"] }
 );

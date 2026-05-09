@@ -72,7 +72,7 @@ fi
 
 # --- Memory stats (cached, refreshed every 60s in background) ---
 STATS_FILE="$CACHE_DIR/weekly-stats"
-WEEKLY_SCRIPT="$ULTRA_ROOT/memory/scripts/weekly-stats.ts"
+WEEKLY_SCRIPT="$ULTRA_ROOT/packages/memory/scripts/weekly-stats.ts"
 
 NEEDS_REFRESH=""
 if [[ ! -f "$STATS_FILE" ]]; then

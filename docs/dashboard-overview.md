@@ -224,7 +224,7 @@ The dashboard requires `DATABASE_URL` to be set for database-backed features (me
 
 ```bash
 # In .env at project root
-DATABASE_URL=postgres://user:password@host/database?sslmode=require
+DATABASE_URL="postgres://<db_user>:<db_password>@<db_host>/<db_name>?sslmode=require"
 ```
 
 ## Related Documentation

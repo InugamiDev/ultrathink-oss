@@ -12,7 +12,7 @@ export async function GET() {
     const sql = getDb();
 
     type Row = Record<string, unknown>;
-    const r = await Promise.all([
+    const r = (await Promise.all([
       sql`SELECT id, task_context, started_at, ended_at, memories_created,
                EXTRACT(EPOCH FROM (ended_at - started_at)) / 60 as duration_min,
                LEFT(summary, 120) as summary_preview
@@ -46,7 +46,7 @@ export async function GET() {
              ROUND(SUM(EXTRACT(EPOCH FROM (ended_at - started_at)) / 60)) as minutes
       FROM sessions WHERE started_at > NOW() - INTERVAL '7 days' AND ended_at IS NOT NULL
       GROUP BY task_context ORDER BY sessions DESC LIMIT 10`,
-    ]) as Row[][];
+    ])) as Row[][];
 
     let i = 0;
     const row = (rows: Row[]) => rows[0] ?? {};

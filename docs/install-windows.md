@@ -1,25 +1,25 @@
 # Install — Windows
 
-UltraThink on Windows via WSL2 (full support) or native PowerShell (limited).
+UltraThink on Windows via WSL2 or native PowerShell (limited).
 
 ## Recommended: WSL2 (Full Support)
 
-WSL2 gives you a full Linux environment. All UltraThink features work: hooks, skills, memory, statusline, dashboard, MCP servers.
+WSL2 gives you a full Linux environment. All UltraThink features work: hooks, skills, memory, dashboard, MCP servers.
 
 ### 1. Install WSL2
 
 ```powershell
-# PowerShell (Admin)
+# In PowerShell (Admin)
 wsl --install -d Ubuntu
-# Restart your machine, then set up your Ubuntu user
+# Restart, then set up your Ubuntu user
 ```
 
-### 2. Install prerequisites in WSL
+### 2. Install Node.js in WSL
 
 ```bash
 # Inside WSL (Ubuntu)
 curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
-sudo apt install -y nodejs jq curl git
+sudo apt install -y nodejs
 node --version  # Should be 22.x+
 ```
 
@@ -35,28 +35,16 @@ npm install -g @anthropic-ai/claude-code
 npm install -g @openai/codex
 ```
 
-### 4. Clone and install UltraThink
+### 4. Install UltraThink
 
 ```bash
 git clone https://github.com/InugamiDev/ultrathink-oss.git ~/ultrathink
 cd ~/ultrathink
-npm install
+./scripts/setup.sh
+./scripts/init-global.sh
 ```
 
-### 5. Run the installer
-
-```bash
-# Full install — links skills, hooks, references into ~/.claude/
-./scripts/install.sh
-
-# With database (recommended — enables memory + vault sync)
-./scripts/install.sh --db="postgresql://user:pass@host/db"
-
-# Preview what it does first
-./scripts/install.sh --dry-run
-```
-
-### 6. Configure .env (if you didn't pass --db)
+### 5. Configure .env
 
 ```bash
 cp .env.example .env
@@ -64,7 +52,7 @@ nano .env
 # Set DATABASE_URL to your Neon Postgres connection string
 ```
 
-### 7. Codex-specific (optional)
+### 6. Codex-specific (optional)
 
 ```bash
 mkdir -p ~/.codex
@@ -72,15 +60,15 @@ cp ~/ultrathink/.codex/config.toml ~/.codex/config.toml
 cp ~/ultrathink/.codex/hooks.json ~/.codex/hooks.json
 ```
 
-### 8. Verify
+### 7. Verify
 
 ```bash
 claude  # or codex
-# UltraThink statusline should appear at the bottom
-# Skills and memory should load automatically
+# UltraThink statusline should appear (Claude Code)
+# Skills and memory should load
 ```
 
-### 9. Dashboard
+### 8. Dashboard
 
 ```bash
 cd ~/ultrathink
@@ -93,7 +81,7 @@ Access from Windows browser at `http://localhost:3333` — WSL2 automatically fo
 
 ### File paths
 
-WSL mounts Windows drives at `/mnt/c/`, `/mnt/d/`, etc.:
+WSL mounts your Windows drives at `/mnt/c/`, `/mnt/d/`, etc. When working on Windows files:
 
 ```bash
 # Access Windows files from WSL
@@ -101,7 +89,19 @@ cd /mnt/c/Users/YourName/Projects/my-app
 claude  # UltraThink works on Windows filesystem via WSL
 ```
 
-For best performance, keep projects inside the WSL filesystem (`~/`) rather than on `/mnt/c/` — the cross-filesystem bridge is 10-50x slower.
+For best performance, keep your projects inside the WSL filesystem (`~/`) rather than on `/mnt/c/`.
+
+### Notifications
+
+Desktop notifications use `notify-send` which doesn't work natively on WSL. Options:
+
+1. **Ignore** — Notifications are non-critical, dashboard shows everything
+2. **wsl-notify-send** — Drop-in replacement that forwards to Windows toast notifications:
+   ```bash
+   # Download from https://github.com/stuartleeks/wsl-notify-send
+   # Place in /usr/local/bin/
+   sudo ln -sf /usr/local/bin/wsl-notify-send.exe /usr/local/bin/notify-send
+   ```
 
 ### Git credential sharing
 
@@ -116,49 +116,37 @@ git config --global credential.helper "/mnt/c/Program\ Files/Git/mingw64/bin/git
 
 VS Code's WSL extension works seamlessly:
 
-1. Install [WSL extension](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-wsl)
+1. Install [Remote - WSL](https://marketplace.visualstudio.com/items?itemName=ms-vscode-remote.remote-wsl) extension
 2. Open WSL terminal, navigate to project, run `code .`
-3. Claude Code / Codex CLI runs in the integrated terminal with full UltraThink support
+3. Claude Code / Codex CLI runs in the integrated terminal
 
 ### Windows Terminal
 
-For the best experience, use [Windows Terminal](https://aka.ms/terminal) with a WSL profile:
+For the best experience, use [Windows Terminal](https://aka.ms/terminal) with a WSL profile. It supports:
 - Multiple tabs (WSL + PowerShell side by side)
-- Proper Unicode rendering (required for UltraThink statusline glyphs)
+- Proper Unicode rendering (important for UltraThink statusline)
 - GPU-accelerated text rendering
 
-### Notifications
+## Alternative: Native Windows (Limited)
 
-Desktop notifications use `notify-send` which doesn't work natively on WSL. Options:
-
-1. **Ignore** — notifications are non-critical, the dashboard shows everything
-2. **wsl-notify-send** — forwards to Windows toast notifications:
-   ```bash
-   # Download from https://github.com/stuartleeks/wsl-notify-send
-   sudo ln -sf /usr/local/bin/wsl-notify-send.exe /usr/local/bin/notify-send
-   ```
-
-## Alternative: Native Windows (PowerShell)
-
-If you can't use WSL2, a subset of features works natively via the PowerShell installer.
+If you can't use WSL2, some features work natively:
 
 ### What works
 
 - Dashboard (Next.js runs on Windows)
-- Memory CLI commands (`npx tsx memory/scripts/memory-runner.ts`)
-- Vault sync (`npx tsx scripts/vault-sync.ts`)
-- Skill browsing (skills are copied, not symlinked)
-- Database migrations
+- Memory CLI commands
+- Vault sync
+- Skill reading/browsing
 
 ### What doesn't work
 
 - Shell hooks (`.sh` scripts need bash)
-- Auto-trigger (prompt-analyzer uses shell pipes)
-- Statusline widget (bash-based)
 - Privacy hook enforcement
-- VFS MCP server (Go binary — needs separate Windows build)
+- Auto-trigger (prompt-analyzer.ts uses shell pipes)
+- Statusline widget (macOS/Linux only)
+- VFS MCP server (Go binary, needs separate Windows build)
 
-### Native install
+### Native setup
 
 ```powershell
 # PowerShell
@@ -166,74 +154,47 @@ git clone https://github.com/InugamiDev/ultrathink-oss.git C:\ultrathink
 cd C:\ultrathink
 npm install
 
-# Run the PowerShell installer
-.\scripts\install.ps1
+# Copy .env
+copy .env.example .env
+# Edit .env with your DATABASE_URL
 
-# With database
-.\scripts\install.ps1 -DbUrl "postgresql://user:pass@host/db"
-
-# Preview first
-.\scripts\install.ps1 -DryRun
-```
-
-The installer copies skills and references into `~\.claude\`, creates `~\.ultrathink\` with config and vault templates, and runs a smoke test.
-
-### Run migrations and dashboard
-
-```powershell
-# Database migrations (if using memory features)
+# Run migrations
 npx tsx memory/src/migrate.ts
 
-# Dashboard
+# Dashboard only
 npm run dashboard:dev
-# Open http://localhost:3333
 ```
 
-### Uninstall
-
-```powershell
-.\scripts\install.ps1 -Uninstall
-```
-
-For full UltraThink functionality, use WSL2. The native path is for dashboard access and manual memory/vault operations.
+For full UltraThink functionality, use WSL2. The native path is only for dashboard access and manual memory queries.
 
 ## Troubleshooting
 
-### "Permission denied" on scripts (WSL)
+### "Permission denied" on setup.sh
 
 ```bash
-chmod +x scripts/setup.sh scripts/install.sh scripts/init-global.sh
+chmod +x scripts/setup.sh scripts/init-global.sh
+./scripts/setup.sh
 ```
 
 ### WSL2 port forwarding not working
 
 ```powershell
-# PowerShell (Admin)
+# PowerShell (Admin) — check if port 3333 is forwarded
 netsh interface portproxy show v4tov4
-# If empty, WSL2 should auto-forward. Try restarting:
+# If empty, WSL2 should auto-forward. Try restarting WSL:
 wsl --shutdown
 ```
 
 ### Slow file I/O on /mnt/c/
 
-Known WSL2 limitation. Keep projects in `~/` (Linux filesystem) for 10-50x faster I/O.
+This is a known WSL2 limitation. Keep projects in `~/` (Linux filesystem) for 10-50x faster I/O.
 
 ### Node.js version too old
 
 ```bash
-# WSL/Linux
+# Check version
+node --version
+# If <18, update:
 curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
 sudo apt install -y nodejs
-```
-
-```powershell
-# Windows — download from https://nodejs.org/ or:
-winget install OpenJS.NodeJS.LTS
-```
-
-### PowerShell execution policy blocks install.ps1
-
-```powershell
-# Run once (Admin):
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
 ```

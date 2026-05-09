@@ -19,11 +19,11 @@ export async function GET() {
   try {
     const sql = getDb();
 
-    const [memRows, planRows, hookRows] = await Promise.all([
+    const [memRows, planRows, hookRows] = (await Promise.all([
       sql`SELECT COUNT(*) as count FROM memories WHERE is_archived = false`,
       sql`SELECT COUNT(*) as count FROM plans`,
       sql`SELECT COUNT(*) as count FROM hook_events`,
-    ]) as Record<string, unknown>[][];
+    ])) as Record<string, unknown>[][];
     const memRow = memRows[0];
     const planRow = planRows[0];
     const hookRow = hookRows[0];

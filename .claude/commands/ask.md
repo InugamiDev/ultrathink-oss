@@ -18,7 +18,7 @@ Run these in parallel:
 
 **Semantic search** (primary):
 ```bash
-cd /Users/inugami/Documents/GitHub/InuVerse/ai-agents/ultrathink && npx tsx memory/scripts/memory-runner.ts search "[extracted_terms]"
+cd "$(git rev-parse --show-toplevel)" && npx tsx memory/scripts/memory-runner.ts search "[extracted_terms]"
 ```
 
 **Category-specific search** (if question implies a category):
@@ -28,7 +28,7 @@ cd /Users/inugami/Documents/GitHub/InuVerse/ai-agents/ultrathink && npx tsx memo
 - "what preference" → search category "preference"
 
 ```bash
-cd /Users/inugami/Documents/GitHub/InuVerse/ai-agents/ultrathink && npx tsx -e "
+cd "$(git rev-parse --show-toplevel)" && npx tsx -e "
 import { config } from 'dotenv';
 import { resolve, join } from 'path';
 config({ path: join(resolve(import.meta.dirname, '../..'), '.env') });

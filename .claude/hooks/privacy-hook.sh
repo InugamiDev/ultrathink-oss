@@ -131,7 +131,7 @@ log_security_incident() {
     set -a; source "$ULTRA_ROOT/.env" 2>/dev/null; set +a
   fi
   if [[ -n "${DATABASE_URL:-}" ]]; then
-    (cd "$ULTRA_ROOT" && npx tsx memory/scripts/memory-runner.ts log-security "$title" "$description" >/dev/null 2>&1) &
+    (cd "$ULTRA_ROOT" && npx tsx packages/memory/scripts/memory-runner.ts log-security "$title" "$description" >/dev/null 2>&1) &
   fi
 }
 

@@ -4,7 +4,7 @@ import { existsSync, unlinkSync } from "fs";
 import { resolve } from "path";
 
 const ROOT = resolve(__dirname, "..");
-const RUNNER = resolve(ROOT, "memory/scripts/memory-runner.ts");
+const RUNNER = resolve(ROOT, "packages/memory/scripts/memory-runner.ts");
 
 /**
  * Session tests are skipped by default because they require a live Neon Postgres database.

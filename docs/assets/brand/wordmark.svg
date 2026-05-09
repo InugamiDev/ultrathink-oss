@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="400" viewBox="0 0 1600 400">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#15171c"/>
+      <stop offset="100%" stop-color="#0c0d10"/>
+    </linearGradient>
+    <linearGradient id="mark" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#c084fc"/>
+      <stop offset="100%" stop-color="#7c3aed"/>
+    </linearGradient>
+    <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="14" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="1600" height="400" rx="48" fill="url(#bg)"/>
+  <g transform="translate(40,80) scale(0.234)" filter="url(#glow)">
+    <rect x="0" y="0" width="1024" height="1024" rx="220" fill="rgba(255,255,255,0.02)"/>
+    <path d="M 312 280 L 312 612 C 312 720, 412 800, 512 800 C 612 800, 712 720, 712 612 L 712 280"
+          stroke="url(#mark)" stroke-width="78" stroke-linecap="round" fill="none"/>
+    <circle cx="288" cy="220" r="22" fill="#a78bfa"/>
+    <circle cx="512" cy="180" r="28" fill="#c084fc"/>
+    <circle cx="736" cy="220" r="22" fill="#a78bfa"/>
+    <line x1="298" y1="232" x2="312" y2="280" stroke="rgba(167,139,250,0.5)" stroke-width="3"/>
+    <line x1="512" y1="208" x2="512" y2="280" stroke="rgba(167,139,250,0.5)" stroke-width="3"/>
+    <line x1="726" y1="232" x2="712" y2="280" stroke="rgba(167,139,250,0.5)" stroke-width="3"/>
+  </g>
+  <text x="340" y="225" font-family="-apple-system, BlinkMacSystemFont, 'Inter', sans-serif" font-weight="800" font-size="120" letter-spacing="-3" fill="#e7eaf0">ultrathink</text>
+  <text x="340" y="305" font-family="-apple-system, BlinkMacSystemFont, 'Inter', sans-serif" font-weight="400" font-size="56" letter-spacing="6" fill="#8b91a3">STUDIO</text>
+</svg>

@@ -23,5 +23,6 @@ Other approaches you've thought about.
 - [ ] Hook system
 - [ ] Dashboard
 - [ ] Skills
+- [ ] Code Intelligence
 - [ ] CLI / Setup
 - [ ] Other: ___

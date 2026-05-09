@@ -1,7 +1,7 @@
 # UltraThink Tier Manifest
 
 Canonical boundary between **UltraThink Core** (private) and **UltraThink OSS** (public, MIT).
-Enforced mechanically by `scripts/parity-check.sh`.
+Shared-file parity is enforced by `scripts/parity-check.sh`; export safety is enforced by `tests/oss-boundary.test.ts`.
 
 UltraThink is **one product** shipped in two tiers:
 
@@ -16,15 +16,31 @@ These subsystems are the strategic moat. They stay in Core.
 
 | Artifact | Reason |
 |----------|--------|
-| `memory/src/adaptation.ts` — Tekiō Cycle of Nova | Strategic moat |
-| `memory/scripts/wheel-count.ts`, `seed-adaptations.ts` | Tekiō tooling |
-| `memory/scripts/cache-adaptations.ts` | Tekiō tooling |
+| `packages/memory/src/adaptation.ts`, `packages/memory/src/team-tekio.ts` — Tekiō Cycle of Nova | Strategic moat |
+| `packages/memory/scripts/wheel-count.ts`, `seed-adaptations.ts`, `cache-adaptations.ts` | Tekiō tooling |
 | `.claude/hooks/tekio-prevent.sh` | Tekiō prevention loop |
-| `memory/scripts/archive-bad-identity.ts`, `archive-bad-prefs.ts`, `archive-failures.ts`, `re-enrich-all.ts` | Core ops only |
-| MCP servers in `.mcp.json`: `agora`, `stitch` | Non-portable / business-specific |
+| `packages/memory/scripts/archive-failures.ts`, `re-enrich-all.ts` | Core ops only |
+| MCP server `agora` | Non-portable / business-specific |
 | MCP memory server Tekiō tools (`tekio_status`, `tekio_turn`) | Strategic moat |
+| `apps/studio/` — Tauri desktop app + CAR runner | Premium product |
+| `dashboard/app/agora/`, `dashboard/app/api/agora/` | Agora-credentials gated surface |
 | `AUDIT-*.md`, `docs/audit/` internals | Internal documents |
 | Proprietary domain skills listed in the private skill allowlist | Business-specific |
+
+## Recently moved to OSS (2026-05-09)
+
+- `packages/memory/scripts/identity.ts` — identity graph runner
+- `packages/memory/scripts/archive-bad-identity.ts`, `archive-bad-prefs.ts`
+- `.claude/hooks/decision-engine.ts` — 12 reasoning frameworks
+- `.claude/hooks/post-edit-codeintel.sh`, `codeintel-session-check.sh`
+- `packages/code-intel/` — 5 cross-file dependency MCP tools
+- `stitch` MCP server (registered in OSS `.mcp.json`)
+- `scripts/install-pack.sh` — clone-and-link any skill repo into the workflow
+- **Full Next.js dashboard** — all pages (memory graph, activity, hooks,
+  skills, usage, plans, settings, system, cmo, ops, voice, testing,
+  analytics, kanban, integrations) and all dashboard APIs except agora.
+  Previously kept Core-only as a moat; now public so the OSS dashboard
+  matches Core 1:1 minus agora-dependent surfaces.
 
 ---
 

@@ -1,0 +1,25 @@
+{
+  "@context": "https://schema.org",
+  "@type": "Product",
+  "name": "{{name}}",
+  "image": ["{{image1}}", "{{image2}}"],
+  "description": "{{description}}",
+  "sku": "{{sku}}",
+  "mpn": "{{mpn}}",
+  "brand": { "@type": "Brand", "name": "{{brandName}}" },
+  "offers": {
+    "@type": "Offer",
+    "url": "{{productUrl}}",
+    "priceCurrency": "{{currency}}",
+    "price": "{{price}}",
+    "priceValidUntil": "{{priceValidUntilIso}}",
+    "availability": "https://schema.org/InStock",
+    "itemCondition": "https://schema.org/NewCondition",
+    "seller": { "@type": "Organization", "name": "{{sellerName}}" }
+  },
+  "aggregateRating": {
+    "@type": "AggregateRating",
+    "ratingValue": "{{avgRating}}",
+    "reviewCount": "{{reviewCount}}"
+  }
+}

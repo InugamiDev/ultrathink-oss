@@ -53,7 +53,9 @@ export function AIChat({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, []);
 
-  useEffect(() => { scrollToBottom(); }, [messages, streamingThinking, scrollToBottom]);
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, streamingThinking, scrollToBottom]);
 
   useEffect(() => {
     const ta = inputRef.current;
@@ -265,7 +267,10 @@ export function AIChat({
       const skill = skills.find((s) => s.type === [...activeTasks][0]);
       return skill?.placeholder ?? "Type a message...";
     }
-    return `Combine ${[...activeTasks].map((t) => skills.find((s) => s.type === t)?.label).filter(Boolean).join(" + ")}...`;
+    return `Combine ${[...activeTasks]
+      .map((t) => skills.find((s) => s.type === t)?.label)
+      .filter(Boolean)
+      .join(" + ")}...`;
   })();
 
   /* ─── Render ─── */
@@ -309,13 +314,21 @@ export function AIChat({
                         <span className="text-2xl block mb-2">{skill.icon}</span>
                         {isActive && (
                           <span className="w-5 h-5 rounded-full bg-[var(--color-accent)] flex items-center justify-center shrink-0">
-                            <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <svg
+                              className="w-3 h-3 text-white"
+                              fill="none"
+                              viewBox="0 0 24 24"
+                              stroke="currentColor"
+                              strokeWidth={3}
+                            >
                               <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                             </svg>
                           </span>
                         )}
                       </div>
-                      <span className={`text-sm font-medium ${isActive ? "text-[var(--color-accent)]" : "text-[var(--color-text)]"}`}>
+                      <span
+                        className={`text-sm font-medium ${isActive ? "text-[var(--color-accent)]" : "text-[var(--color-text)]"}`}
+                      >
                         {skill.label}
                       </span>
                     </button>
@@ -411,7 +424,13 @@ export function AIChat({
                                hover:bg-[var(--color-accent)]/20 transition-colors duration-150 flex items-center gap-1.5"
                   >
                     {skill.icon} {skill.label}
-                    <svg className="w-3 h-3 opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <svg
+                      className="w-3 h-3 opacity-60"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                      strokeWidth={2.5}
+                    >
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
@@ -459,7 +478,11 @@ export function AIChat({
               ) : (
                 <>
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5" />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M6 12 3.269 3.125A59.769 59.769 0 0 1 21.485 12 59.768 59.768 0 0 1 3.27 20.875L5.999 12Zm0 0h7.5"
+                    />
                   </svg>
                   Send
                 </>

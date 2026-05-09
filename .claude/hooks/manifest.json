@@ -1,0 +1,159 @@
+{
+  "schemaVersion": 1,
+  "runtimes": {
+    "claude": {
+      "supportedEvents": [
+        "SessionStart",
+        "PreToolUse",
+        "PostToolUse",
+        "PreCompact",
+        "Stop"
+      ]
+    },
+    "codex": {
+      "supportedEvents": ["SessionStart", "PreToolUse", "Stop"]
+    }
+  },
+  "hooks": [
+    {
+      "id": "ut:session:start",
+      "description": "UltraThink: load memory on session start",
+      "event": "SessionStart",
+      "command": ".claude/hooks/memory-session-start.sh",
+      "timeoutSec": 10,
+      "runtimes": ["claude"]
+    },
+    {
+      "id": "ut:session:start:codex",
+      "description": "UltraThink: load memory context for Codex",
+      "event": "SessionStart",
+      "matcher": "startup|resume",
+      "command": "npx tsx packages/memory/scripts/memory-runner.ts session-start",
+      "timeoutSec": 60,
+      "runtimes": ["codex"]
+    },
+    {
+      "id": "ut:session:codeintel",
+      "description": "UltraThink: check code-intel index freshness",
+      "event": "SessionStart",
+      "command": ".claude/hooks/codeintel-session-check.sh",
+      "timeoutSec": 15,
+      "runtimes": ["claude"],
+      "tier": "core"
+    },
+    {
+      "id": "ut:session:decisions",
+      "description": "UltraThink: inject decision rules on start",
+      "event": "SessionStart",
+      "command": ".claude/hooks/decision-inject.sh",
+      "timeoutSec": 5,
+      "runtimes": ["claude"],
+      "tier": "core"
+    },
+    {
+      "id": "ut:pre:privacy",
+      "description": "UltraThink: enforce file-access privacy rules",
+      "event": "PreToolUse",
+      "matcher": "Read|Edit|Write",
+      "command": ".claude/hooks/privacy-hook.sh",
+      "timeoutSec": 10,
+      "runtimes": ["claude", "codex"]
+    },
+    {
+      "id": "ut:pre:gateguard",
+      "description": "UltraThink: enforce read-before-write (GateGuard)",
+      "event": "PreToolUse",
+      "matcher": "Edit|Write|MultiEdit|Read",
+      "command": ".claude/hooks/gateguard.sh",
+      "timeoutSec": 10,
+      "runtimes": ["claude"]
+    },
+    {
+      "id": "ut:pre:config-protect",
+      "description": "UltraThink: block linter/formatter config modifications",
+      "event": "PreToolUse",
+      "matcher": "Edit|Write|MultiEdit",
+      "command": ".claude/hooks/config-protection.sh",
+      "timeoutSec": 10,
+      "runtimes": ["claude"]
+    },
+    {
+      "id": "ut:post:format-check",
+      "description": "UltraThink: validate formatting after edits",
+      "event": "PostToolUse",
+      "matcher": "Edit|Write",
+      "command": ".claude/hooks/format-check.sh",
+      "timeoutSec": 10,
+      "runtimes": ["claude"]
+    },
+    {
+      "id": "ut:post:search-cap",
+      "description": "UltraThink: cap search result output size",
+      "event": "PostToolUse",
+      "matcher": "Bash|Grep|Glob",
+      "command": ".claude/hooks/search-cap.sh",
+      "timeoutSec": 10,
+      "runtimes": ["claude"]
+    },
+    {
+      "id": "ut:post:batch-accumulate",
+      "description": "UltraThink: track edited files for batch quality check",
+      "event": "PostToolUse",
+      "matcher": "Edit|Write|MultiEdit",
+      "command": ".claude/hooks/batch-quality.sh",
+      "timeoutSec": 10,
+      "runtimes": ["claude"]
+    },
+    {
+      "id": "ut:post:codeintel",
+      "description": "UltraThink: incremental code-intel reindex after edits",
+      "event": "PostToolUse",
+      "matcher": "Edit|Write",
+      "command": ".claude/hooks/post-edit-codeintel.sh",
+      "timeoutSec": 10,
+      "runtimes": ["claude"],
+      "tier": "core"
+    },
+    {
+      "id": "ut:post:tool-failure",
+      "description": "UltraThink: log tool failures for Tekiō adaptation",
+      "event": "PostToolUse",
+      "command": ".claude/hooks/tool-failure-log.sh",
+      "timeoutSec": 10,
+      "runtimes": ["claude"],
+      "tier": "core"
+    },
+    {
+      "id": "ut:pre:compact",
+      "description": "UltraThink: save context before compaction",
+      "event": "PreCompact",
+      "command": ".claude/hooks/pre-compact.sh",
+      "timeoutSec": 10,
+      "runtimes": ["claude"]
+    },
+    {
+      "id": "ut:stop:session-end",
+      "description": "UltraThink: persist session memory on stop",
+      "event": "Stop",
+      "command": ".claude/hooks/memory-session-end.sh",
+      "timeoutSec": 5,
+      "runtimes": ["claude"]
+    },
+    {
+      "id": "ut:stop:flush:codex",
+      "description": "UltraThink: flush pending Codex memories",
+      "event": "Stop",
+      "command": "npx tsx packages/memory/scripts/memory-runner.ts flush",
+      "timeoutSec": 30,
+      "runtimes": ["codex"]
+    },
+    {
+      "id": "ut:stop:batch-quality",
+      "description": "UltraThink: batch format + typecheck edited files",
+      "event": "Stop",
+      "command": ".claude/hooks/batch-quality.sh",
+      "timeoutSec": 60,
+      "runtimes": ["claude"]
+    }
+  ]
+}

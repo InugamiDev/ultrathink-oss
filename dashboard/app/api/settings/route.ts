@@ -135,10 +135,10 @@ export async function GET() {
     if (process.env.DATABASE_URL) {
       try {
         const sql = getDb();
-        const [memRows, relRows] = await Promise.all([
+        const [memRows, relRows] = (await Promise.all([
           sql`SELECT COUNT(*) as count FROM memories WHERE is_archived = false`,
           sql`SELECT COUNT(*) as count FROM memory_relations`,
-        ]) as Record<string, unknown>[][];
+        ])) as Record<string, unknown>[][];
         memoryStatus = {
           connected: true,
           memoriesCount: Number(memRows[0]?.count),

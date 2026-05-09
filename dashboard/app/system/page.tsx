@@ -209,7 +209,11 @@ async function loadDbStatus(): Promise<{ connected: boolean; tables: number; det
   }
   try {
     const sql = getDb();
-    const rows = (await sql`SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = 'public'`) as Record<string, unknown>[];
+    const rows =
+      (await sql`SELECT COUNT(*) as count FROM information_schema.tables WHERE table_schema = 'public'`) as Record<
+        string,
+        unknown
+      >[];
     return { connected: true, tables: Number(rows[0].count), detail: `${rows[0].count} tables in public schema` };
   } catch (e) {
     return { connected: false, tables: 0, detail: String(e).slice(0, 100) };

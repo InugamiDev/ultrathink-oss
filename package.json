@@ -5,17 +5,19 @@
   "type": "module",
   "description": "Claude Workflow OS — 4-layer skill mesh, persistent memory, privacy hooks, and observability dashboard",
   "workspaces": [
-    "dashboard",
-    "memory",
-    "harness",
-    "code-intel",
-    "mcp/memory"
+    "apps/*",
+    "packages/*",
+    "mcp/*",
+    "tools/harness",
+    "videos"
   ],
   "scripts": {
     "setup": "./scripts/setup.sh",
+    "install:global": "./scripts/install.sh",
     "dashboard": "./scripts/dashboard.sh",
     "dashboard:dev": "cd dashboard && npm run dev",
     "dashboard:build": "cd dashboard && npm run build",
+    "doctor": "./scripts/doctor.sh",
     "migrate": "./scripts/migrate.sh",
     "migrate:run": "cd memory && npx tsx scripts/migrate.ts",
     "seed": "cd memory && npx tsx scripts/seed.ts",
@@ -25,6 +27,13 @@
     "format:check": "prettier --check '**/*.{ts,tsx,js}'",
     "test": "vitest run",
     "typecheck": "cd dashboard && tsc --noEmit",
+    "codeintel:build": "cd packages/code-intel && npx tsc",
+    "codeintel:index": "cd packages/code-intel && node dist/indexer.js index",
+    "harness": "cd tools/harness && npm run dev",
+    "harness:expert": "cd tools/harness && npm run expert",
+    "harness:test": "cd tools/harness && npm run test",
+    "prompts:sync": "node scripts/sync-prompts.mjs --write",
+    "prompts:check": "node scripts/sync-prompts.mjs --check",
     "gemini:auth": "npx tsx scripts/gemini-browser/auth.ts",
     "gemini:generate": "npx tsx scripts/gemini-browser/generate.ts"
   },
@@ -32,12 +41,28 @@
   "license": "MIT",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "dotenv": "^17.4.2",
     "eslint": "^10.0.3",
     "prettier": "^3.8.1",
+    "tsx": "^4.21.0",
     "typescript-eslint": "^8.56.1",
     "vitest": "^4.0.18"
   },
   "dependencies": {
-    "postgres": "^3.4.9"
+    "postgres": "^3.4.8"
+  },
+  "pnpm": {
+    "overrides": {
+      "postgres": "^3.4.8",
+      "drizzle-orm": "^0.38.4",
+      "zod": "^3.24.2",
+      "express": "^5.1.0",
+      "better-auth": "1.4.18"
+    },
+    "onlyBuiltDependencies": [
+      "@embedded-postgres/darwin-arm64",
+      "esbuild",
+      "sharp"
+    ]
   }
 }

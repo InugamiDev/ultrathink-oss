@@ -176,12 +176,12 @@ export async function getMemoryRelations(): Promise<MemoryRelation[]> {
 export async function getMemoryStats() {
   const sql = getDb();
 
-  const [totalRows, archivedRows, relRows, categories] = await Promise.all([
+  const [totalRows, archivedRows, relRows, categories] = (await Promise.all([
     sql`SELECT COUNT(*) as count FROM memories WHERE is_archived = false`,
     sql`SELECT COUNT(*) as count FROM memories WHERE is_archived = true`,
     sql`SELECT COUNT(*) as count FROM memory_relations`,
     sql`SELECT category, COUNT(*) as count FROM memories WHERE is_archived = false GROUP BY category ORDER BY count DESC`,
-  ]) as Record<string, unknown>[][];
+  ])) as Record<string, unknown>[][];
 
   return {
     total: Number(totalRows[0]?.count ?? 0),

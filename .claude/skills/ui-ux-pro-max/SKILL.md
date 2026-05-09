@@ -541,6 +541,7 @@ Additional: `critique`, `distill`, `quieter`, `extract`, `onboard`, `teach-impec
 | `references/illustration-backends.md` | Puter.js, Gemini API, TinyFish, Playwright illustration code examples |
 | `references/modern-techniques.md` | Scroll-driven animation, View Transitions API, new CSS 2025-2026, design tokens, APCA |
 | `references/modern-patterns.md` | Bento grids, kinetic typography, AI chat UI, generative UI, command palettes, spatial design |
+| `references/operator-console-style.md` | Paperclip-inspired Operator Console — control plane aesthetic, audacious-engineer voice, ASCII diagrams, mono numerics |
 
 ### UI Styling (shadcn/ui + Tailwind)
 | Document | Content |

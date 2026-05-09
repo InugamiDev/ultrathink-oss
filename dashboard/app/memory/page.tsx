@@ -8,9 +8,11 @@ import { GalaxyCanvas } from "@/components/memory/galaxy-canvas";
 import { GalaxyControls } from "@/components/memory/galaxy-controls";
 import { MemoryDetailPanel } from "@/components/memory/memory-detail-panel";
 import { BrainChat } from "@/components/memory/brain-chat";
+import { IdentityGraphCanvas } from "@/components/memory/identity-graph-canvas";
+import { IdentityDetailPanel } from "@/components/memory/identity-detail-panel";
+import type { IdentityNode, IdentityEdge } from "@/components/memory/identity-graph-canvas";
 
-type ViewMode = "galaxy" | "list";
-// Note: "identity" view was removed — identity system is not in OSS
+type ViewMode = "galaxy" | "identity" | "list";
 
 export default function MemoryPage() {
   const [memories, setMemories] = useState<Memory[]>([]);
@@ -25,6 +27,11 @@ export default function MemoryPage() {
     minImportance: 1,
   });
   const viewportRef = useRef<GalaxyViewport>({ offsetX: 0, offsetY: 0, zoom: 1 });
+
+  // Identity graph state
+  const [identityNodes, setIdentityNodes] = useState<IdentityNode[]>([]);
+  const [identityEdges, setIdentityEdges] = useState<IdentityEdge[]>([]);
+  const [identitySelectedId, setIdentitySelectedId] = useState<string | null>(null);
 
   // Fetch data
   const fetchMemories = useCallback(async () => {
@@ -60,10 +67,22 @@ export default function MemoryPage() {
     }
   }, []);
 
+  const fetchIdentity = useCallback(async () => {
+    try {
+      const res = await fetch("/api/memory/identity");
+      const data = await res.json();
+      if (data.nodes) setIdentityNodes(data.nodes);
+      if (data.edges) setIdentityEdges(data.edges);
+    } catch {
+      // keep identity data empty
+    }
+  }, []);
+
   useEffect(() => {
     fetchMemories();
     fetchRelations();
-  }, [fetchMemories, fetchRelations]);
+    fetchIdentity();
+  }, [fetchMemories, fetchRelations, fetchIdentity]);
 
   // Convert memories to nodes
   useEffect(() => {
@@ -93,17 +112,25 @@ export default function MemoryPage() {
   const handleMemoryCreated = () => {
     fetchMemories();
     fetchRelations();
+    fetchIdentity();
   };
 
+  // Clear identity selection when switching away from identity view
   const handleViewChange = (mode: ViewMode) => {
     setViewMode(mode);
+    if (mode !== "identity") {
+      setIdentitySelectedId(null);
+    }
+    if (mode === "identity") {
+      setSelectedId(null);
+    }
   };
 
   return (
     <div className="flex flex-col lg:flex-row h-[calc(100vh-8rem)] gap-0">
-      {/* Left: Galaxy or List view */}
+      {/* Left: Galaxy, Identity Graph, or List view */}
       <div className="flex-1 min-h-0 relative overflow-hidden rounded-xl lg:rounded-r-none border border-[var(--color-border)] bg-[var(--color-bg)]">
-        {!isLive && memories.length === 0 && (
+        {!isLive && memories.length === 0 && viewMode !== "identity" && (
           <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 text-center p-8">
             <svg
               className="w-12 h-12 text-[var(--color-text-dim)]"
@@ -122,6 +149,29 @@ export default function MemoryPage() {
             <p className="text-base font-semibold text-[var(--color-text-muted)]">No memories yet</p>
             <p className="text-sm text-[var(--color-text-dim)] max-w-xs">
               Memories are created automatically as you work. Use the chat below to add one manually.
+            </p>
+          </div>
+        )}
+
+        {viewMode === "identity" && identityNodes.length === 0 && (
+          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 text-center p-8">
+            <svg
+              className="w-12 h-12 text-[var(--color-text-dim)]"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1}
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0"
+              />
+            </svg>
+            <p className="text-base font-semibold text-[var(--color-text-muted)]">No identity data yet</p>
+            <p className="text-sm text-[var(--color-text-dim)] max-w-xs">
+              Identity nodes are built from your preferences, tools, and workflow patterns detected over time.
             </p>
           </div>
         )}
@@ -194,6 +244,13 @@ export default function MemoryPage() {
               </div>
             )}
           </div>
+        ) : viewMode === "identity" ? (
+          <IdentityGraphCanvas
+            nodes={identityNodes}
+            edges={identityEdges}
+            selectedId={identitySelectedId}
+            onSelectNode={setIdentitySelectedId}
+          />
         ) : (
           <GalaxyCanvas
             nodes={nodes}
@@ -209,19 +266,28 @@ export default function MemoryPage() {
       {/* Right: Detail Panel + Chat — hidden on mobile unless a node is selected */}
       <div
         className={`w-full lg:w-80 xl:w-96 min-h-0 flex flex-col border lg:border-l-0 border-[var(--color-border)] rounded-xl lg:rounded-l-none bg-[var(--color-surface)] overflow-hidden
-                       ${selectedId ? "flex" : "hidden lg:flex"}`}
+                       ${(viewMode === "identity" ? identitySelectedId : selectedId) ? "flex" : "hidden lg:flex"}`}
       >
         <div className="flex-1 overflow-hidden">
-          <MemoryDetailPanel
-            selectedNode={selectedNode}
-            totalNodes={memories.length}
-            onClose={() => setSelectedId(null)}
-            onMemoryUpdated={handleMemoryCreated}
-            onMemoryDeleted={(id) => {
-              setMemories((prev) => prev.filter((m) => m.id !== id));
-              setSelectedId(null);
-            }}
-          />
+          {viewMode === "identity" ? (
+            <IdentityDetailPanel
+              nodes={identityNodes}
+              edges={identityEdges}
+              selectedId={identitySelectedId}
+              onClose={() => setIdentitySelectedId(null)}
+            />
+          ) : (
+            <MemoryDetailPanel
+              selectedNode={selectedNode}
+              totalNodes={memories.length}
+              onClose={() => setSelectedId(null)}
+              onMemoryUpdated={handleMemoryCreated}
+              onMemoryDeleted={(id) => {
+                setMemories((prev) => prev.filter((m) => m.id !== id));
+                setSelectedId(null);
+              }}
+            />
+          )}
         </div>
         <BrainChat
           onMemoryCreated={handleMemoryCreated}
@@ -246,6 +312,19 @@ function ViewToggle({ activeView, onChange }: { activeView: ViewMode; onChange: 
           <circle cx="8" cy="10" r="2" />
           <circle cx="16" cy="14" r="2" />
           <line x1="9.5" y1="11" x2="14.5" y2="13" />
+        </svg>
+      ),
+    },
+    {
+      mode: "identity",
+      label: "Identity",
+      icon: (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0"
+          />
         </svg>
       ),
     },

@@ -1,20 +1,10 @@
 # UltraThink — Codex CLI Configuration
-# Format reference: https://github.com/openai/codex/blob/main/docs/config.md
-
 model = "gpt-5"
 approval_policy = "on-request"
 
-# ─── Features ────────────────────────────────────────────────────────────────
-
 [features]
-codex_hooks = true
-
-# ─── MCP Servers ─────────────────────────────────────────────────────────────
-# Codex TOML requires `command` as a string and `args` as a separate array.
-# Add your own MCP servers below following this pattern.
+hooks = true
 
 [mcp_servers.vfs]
 command = "vfs"
 args = ["mcp"]
-startup_timeout_sec = 15
-enabled = true

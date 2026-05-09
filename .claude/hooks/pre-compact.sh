@@ -8,11 +8,28 @@
 # back as additionalContext so the compacted conversation retains critical info.
 # Also saves state to /tmp/ultrathink-compact-state/<session_id>.json for
 # session-start recovery.
+#
+# IMPORTANT: This hook MUST NOT exit non-zero — Claude Code interprets that as
+# "block compaction" and the user is then stuck unable to compact when context
+# fills up. The trap below logs unexpected failures + emits an empty {} so
+# compaction proceeds even on internal hook bugs.
 
-set -euo pipefail
+set -uo pipefail
+set -E  # propagate ERR trap into shell functions + command substitutions
 umask 077  # UltraThink: restrict temp files to owner only
 
 source "$(dirname "${BASH_SOURCE[0]}")/hook-log.sh" 2>/dev/null || hook_log() { :; }
+
+# ANY uncaught error → log it, emit empty additionalContext, exit clean. Never
+# block compaction on a hook bug.
+on_err() {
+  local code=$?
+  hook_log "pre-compact" "fatal exit=$code at line ${1:-?} — emitting empty result"
+  echo "{}"
+  exit 0
+}
+trap 'on_err $LINENO' ERR
+
 hook_log "pre-compact" "started"
 
 # ─── MemPalace: Flush in-flight memories before compaction ────────────
@@ -24,14 +41,14 @@ FLUSH_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # Flush pending auto-memories (10s timeout, failure-tolerant)
 if ls /tmp/ultrathink-memories/*.json 1>/dev/null 2>&1; then
   hook_log "pre-compact" "flushing pending auto-memories"
-  timeout 10 bash -c "cd '$FLUSH_ROOT' && npx tsx memory/scripts/memory-runner.ts flush" 2>/dev/null \
+  timeout 10 bash -c "cd '$FLUSH_ROOT' && npx tsx packages/memory/scripts/memory-runner.ts flush" 2>/dev/null \
     || hook_log "pre-compact" "warning: memory flush failed or timed out (non-blocking)"
 fi
 
 # Flush pending decisions (10s timeout, failure-tolerant)
 if ls /tmp/ultrathink-pending-decisions/*.json 1>/dev/null 2>&1; then
   hook_log "pre-compact" "flushing pending decisions"
-  timeout 10 bash -c "cd '$FLUSH_ROOT' && npx tsx memory/scripts/memory-runner.ts flush-decisions" 2>/dev/null \
+  timeout 10 bash -c "cd '$FLUSH_ROOT' && npx tsx packages/memory/scripts/memory-runner.ts flush-decisions" 2>/dev/null \
     || hook_log "pre-compact" "warning: decision flush failed or timed out (non-blocking)"
 fi
 
@@ -65,18 +82,30 @@ if [[ -z "$STATE_JSON" ]] || ! echo "$STATE_JSON" | jq empty 2>/dev/null; then
     '{ session_id: $sid, extracted_at: $ts, files_modified: [], last_task: null, last_summary: null, decisions: [], pending_work: [] }')
 fi
 
-# Enrich with GSD progress state if active
+# Enrich with GSD progress state if active. Validate JSON BEFORE --argjson —
+# otherwise a malformed/empty tracker file aborts the hook (set -e) and blocks
+# the compaction entirely. Soft-fail every step.
 GSD_PROGRESS="/tmp/ultrathink-progress-${SID_SHORT}"
-if [[ -f "$GSD_PROGRESS" ]]; then
-  GSD_STATE=$(cat "$GSD_PROGRESS" 2>/dev/null || echo "{}")
-  STATE_JSON=$(echo "$STATE_JSON" | jq --argjson gsd "$GSD_STATE" '. + { gsd_progress: $gsd }')
+if [[ -f "$GSD_PROGRESS" && -s "$GSD_PROGRESS" ]]; then
+  GSD_STATE=$(cat "$GSD_PROGRESS" 2>/dev/null || true)
+  if [[ -n "$GSD_STATE" ]] && echo "$GSD_STATE" | jq empty 2>/dev/null; then
+    NEW_JSON=$(echo "$STATE_JSON" | jq --argjson gsd "$GSD_STATE" '. + { gsd_progress: $gsd }' 2>/dev/null) \
+      && STATE_JSON="$NEW_JSON"
+  else
+    hook_log "pre-compact" "skip gsd: invalid JSON in $GSD_PROGRESS"
+  fi
 fi
 
-# Enrich with active agent states
+# Enrich with active agent states (same defensive pattern).
 AGENT_TRACKER="/tmp/ultrathink-agents-${SID_SHORT}"
-if [[ -f "$AGENT_TRACKER" ]]; then
-  AGENTS=$(cat "$AGENT_TRACKER" 2>/dev/null || echo "[]")
-  STATE_JSON=$(echo "$STATE_JSON" | jq --argjson agents "$AGENTS" '. + { active_agents: $agents }')
+if [[ -f "$AGENT_TRACKER" && -s "$AGENT_TRACKER" ]]; then
+  AGENTS=$(cat "$AGENT_TRACKER" 2>/dev/null || true)
+  if [[ -n "$AGENTS" ]] && echo "$AGENTS" | jq empty 2>/dev/null; then
+    NEW_JSON=$(echo "$STATE_JSON" | jq --argjson agents "$AGENTS" '. + { active_agents: $agents }' 2>/dev/null) \
+      && STATE_JSON="$NEW_JSON"
+  else
+    hook_log "pre-compact" "skip agents: invalid JSON in $AGENT_TRACKER"
+  fi
 fi
 
 # Save state file for session-start recovery

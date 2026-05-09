@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { execFileSync } from "child_process";
 import { resolve, join } from "path";
-import { writeFileSync, unlinkSync } from "fs";
+import { readFileSync, writeFileSync, unlinkSync } from "fs";
 import { tmpdir } from "os";
 
 const ROOT = resolve(__dirname, "..");
@@ -26,6 +26,17 @@ function runHook(hookName: string, input: object): string {
       /* ignore */
     }
   }
+}
+
+function runAdapter(runtime: string, event: string, input: object): string {
+  return execFileSync("node", ["scripts/hook-adapter.mjs", runtime, event], {
+    encoding: "utf-8",
+    cwd: ROOT,
+    timeout: 10000,
+    input: JSON.stringify(input),
+    env: { ...process.env, ULTRATHINK_TIER: "oss" },
+    stdio: ["pipe", "pipe", "pipe"],
+  }).trim();
 }
 
 describe("privacy-hook", () => {
@@ -63,6 +74,38 @@ describe("privacy-hook", () => {
       tool_input: { file_path: "/project/src/index.ts" },
     });
     expect(result === "" || result === "{}").toBe(true);
+  });
+});
+
+describe("hook-adapter", () => {
+  it("routes Codex PreToolUse through the shared manifest", () => {
+    const result = JSON.parse(
+      runAdapter("codex", "PreToolUse", {
+        tool_name: "Read",
+        tool_input: { file_path: "/project/.env" },
+      })
+    );
+
+    expect(result.hookSpecificOutput.permissionDecision).toBe("deny");
+  });
+
+  it("skips unsupported runtime events cleanly", () => {
+    const result = runAdapter("codex", "PreCompact", {
+      session_id: "test-session",
+    });
+
+    expect(result).toBe("");
+  });
+
+  it("keeps Codex manifest hooks on supported lifecycle events", () => {
+    const manifest = JSON.parse(readFileSync(resolve(ROOT, ".claude/hooks/manifest.json"), "utf-8"));
+    const codexEvents = new Set(manifest.runtimes.codex.supportedEvents);
+    const codexHooks = manifest.hooks.filter((hook: { runtimes?: string[] }) => hook.runtimes?.includes("codex"));
+
+    expect(codexHooks.length).toBeGreaterThan(0);
+    for (const hook of codexHooks) {
+      expect(codexEvents.has(hook.event)).toBe(true);
+    }
   });
 });
 

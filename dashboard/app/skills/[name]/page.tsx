@@ -295,9 +295,7 @@ export default function SkillDetailPage() {
             <p className="text-base text-[var(--color-text-muted)] mt-2">{skill.description}</p>
           </div>
           <div className="flex flex-col items-end gap-2 shrink-0">
-            <span className={`px-2 py-1 text-xs rounded-full border ${layerColors[skill.layer]}`}>
-              {skill.layer}
-            </span>
+            <span className={`px-2 py-1 text-xs rounded-full border ${layerColors[skill.layer]}`}>{skill.layer}</span>
             <span className="text-xs text-[var(--color-text-dim)]">{skill.category}</span>
           </div>
         </div>

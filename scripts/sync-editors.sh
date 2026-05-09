@@ -28,82 +28,14 @@ if [[ ! -f "$CLAUDE_MD" ]]; then
   exit 1
 fi
 
+# intent: keep editor integrations on the same canonical shared prompt as runtime templates
+# status: done
+# next: update prompts/core.md, then run npm run prompts:sync and this script as needed
+# blockers: none
+# confidence: high
 # ── Core instructions (shared across all editors) ────────────────
-# OSS-safe content only — no Tekiō, Code-Intel, identity graph
 generate_core_instructions() {
-  cat << 'CORE'
-# UltraThink — Workflow OS for AI Code Editors
-
-> Persistent memory, 4-layer skill mesh, privacy hooks, and observability dashboard.
-
-## Identity
-
-You are **UltraThink** — an intelligent agent with structured skills, persistent memory,
-and a layered architecture for complex engineering tasks.
-
-## Tech Stack
-
-- **Dashboard**: Next.js 15 + Tailwind v4 (port 3333)
-- **Database**: Neon Postgres + pgvector + pg_trgm
-- **Skills**: 125 across 4 layers (8 orchestrator, 18 hub, 35 utility, 64 domain)
-- **Memory**: Postgres-backed Second Brain with 4-wing architecture
-- **Search**: Hybrid tsvector + pg_trgm + ILIKE with synonym expansion
-- **Tools**: VFS (AST signatures, 60-98% token savings) via MCP
-
-## Memory (Second Brain)
-
-- **4-wing structure**: agent (WHO I am) | user (WHO you are) | knowledge (WHAT learned) | experience (WHAT happened)
-- **4-layer recall**: L0 core (~100tok) → L1 essential (~300tok) → L2 context (~500tok) → L3 on-demand
-- **Zettelkasten linking**: Relations typed as learned-from | contradicts | supports | applies-to | caused-by | supersedes
-- **AAAK**: Lossless shorthand dialect for ~1.5x compression on recall output
-
-### Memory Commands
-
-```bash
-npx tsx memory/scripts/memory-runner.ts session-start  # Load context
-npx tsx memory/scripts/memory-runner.ts search "query"  # Search memories
-npx tsx memory/scripts/memory-runner.ts save "content" "category" importance
-npx tsx memory/scripts/memory-runner.ts flush            # Flush pending
-```
-
-## Skill System
-
-Skills are folders in `.claude/skills/[name]/` containing:
-- `SKILL.md` — Core instructions (loaded on trigger)
-- `references/` — API docs, edge cases (loaded on demand)
-- `scripts/` — Helper scripts the agent can run
-- `assets/` — Templates, data files
-
-Progressive disclosure: metadata at startup (~100tok/skill), body on trigger, references on demand.
-
-When a task matches a skill's triggers, read and follow its SKILL.md.
-
-## Key Paths
-
-| Area | Path |
-|------|------|
-| Skills | `.claude/skills/[name]/SKILL.md` |
-| References | `.claude/references/*.md` |
-| Memory | `memory/` |
-| Dashboard | `dashboard/` |
-
-## Code Standards
-
-- TypeScript strict mode, no `any`
-- React: functional components, hooks, server components where possible
-- CSS: Tailwind v4 with CSS custom properties for design tokens
-- SQL: Parameterized queries only, no string interpolation
-- Tests: Vitest for unit
-- Git: Conventional commits, no force push
-
-## References (read on demand)
-
-- `.claude/references/core.md` — Response patterns, skill selection, error handling
-- `.claude/references/memory.md` — Memory read/write discipline
-- `.claude/references/privacy.md` — File access control, sensitivity levels
-- `.claude/references/quality.md` — Code standards, review checklist
-- `.claude/references/teaching.md` — Coding level adaptation
-CORE
+  cat "$ROOT/prompts/core.md"
 }
 
 # ── 1. Cursor (.cursor/rules/) ───────────────────────────────────
@@ -202,7 +134,7 @@ sync_windsurf() {
 - Use Cascade's file context to read skill files when tasks match triggers
 - Reference `.claude/skills/_registry.json` for the full skill index
 - When modifying dashboard code, always check the existing design tokens in `globals.css`
-- For memory operations, read `memory/src/memory.ts` for the API surface
+- For memory operations, read `packages/memory/src/memory.ts` for the API surface
 EOF
   } > "$ROOT/.windsurf/rules/ultrathink.md"
   ok ".windsurf/rules/ultrathink.md"
@@ -307,10 +239,11 @@ model = "gpt-5"
 approval_policy = "on-request"
 
 [features]
-codex_hooks = true
+hooks = true
 
 [mcp_servers.vfs]
-command = ["vfs", "mcp"]
+command = "vfs"
+args = ["mcp"]
 TOML
     ok ".codex/config.toml (generated)"
   else
@@ -329,13 +262,13 @@ TOML
     ],
     "SessionStart": [
       {
-        "command": ["npx", "tsx", "memory/scripts/memory-runner.ts", "session-start"],
+        "command": ["npx", "tsx", "packages/memory/scripts/memory-runner.ts", "session-start"],
         "description": "Load memory context and adaptive learning rules"
       }
     ],
     "Stop": [
       {
-        "command": ["npx", "tsx", "memory/scripts/memory-runner.ts", "flush"],
+        "command": ["npx", "tsx", "packages/memory/scripts/memory-runner.ts", "flush"],
         "description": "Flush pending memories and close session"
       }
     ]

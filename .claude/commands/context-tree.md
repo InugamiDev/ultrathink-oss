@@ -6,7 +6,7 @@ Build and display the hierarchical context tree showing all available knowledge 
 
 1. **Query memory categories + counts**:
 ```bash
-cd /Users/inugami/Documents/GitHub/InuVerse/ai-agents/ultrathink && npx tsx -e "
+cd "$(git rev-parse --show-toplevel)" && npx tsx -e "
 import { config } from 'dotenv';
 import { resolve } from 'path';
 config({ path: resolve(import.meta.dirname || '.', '.env') });
@@ -21,7 +21,7 @@ process.exit(0);
 
 2. **Read skill registry for layer breakdown**:
 ```bash
-cat /Users/inugami/Documents/GitHub/InuVerse/ai-agents/ultrathink/.claude/skills/_registry.json | jq '{
+cat "$(git rev-parse --show-toplevel)/.claude/skills/_registry.json" | jq '{
   total: (.skills | length),
   byLayer: [.skills[] | .layer] | group_by(.) | map({layer: .[0], count: length}) | sort_by(-.count),
   byCategory: [.skills[] | .category] | group_by(.) | map({category: .[0], count: length}) | sort_by(-.count) | .[0:10]
@@ -30,12 +30,12 @@ cat /Users/inugami/Documents/GitHub/InuVerse/ai-agents/ultrathink/.claude/skills
 
 3. **Detect project stack** (check for package.json, etc.):
 ```bash
-cd /Users/inugami/Documents/GitHub/InuVerse/ai-agents/ultrathink && ls package.json tsconfig.json .env 2>/dev/null; cat package.json 2>/dev/null | jq -r '.dependencies // {} | keys[]' 2>/dev/null | head -10
+cd "$(git rev-parse --show-toplevel)" && ls package.json tsconfig.json .env 2>/dev/null; cat package.json 2>/dev/null | jq -r '.dependencies // {} | keys[]' 2>/dev/null | head -10
 ```
 
 4. **Check active plans/tasks**:
 ```bash
-cd /Users/inugami/Documents/GitHub/InuVerse/ai-agents/ultrathink && npx tsx -e "
+cd "$(git rev-parse --show-toplevel)" && npx tsx -e "
 import { config } from 'dotenv';
 import { resolve } from 'path';
 config({ path: resolve(import.meta.dirname || '.', '.env') });
@@ -51,7 +51,7 @@ process.exit(0);
 
 5. **List reference files**:
 ```bash
-ls /Users/inugami/Documents/GitHub/InuVerse/ai-agents/ultrathink/.claude/references/*.md 2>/dev/null
+ls "$(git rev-parse --show-toplevel)"/.claude/references/*.md 2>/dev/null
 ```
 
 ## Output Format

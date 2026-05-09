@@ -14,7 +14,8 @@ export function BrainChat({ onMemoryCreated, isCollapsed, onToggleCollapse }: Br
     {
       id: "welcome",
       role: "system",
-      content: "Memory Brain online. Search memories, create new ones, or link them together.\n\nCommands:\n- Type anything to search\n- create: <content>\n- tag <id> #tag\n- relate <id1> -> <id2>",
+      content:
+        "Memory Brain online. Search memories, create new ones, or link them together.\n\nCommands:\n- Type anything to search\n- create: <content>\n- tag <id> #tag\n- relate <id1> -> <id2>",
       timestamp: Date.now(),
     },
   ]);
@@ -55,11 +56,14 @@ export function BrainChat({ onMemoryCreated, isCollapsed, onToggleCollapse }: Br
       let responseText = data.response ?? data.error ?? "No response";
 
       if (data.memories?.length) {
-        responseText += "\n\n" + data.memories
-          .map((m: { id: string; content: string; category: string; importance: number }) =>
-            `[${m.category}] ${m.content.slice(0, 60)}... (I:${m.importance}, id:${m.id})`
-          )
-          .join("\n");
+        responseText +=
+          "\n\n" +
+          data.memories
+            .map(
+              (m: { id: string; content: string; category: string; importance: number }) =>
+                `[${m.category}] ${m.content.slice(0, 60)}... (I:${m.importance}, id:${m.id})`
+            )
+            .join("\n");
       }
 
       const sysMsg: ChatMessage = {
@@ -77,7 +81,12 @@ export function BrainChat({ onMemoryCreated, isCollapsed, onToggleCollapse }: Br
     } catch {
       setMessages((prev) => [
         ...prev,
-        { id: `e-${Date.now()}`, role: "system", content: "Connection error. Is the database configured?", timestamp: Date.now() },
+        {
+          id: `e-${Date.now()}`,
+          role: "system",
+          content: "Connection error. Is the database configured?",
+          timestamp: Date.now(),
+        },
       ]);
     } finally {
       setLoading(false);
@@ -116,22 +125,14 @@ export function BrainChat({ onMemoryCreated, isCollapsed, onToggleCollapse }: Br
               <div
                 key={msg.id}
                 className={`text-sm leading-relaxed whitespace-pre-wrap ${
-                  msg.role === "user"
-                    ? "text-[var(--color-accent)] font-mono"
-                    : "text-[var(--color-text-muted)]"
+                  msg.role === "user" ? "text-[var(--color-accent)] font-mono" : "text-[var(--color-text-muted)]"
                 }`}
               >
-                <span className="text-xs text-[var(--color-text-dim)] mr-2">
-                  {msg.role === "user" ? ">" : "#"}
-                </span>
+                <span className="text-xs text-[var(--color-text-dim)] mr-2">{msg.role === "user" ? ">" : "#"}</span>
                 {msg.content}
               </div>
             ))}
-            {loading && (
-              <div className="text-sm text-[var(--color-text-dim)] animate-pulse">
-                Thinking...
-              </div>
-            )}
+            {loading && <div className="text-sm text-[var(--color-text-dim)] animate-pulse">Thinking...</div>}
           </div>
 
           {/* Input */}

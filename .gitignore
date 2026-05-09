@@ -12,8 +12,28 @@ node_modules/
 out/
 dist/
 !.claude/hooks/dist/
+!code-intel/dist/
 build/
 *.tsbuildinfo
+
+# Rust build artifacts
+target/
+**/target/
+
+# Tauri-generated schemas (regenerated on every build)
+apps/studio/src-tauri/gen/
+
+# Studio runtime state
+.ultrathink-studio/
+
+# Tauri updater private key — paired with the pubkey in tauri.conf.json.
+# If this leaks, anyone can sign malicious "updates" that running apps
+# trust. Treat with the same paranoia as a release-signing key.
+.tauri-updater.key
+*.tauri-updater.key
+
+# CAR per-lane worktrees (created on demand under ~/.ultrathink-studio/worktrees/)
+worktrees/
 
 # IDE
 .vscode/
@@ -46,4 +66,6 @@ reports/
 *.keystore
 credentials*.json
 dashboard/.env.local
-.coverage
+
+# discord-bot slash-command registration idempotency state (INU-41 doc rev 2)
+apps/discord-bot/.discord-cmd-hash

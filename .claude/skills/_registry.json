@@ -1,10 +1,10 @@
 {
   "version": "1.0.0",
   "lastUpdated": "2026-04-13",
-  "skillCount": 232,
+  "skillCount": 235,
   "layers": {
-    "domain": 135,
-    "utility": 61,
+    "domain": 137,
+    "utility": 62,
     "orchestrator": 16,
     "hub": 20
   },
@@ -7427,6 +7427,76 @@
         "data-validation"
       ],
       "riskLevel": "low",
+      "websearch": true
+    },
+    {
+      "name": "manimce",
+      "description": "Manim Community Edition best practices — Scene structure, animations, LaTeX/MathTex, 3D with ThreeDScene, camera control, styling, CLI. Triggers on: manim, ManimCE, from manim import, MathTex, Create(), Scene, mathematical animation, math visualization.",
+      "layer": "domain",
+      "category": "animation",
+      "triggers": [
+        "manim",
+        "manimce",
+        "manim community",
+        "mathematical animation",
+        "math animation",
+        "MathTex",
+        "from manim import"
+      ],
+      "linksTo": [
+        "manimgl",
+        "manim-composer",
+        "python",
+        "d3"
+      ],
+      "linkedFrom": [
+        "manim-composer"
+      ],
+      "websearch": true
+    },
+    {
+      "name": "manimgl",
+      "description": "ManimGL (3Blue1Brown version) best practices — InteractiveScene, Tex with t2c, camera frame control, interactive mode (-se flag), 3D rendering, checkpoint_paste() workflow. Triggers on: manimgl, 3b1b, ManimGL, from manimlib import, ShowCreation, InteractiveScene.",
+      "layer": "domain",
+      "category": "animation",
+      "triggers": [
+        "manimgl",
+        "3b1b",
+        "3blue1brown",
+        "manimlib",
+        "interactive scene",
+        "ShowCreation",
+        "from manimlib import"
+      ],
+      "linksTo": [
+        "manimce",
+        "manim-composer",
+        "python"
+      ],
+      "linkedFrom": [
+        "manim-composer"
+      ],
+      "websearch": true
+    },
+    {
+      "name": "manim-composer",
+      "description": "Plan and compose Manim educational videos — transforms vague ideas into detailed scene-by-scene plans (scenes.md). Research, clarifying questions, narrative arc, color palette, implementation order. Use BEFORE writing Manim code. Triggers on: plan manim video, 3b1b style, explain like 3Blue1Brown, compose animation, educational video.",
+      "layer": "utility",
+      "category": "animation",
+      "triggers": [
+        "compose manim",
+        "plan manim",
+        "3b1b style",
+        "explain like 3blue1brown",
+        "educational video",
+        "math explainer",
+        "animation plan"
+      ],
+      "linksTo": [
+        "manimce",
+        "manimgl"
+      ],
+      "linkedFrom": [],
       "websearch": true
     }
   ]

@@ -40,16 +40,11 @@ export function ChatMessageBubble({ message, isStreaming, streamingThinking }: C
           <>
             {/* Thinking block */}
             {hasThinking && (
-              <ThinkingBlock
-                content={message.thinking || streamingThinking || ""}
-                isStreaming={isThinkingPhase}
-              />
+              <ThinkingBlock content={message.thinking || streamingThinking || ""} isStreaming={isThinkingPhase} />
             )}
 
             {/* Tool activity */}
-            {message.toolEvents && message.toolEvents.length > 0 && (
-              <ToolActivityList events={message.toolEvents} />
-            )}
+            {message.toolEvents && message.toolEvents.length > 0 && <ToolActivityList events={message.toolEvents} />}
 
             {/* Main content — sanitized markdown rendered to HTML */}
             {message.content ? (
@@ -59,9 +54,7 @@ export function ChatMessageBubble({ message, isStreaming, streamingThinking }: C
             ) : null}
 
             {/* Web sources */}
-            {message.sources && message.sources.length > 0 && (
-              <SourceCards sources={message.sources} />
-            )}
+            {message.sources && message.sources.length > 0 && <SourceCards sources={message.sources} />}
 
             {/* Model badge */}
             {message.model && !isStreaming && (
@@ -91,9 +84,18 @@ function StreamingDots() {
   return (
     <div className="flex items-center gap-2 text-[var(--color-text-dim)]">
       <div className="flex gap-1">
-        <span className="w-2 h-2 rounded-full bg-[var(--color-accent)] animate-bounce" style={{ animationDelay: "0ms" }} />
-        <span className="w-2 h-2 rounded-full bg-[var(--color-accent)] animate-bounce" style={{ animationDelay: "150ms" }} />
-        <span className="w-2 h-2 rounded-full bg-[var(--color-accent)] animate-bounce" style={{ animationDelay: "300ms" }} />
+        <span
+          className="w-2 h-2 rounded-full bg-[var(--color-accent)] animate-bounce"
+          style={{ animationDelay: "0ms" }}
+        />
+        <span
+          className="w-2 h-2 rounded-full bg-[var(--color-accent)] animate-bounce"
+          style={{ animationDelay: "150ms" }}
+        />
+        <span
+          className="w-2 h-2 rounded-full bg-[var(--color-accent)] animate-bounce"
+          style={{ animationDelay: "300ms" }}
+        />
       </div>
       <span className="text-sm">Processing...</span>
     </div>

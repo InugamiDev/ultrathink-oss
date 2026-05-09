@@ -192,11 +192,11 @@ export async function POST(request: NextRequest) {
 
     const sql = getDb();
 
-    const planRows = await sql`
+    const planRows = (await sql`
       INSERT INTO plans (title, summary, file_path)
       VALUES (${title}, ${summary ?? null}, ${filePath ?? null})
       RETURNING *
-    ` as Record<string, unknown>[];
+    `) as Record<string, unknown>[];
     const plan = planRows[0];
 
     return NextResponse.json({ plan }, { status: 201 });

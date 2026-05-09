@@ -1,42 +1,21 @@
 {
   "hooks": {
-    "SessionStart": [
-      {
-        "matcher": "startup|resume",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "npx tsx memory/scripts/memory-runner.ts session-start",
-            "statusMessage": "Loading memory context and adaptive learning rules",
-            "timeoutSec": 60
-          }
-        ]
-      }
-    ],
     "PreToolUse": [
       {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": ".claude/hooks/privacy-hook.sh",
-            "statusMessage": "Privacy check",
-            "timeoutSec": 10
-          }
-        ]
+        "command": [".claude/hooks/privacy-hook.sh"],
+        "description": "Block access to sensitive files"
+      }
+    ],
+    "SessionStart": [
+      {
+        "command": ["npx", "tsx", "packages/memory/scripts/memory-runner.ts", "session-start"],
+        "description": "Load memory context and adaptive learning rules"
       }
     ],
     "Stop": [
       {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "npx tsx memory/scripts/memory-runner.ts flush",
-            "statusMessage": "Flushing pending memories",
-            "timeoutSec": 30
-          }
-        ]
+        "command": ["npx", "tsx", "packages/memory/scripts/memory-runner.ts", "flush"],
+        "description": "Flush pending memories and close session"
       }
     ]
   }

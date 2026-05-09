@@ -6,7 +6,7 @@ Show which skills fire most, which are ignored, and trigger effectiveness.
 
 ### 1. Fetch skill usage data
 ```bash
-cd /Users/inugami/Documents/GitHub/InuVerse/ai-agents/ultrathink && npx tsx -e "
+cd "$(git rev-parse --show-toplevel)" && npx tsx -e "
 import { config } from 'dotenv';
 import { resolve, join } from 'path';
 config({ path: join(resolve(import.meta.dirname, '../..'), '.env') });
@@ -62,7 +62,7 @@ process.exit(0);
 
 ### 2. Read registry for total skill count
 ```bash
-cat /Users/inugami/Documents/GitHub/InuVerse/ai-agents/ultrathink/.claude/skills/_registry.json | jq '{
+cat "$(git rev-parse --show-toplevel)/.claude/skills/_registry.json" | jq '{
   total: (.skills | length),
   byLayer: [.skills[] | .layer] | group_by(.) | map({layer: .[0], count: length}),
   byCategory: [.skills[] | .category] | group_by(.) | map({category: .[0], count: length}) | sort_by(-.count) | .[0:8]

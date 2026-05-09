@@ -125,11 +125,11 @@ Configure external notification channels.
 {
   "notifications": {
     "telegram": {
-      "token": "123456:ABC-DEF1234ghIkl-zyx57W2v1u123ew11",
-      "chatId": "-1001234567890"
+      "token": "<telegram_bot_token>",
+      "chatId": "<telegram_chat_id>"
     },
-    "discord": "https://discord.com/api/webhooks/123456/abcdef",
-    "slack": "https://hooks.slack.com/services/T00/B00/XXXX"
+    "discord": "<discord_webhook_url>",
+    "slack": "<slack_webhook_url>"
   }
 }
 ```

@@ -1,6 +1,6 @@
 ---
 name: seo
-description: SEO for web apps — meta tags, OpenGraph, JSON-LD structured data, sitemaps, robots.txt, Core Web Vitals, and Next.js metadata API
+description: SEO for web apps — metadata, structured data, sitemaps, robots.txt, Core Web Vitals, E-E-A-T. Auto-loads framework-specific references.
 layer: domain
 category: frontend
 triggers:
@@ -10,19 +10,27 @@ triggers:
   - "og tags"
   - "structured data"
   - "json-ld"
+  - "schema.org"
   - "sitemap"
   - "robots.txt"
   - "core web vitals"
+  - "lcp"
+  - "inp"
+  - "cls"
   - "search engine"
+  - "google ranking"
+  - "rich snippets"
+  - "e-e-a-t"
 inputs:
   - Page or route to optimize
-  - Target keywords and content type
-  - Framework (Next.js, Remix, etc.)
+  - Target keywords + content type (article / product / service / local-biz / org / event)
+  - Framework (Next.js, Remix, Astro, plain HTML)
 outputs:
-  - Metadata configuration with OG and Twitter cards
-  - JSON-LD structured data blocks
-  - Sitemap and robots.txt files
-  - Core Web Vitals optimization recommendations
+  - Metadata config (title, description, OG, Twitter cards, canonical)
+  - JSON-LD blocks for the right schema.org type
+  - sitemap.xml + robots.txt
+  - Core Web Vitals fixes prioritised by impact
+  - E-E-A-T audit findings + remediation list
 linksTo:
   - nextjs
   - performance-profiler
@@ -40,148 +48,88 @@ riskLevel: low
 memoryReadPolicy: selective
 memoryWritePolicy: none
 sideEffects: []
+references:
+  - nextjs-metadata.md
+  - jsonld.md
+  - sitemap-robots.md
+  - core-web-vitals.md
+  - eeat.md
+templates:
+  - assets/templates/article-jsonld.json
+  - assets/templates/product-jsonld.json
+  - assets/templates/organization-jsonld.json
+  - assets/templates/local-business-jsonld.json
+scripts:
+  - scripts/audit.sh
 ---
 
-# SEO Skill
+# SEO
 
-## Purpose
+Comprehensive SEO for web apps. The bulk of the implementation lives in `references/` — load the one(s) relevant to the user's task. Templates in `assets/templates/` are ready-to-paste JSON-LD blocks parameterised on common fields.
 
-Implement search engine optimization for web applications: metadata, social sharing tags, structured data for rich snippets, crawl configuration, and Core Web Vitals. Primarily covers Next.js but patterns apply to any framework.
+## When to load each reference
 
-## Next.js Metadata API
+| Task | Reference |
+|---|---|
+| Per-page metadata, OG tags, Twitter cards in Next.js | `references/nextjs-metadata.md` |
+| Pick the right schema.org type + paste JSON-LD | `references/jsonld.md` (+ a template from `assets/templates/`) |
+| Generate sitemap.xml or robots.txt | `references/sitemap-robots.md` |
+| Fix LCP/INP/CLS regressions | `references/core-web-vitals.md` |
+| Audit content quality (Experience/Expertise/Authoritativeness/Trust) | `references/eeat.md` |
 
-```typescript
-// app/layout.tsx — Global defaults
-import type { Metadata } from "next";
+## Decision tree
 
-export const metadata: Metadata = {
-  metadataBase: new URL("https://example.com"),
-  title: { default: "My App", template: "%s | My App" },
-  description: "A concise description under 160 characters.",
-  openGraph: {
-    type: "website",
-    locale: "en_US",
-    siteName: "My App",
-    images: [{ url: "/og-default.png", width: 1200, height: 630 }],
-  },
-  twitter: { card: "summary_large_image", creator: "@handle" },
-  robots: { index: true, follow: true },
-};
+```
+Is the page user-facing?
+├── No  → robots noindex; skip the rest
+└── Yes → Continue
+    │
+    ├── What schema.org type fits?
+    │     blog post  → Article            → article-jsonld.json
+    │     product    → Product (+ Offer)  → product-jsonld.json
+    │     service    → Service / LocalBusiness
+    │     org/about  → Organization       → organization-jsonld.json
+    │     local biz  → LocalBusiness      → local-business-jsonld.json
+    │     event      → Event
+    │     person     → Person
+    │
+    ├── Framework?
+    │     Next.js App Router → nextjs-metadata.md (Metadata API)
+    │     Remix             → meta() functions
+    │     Astro             → <head> with `Astro.url`
+    │     Plain HTML        → static `<meta>` + `<script type="application/ld+json">`
+    │
+    └── Performance?
+          → core-web-vitals.md (LCP/INP/CLS playbook)
 ```
 
-```typescript
-// app/blog/[slug]/page.tsx — Per-page dynamic metadata
-import type { Metadata } from "next";
+## Run an audit
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const post = await getPost(params.slug);
-  return {
-    title: post.title,
-    description: post.excerpt,
-    openGraph: {
-      title: post.title,
-      description: post.excerpt,
-      images: [{ url: post.coverImage, width: 1200, height: 630 }],
-      type: "article",
-      publishedTime: post.publishedAt,
-      authors: [post.author.name],
-    },
-  };
-}
+```bash
+.claude/skills/seo/scripts/audit.sh https://example.com
 ```
+The script:
+1. Runs PageSpeed Insights (mobile + desktop) and prints the LCP/INP/CLS verdicts
+2. Validates structured data via Google's testing endpoint
+3. Greps the rendered HTML for missing `<title>`, `<meta description>`, OG tags, canonical
+4. Outputs a checklist of fixes ordered by impact
 
-## JSON-LD Structured Data
+## Quality gates (refuse to ship without these)
 
-```typescript
-// components/json-ld.tsx
-export function ArticleJsonLd({ post }: { post: Post }) {
-  const jsonLd = {
-    "@context": "https://schema.org",
-    "@type": "Article",
-    headline: post.title,
-    description: post.excerpt,
-    image: post.coverImage,
-    datePublished: post.publishedAt,
-    dateModified: post.updatedAt,
-    author: { "@type": "Person", name: post.author.name },
-    publisher: {
-      "@type": "Organization",
-      name: "My App",
-      logo: { "@type": "ImageObject", url: "https://example.com/logo.png" },
-    },
-  };
+| Gate | Why |
+|---|---|
+| `metadataBase` set on root layout | Without it, OG image URLs resolve relative — broken on social shares |
+| Canonical URL on every page | Prevents duplicate-content penalties |
+| `description` 50–160 chars | Outside this range Google often rewrites your snippet |
+| `og:image` 1200×630 + ≤300KB | Large/wrong-aspect images don't render in feeds |
+| `alt` on every content image | a11y + image search ranking |
+| LCP < 2.5s on mobile 4G | Below this is a Web Vitals fail and a CrUX field-data drag |
+| Unique title per page | Duplicate titles get clustered in SERPs |
 
-  return (
-    <script
-      type="application/ld+json"
-      dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
-    />
-  );
-}
-```
+## Common pitfalls
 
-## Sitemap and robots.txt
-
-```typescript
-// app/sitemap.ts
-import type { MetadataRoute } from "next";
-
-export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const posts = await getAllPosts();
-  const postEntries = posts.map((post) => ({
-    url: `https://example.com/blog/${post.slug}`,
-    lastModified: new Date(post.updatedAt),
-    changeFrequency: "weekly" as const,
-    priority: 0.8,
-  }));
-
-  return [
-    { url: "https://example.com", lastModified: new Date(), priority: 1.0 },
-    { url: "https://example.com/about", priority: 0.5 },
-    ...postEntries,
-  ];
-}
-```
-
-```typescript
-// app/robots.ts
-import type { MetadataRoute } from "next";
-
-export default function robots(): MetadataRoute.Robots {
-  return {
-    rules: [
-      { userAgent: "*", allow: "/", disallow: ["/api/", "/admin/"] },
-    ],
-    sitemap: "https://example.com/sitemap.xml",
-  };
-}
-```
-
-## Core Web Vitals Checklist
-
-| Metric | Target | Key Fixes |
-|--------|--------|-----------|
-| **LCP** (Largest Contentful Paint) | < 2.5s | Optimize hero images, use `priority` on above-fold `<Image>`, preload fonts |
-| **INP** (Interaction to Next Paint) | < 200ms | Avoid long tasks, use `startTransition`, defer non-critical JS |
-| **CLS** (Cumulative Layout Shift) | < 0.1 | Set explicit `width`/`height` on images, reserve space for dynamic content |
-
-```typescript
-// Preload critical font to prevent CLS
-// app/layout.tsx
-import { Inter } from "next/font/google";
-const inter = Inter({ subsets: ["latin"], display: "swap" });
-
-// Priority image for LCP
-import Image from "next/image";
-<Image src="/hero.jpg" alt="Hero" width={1200} height={600} priority />
-```
-
-## Common Pitfalls
-
-| Pitfall | Fix |
-|---------|-----|
-| Missing `metadataBase` | OG images resolve to relative URLs; always set the base URL |
-| Duplicate meta tags | Use Next.js metadata API exclusively; do not mix with `<Head>` |
-| No `alt` text on images | Hurts accessibility and image search ranking |
-| Blocking render with scripts | Use `next/script` with `strategy="lazyOnload"` for analytics |
-| Missing canonical URL | Add `alternates: { canonical: url }` to prevent duplicate content |
+- **Mixing Next.js Metadata API with `<Head>`**. Pick one; Metadata API wins for App Router.
+- **Forgetting to escape `</script>` inside JSON-LD strings**. Use `dangerouslySetInnerHTML` with sanitised input.
+- **`robots.txt` blocking `/_next/static/`**. Don't — Google needs your CSS/JS to render correctly.
+- **Setting `noindex` and then linking to the page from elsewhere**. Either commit to noindex or remove the inbound links; mixed signals hurt.
+- **Tracking pixels firing during render**. Use `next/script` with `strategy="lazyOnload"` for analytics.

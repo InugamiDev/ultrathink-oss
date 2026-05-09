@@ -49,6 +49,17 @@ export async function GET() {
           FROM hook_events WHERE action_taken = 'blocked' AND created_at > NOW() - INTERVAL '7 days'
           ORDER BY created_at DESC LIMIT 5`,
 
+      // Adaptations (Tekiō)
+      sql`SELECT COUNT(*) as c FROM adaptations`,
+      sql`SELECT COUNT(*) as c FROM adaptations WHERE is_active = true`,
+      sql`SELECT category, COUNT(*) as count, SUM(times_applied) as applied, SUM(times_prevented) as prevented
+          FROM adaptations WHERE is_active = true GROUP BY category`,
+      sql`SELECT LEFT(trigger_pattern, 80) as trigger, LEFT(adaptation_rule, 80) as rule,
+            category, times_applied, times_prevented, severity
+          FROM adaptations WHERE is_active = true ORDER BY times_applied DESC LIMIT 5`,
+      sql`SELECT LEFT(trigger_pattern, 60) as trigger, category, severity, created_at
+          FROM adaptations ORDER BY created_at DESC LIMIT 5`,
+
       // Memory health
       sql`SELECT COUNT(*) as c FROM memories WHERE is_archived = false`,
       sql`SELECT COUNT(*) as c FROM memories WHERE created_at > NOW() - INTERVAL '7 days'`,
@@ -99,6 +110,12 @@ export async function GET() {
     const hookSeverityBreakdown = results[i++];
     const hookActionBreakdown = results[i++];
     const recentBlockedHooks = results[i++];
+    // Adaptation (Tekiō) metrics
+    const totalAdaptations = row(results[i++]);
+    const activeAdaptations = row(results[i++]);
+    const adaptationsByCategory = results[i++];
+    const topAppliedAdaptations = results[i++];
+    const recentAdaptations = results[i++];
     // Memory health
     const activeMemories = row(results[i++]);
     const weekNewMemories = row(results[i++]);
@@ -132,6 +149,13 @@ export async function GET() {
         severityBreakdown: hookSeverityBreakdown,
         actionBreakdown: hookActionBreakdown,
         recentBlocked: recentBlockedHooks,
+      },
+      tekio: {
+        total: Number(totalAdaptations.c),
+        active: Number(activeAdaptations.c),
+        byCategory: adaptationsByCategory,
+        topApplied: topAppliedAdaptations,
+        recent: recentAdaptations,
       },
       memory: {
         active: Number(activeMemories.c),

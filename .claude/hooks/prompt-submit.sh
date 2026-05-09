@@ -34,7 +34,7 @@ HOOK_DIR="$(cd "$(dirname "$HOOK_SOURCE")" && pwd)"
 ULTRA_ROOT="$(cd "$HOOK_DIR/../.." && pwd)"
 # Use pre-compiled JS for speed (28ms vs 500-1000ms with npx tsx)
 ANALYZER="$HOOK_DIR/dist/prompt-analyzer.js"
-RUNNER="$ULTRA_ROOT/memory/scripts/memory-runner.ts"
+RUNNER="$ULTRA_ROOT/packages/memory/scripts/memory-runner.ts"
 
 # Process pending wheel events inline (don't wait for session-end)
 # This ensures adaptations are available in the CURRENT session, not just the next one

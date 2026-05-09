@@ -128,11 +128,11 @@ The privacy hook is the most critical -- it checks every file access against blo
 {
   "notifications": {
     "telegram": {
-      "token": "bot-token-here",
-      "chatId": "chat-id-here"
+      "token": "<telegram_bot_token>",
+      "chatId": "<telegram_chat_id>"
     },
-    "discord": "https://discord.com/api/webhooks/...",
-    "slack": "https://hooks.slack.com/services/..."
+    "discord": "<discord_webhook_url>",
+    "slack": "<slack_webhook_url>"
   }
 }
 ```

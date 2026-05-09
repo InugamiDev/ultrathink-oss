@@ -56,11 +56,7 @@ export async function POST(req: NextRequest) {
     const client = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
     // Normalize task types (array or legacy single)
-    const resolvedTasks: string[] = Array.isArray(taskTypes)
-      ? taskTypes
-      : taskType
-        ? [taskType]
-        : [];
+    const resolvedTasks: string[] = Array.isArray(taskTypes) ? taskTypes : taskType ? [taskType] : [];
 
     // Task-specific prefixes
     const taskPrefixes: Record<string, string> = {
@@ -96,10 +92,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Build system prompt with optional thinking instruction
-    const baseSystemPrompt = systemPrompt || "You are a helpful AI assistant embedded in the UltraThink dashboard. Be concise, actionable, and format responses with markdown.";
-    const fullSystemPrompt = enableThinking
-      ? baseSystemPrompt + THINKING_INSTRUCTION
-      : baseSystemPrompt;
+    const baseSystemPrompt =
+      systemPrompt ||
+      "You are a helpful AI assistant embedded in the UltraThink dashboard. Be concise, actionable, and format responses with markdown.";
+    const fullSystemPrompt = enableThinking ? baseSystemPrompt + THINKING_INSTRUCTION : baseSystemPrompt;
 
     const apiMessages = [
       { role: "system" as const, content: fullSystemPrompt },
@@ -200,7 +196,9 @@ async function handleCompoundRequest(
               try {
                 const args = JSON.parse(t.arguments);
                 if (args.url) sources.push({ url: args.url, title: args.url });
-              } catch { /* skip */ }
+              } catch {
+                /* skip */
+              }
             }
           }
         }
@@ -210,25 +208,36 @@ async function handleCompoundRequest(
           for (const tool of executedTools) {
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const t = tool as any;
-            const toolType = t.type === "search" ? "web_search"
-              : t.type === "code_execution" ? "analyze"
-              : t.type === "browser" ? "tool_call"
-              : "tool_call";
+            const toolType =
+              t.type === "search"
+                ? "web_search"
+                : t.type === "code_execution"
+                  ? "analyze"
+                  : t.type === "browser"
+                    ? "tool_call"
+                    : "tool_call";
             let detail = "";
             try {
               const args = JSON.parse(t.arguments || "{}");
               detail = args.query || args.url || args.code?.slice(0, 80) || "";
-            } catch { /* skip */ }
+            } catch {
+              /* skip */
+            }
             controller.enqueue(
               sseEncode({
                 type: "tool",
                 event: {
                   type: toolType,
-                  label: t.type === "search" ? "Web Search"
-                    : t.type === "code_execution" ? "Code Execution"
-                    : t.type === "browser" ? "Browser"
-                    : t.type === "visit_website" ? "Visit Website"
-                    : t.type || "Tool",
+                  label:
+                    t.type === "search"
+                      ? "Web Search"
+                      : t.type === "code_execution"
+                        ? "Code Execution"
+                        : t.type === "browser"
+                          ? "Browser"
+                          : t.type === "visit_website"
+                            ? "Visit Website"
+                            : t.type || "Tool",
                   detail,
                   status: "done" as const,
                   durationMs: elapsed,
@@ -241,9 +250,7 @@ async function handleCompoundRequest(
         // Stream the content in chunks
         const chunkSize = 30;
         for (let i = 0; i < content.length; i += chunkSize) {
-          controller.enqueue(
-            sseEncode({ type: "text", text: content.slice(i, i + chunkSize) })
-          );
+          controller.enqueue(sseEncode({ type: "text", text: content.slice(i, i + chunkSize) }));
         }
 
         // Emit sources if found
@@ -341,9 +348,7 @@ async function handleStreamingRequest(
           }
 
           if (chunk.x_groq?.usage) {
-            totalTokens =
-              (chunk.x_groq.usage.prompt_tokens ?? 0) +
-              (chunk.x_groq.usage.completion_tokens ?? 0);
+            totalTokens = (chunk.x_groq.usage.prompt_tokens ?? 0) + (chunk.x_groq.usage.completion_tokens ?? 0);
           }
         }
 

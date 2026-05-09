@@ -102,16 +102,16 @@ function scoreResult(
   return { pass: overlapRatio >= 0.7, matched, missed };
 }
 
-describe("LongMemEval Benchmark", () => {
+describe.skipIf(!process.env.DATABASE_URL)("LongMemEval Benchmark", () => {
   beforeAll(async () => {
     // Load test data
     testData = JSON.parse(readFileSync(join(__dirname, "fixtures/longmemeval-questions.json"), "utf-8"));
 
     // Dynamic imports
-    const memoryModule = await import("../memory/src/memory.js");
+    const memoryModule = await import("../packages/memory/src/memory.js");
     createMemory = memoryModule.createMemory;
     semanticSearch = memoryModule.semanticSearch;
-    const clientModule = await import("../memory/src/client.js");
+    const clientModule = await import("../packages/memory/src/client.js");
     getClient = clientModule.getClient;
 
     // Seed test memories

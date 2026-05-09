@@ -15,12 +15,12 @@ This guide covers common issues with UltraThink and how to resolve them. Issues 
 **Fix**:
 1. Create a `.env` file at the project root:
    ```bash
-   DATABASE_URL=postgres://user:password@host.neon.tech/neondb?sslmode=require
+   DATABASE_URL="postgres://<db_user>:<db_password>@<neon_host>/<db_name>?sslmode=require"
    ```
 2. If using Neon, get the connection string from the Neon dashboard.
 3. Verify the variable is loaded:
    ```bash
-   source .env && echo $DATABASE_URL
+   source .env && test -n "$DATABASE_URL" && echo "DATABASE_URL is set"
    ```
 
 ### Error: "Connection refused" or "ECONNREFUSED"

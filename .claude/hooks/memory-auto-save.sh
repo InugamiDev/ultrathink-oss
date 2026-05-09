@@ -25,7 +25,7 @@ esac
 HOOK_SOURCE="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || realpath "${BASH_SOURCE[0]}" 2>/dev/null || echo "${BASH_SOURCE[0]}")"
 HOOK_DIR="$(cd "$(dirname "$HOOK_SOURCE")" && pwd)"
 ULTRA_ROOT="$(cd "$HOOK_DIR/../.." && pwd)"
-RUNNER="$ULTRA_ROOT/memory/scripts/memory-runner.ts"
+RUNNER="$ULTRA_ROOT/packages/memory/scripts/memory-runner.ts"
 
 # ── Load .env ──
 if [[ -z "${DATABASE_URL:-}" && -f "$ULTRA_ROOT/.env" ]]; then

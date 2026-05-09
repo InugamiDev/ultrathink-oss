@@ -20,11 +20,7 @@ interface VoiceChatProps {
   onEndConversation: () => void;
 }
 
-export default function VoiceChat({
-  agoraData,
-  onTokenWillExpire,
-  onEndConversation,
-}: VoiceChatProps) {
+export default function VoiceChat({ agoraData, onTokenWillExpire, onEndConversation }: VoiceChatProps) {
   const client = useRTCClient();
   const isConnected = useIsConnected();
   const agentUID = process.env.NEXT_PUBLIC_AGORA_AGENT_UID || "333";
@@ -78,7 +74,9 @@ export default function VoiceChat({
     } else if (timerRef.current) {
       clearInterval(timerRef.current);
     }
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
   }, [isAgentConnected]);
 
   // Token renewal
@@ -96,7 +94,9 @@ export default function VoiceChat({
 
   // Cleanup
   useEffect(() => {
-    return () => { client?.leave(); };
+    return () => {
+      client?.leave();
+    };
   }, [client]);
 
   // Mic toggle
@@ -125,7 +125,9 @@ export default function VoiceChat({
   };
 
   const formatTime = (s: number) =>
-    `${Math.floor(s / 60).toString().padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
+    `${Math.floor(s / 60)
+      .toString()
+      .padStart(2, "0")}:${(s % 60).toString().padStart(2, "0")}`;
 
   return (
     <div className="flex flex-col items-center gap-8 py-8">
@@ -142,9 +144,7 @@ export default function VoiceChat({
         >
           <div
             className={`w-20 h-20 rounded-full flex items-center justify-center transition-all ${
-              isAgentConnected
-                ? "bg-[var(--color-accent)]/40"
-                : "bg-[var(--color-surface)]"
+              isAgentConnected ? "bg-[var(--color-accent)]/40" : "bg-[var(--color-surface)]"
             }`}
           >
             {isAgentConnected ? (
@@ -170,9 +170,7 @@ export default function VoiceChat({
                 : "Connecting to channel..."}
         </p>
         {isAgentConnected && (
-          <p className="text-sm text-[var(--color-text-dim)] mt-1 font-mono">
-            {formatTime(elapsed)}
-          </p>
+          <p className="text-sm text-[var(--color-text-dim)] mt-1 font-mono">{formatTime(elapsed)}</p>
         )}
       </div>
 
@@ -194,11 +192,7 @@ export default function VoiceChat({
           }`}
           title={micEnabled ? "Mute" : "Unmute"}
         >
-          {micEnabled ? (
-            <Mic className="w-5 h-5 text-[var(--color-text)]" />
-          ) : (
-            <MicOff className="w-5 h-5" />
-          )}
+          {micEnabled ? <Mic className="w-5 h-5 text-[var(--color-text)]" /> : <MicOff className="w-5 h-5" />}
         </button>
 
         <button

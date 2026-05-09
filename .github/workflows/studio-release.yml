@@ -1,0 +1,141 @@
+name: Studio Release
+
+# Builds + signs UltraThink Studio for macOS (arm64 + x64), Windows, Linux when
+# a tag matching `studio-v*` is pushed, then drafts a GitHub Release with the
+# bundles + a signed `latest.json` (Tauri updater manifest).
+#
+# Required secrets (configure in repo Settings → Secrets and variables → Actions):
+#
+#   TAURI_SIGNING_PRIVATE_KEY        — contents of apps/studio/.tauri-updater.key
+#   TAURI_SIGNING_PRIVATE_KEY_PASSWORD — empty if generated with -p ''
+#
+#   APPLE_CERTIFICATE                — base64 of Developer ID Application .p12
+#   APPLE_CERTIFICATE_PASSWORD       — password for the .p12
+#   APPLE_SIGNING_IDENTITY           — "Developer ID Application: Foo Bar (TEAMID)"
+#   APPLE_ID                         — Apple ID email
+#   APPLE_PASSWORD                   — app-specific password
+#   APPLE_TEAM_ID                    — 10-char team id
+#
+#   AZURE_TENANT_ID / CLIENT_ID / CLIENT_SECRET — Azure Trusted Signing
+#   AZURE_CODE_SIGNING_NAME / ENDPOINT / CERT_PROFILE_NAME
+#
+# Run manually for testing via workflow_dispatch.
+
+on:
+  push:
+    tags:
+      - "studio-v*"
+  workflow_dispatch:
+
+jobs:
+  build:
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            target: aarch64-apple-darwin
+          - os: macos-14
+            target: x86_64-apple-darwin
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Linux build deps
+        if: matrix.os == 'ubuntu-22.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            patchelf
+
+      - name: pnpm install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build studio engine
+        run: pnpm --filter @inuverse/studio-engine build
+
+      - name: Import Apple certificate
+        if: startsWith(matrix.os, 'macos')
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+        run: |
+          # Skip silently when secrets aren't configured (dev runs).
+          if [ -z "$APPLE_CERTIFICATE" ]; then
+            echo "::notice::No Apple certificate; producing ad-hoc-signed build."
+            exit 0
+          fi
+          echo "$APPLE_CERTIFICATE" | base64 --decode > /tmp/cert.p12
+          security create-keychain -p actions build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p actions build.keychain
+          security import /tmp/cert.p12 -k build.keychain \
+            -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k actions build.keychain
+
+      - name: Build + sign Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          # Updater signing
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          # macOS code signing + notarization
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Windows Trusted Signing — handled in a separate post-build step below
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: apps/studio
+          tagName: ${{ github.ref_name }}
+          releaseName: "UltraThink Studio ${{ github.ref_name }}"
+          releaseDraft: true
+          prerelease: false
+          args: --target ${{ matrix.target }}
+
+      - name: Azure Trusted Signing (Windows)
+        if: matrix.os == 'windows-latest' && env.AZURE_TENANT_ID != ''
+        uses: azure/trusted-signing-action@v0
+        env:
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: ${{ secrets.AZURE_CODE_SIGNING_ENDPOINT }}
+          trusted-signing-account-name: ${{ secrets.AZURE_CODE_SIGNING_NAME }}
+          certificate-profile-name: ${{ secrets.AZURE_CERT_PROFILE_NAME }}
+          files-folder: apps/studio/src-tauri/target/${{ matrix.target }}/release/bundle
+          files-folder-filter: msi,exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256

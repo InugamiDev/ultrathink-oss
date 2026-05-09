@@ -6,6 +6,11 @@
 set -euo pipefail
 umask 077
 
+# Always-defined defaults so `set -u` doesn't trip on branches that were
+# never assigned (e.g. when stdin is malformed JSON, jq returns nothing,
+# and CC_SID never gets set in the conditional block at line ~123).
+CC_SID=""
+
 source "$(dirname "${BASH_SOURCE[0]}")/hook-log.sh" 2>/dev/null || hook_log() { :; }
 hook_log "session-start" "started"
 
@@ -17,7 +22,7 @@ HOOK_SOURCE="$(readlink -f "${BASH_SOURCE[0]}" 2>/dev/null || realpath "${BASH_S
 HOOK_DIR="$(cd "$(dirname "$HOOK_SOURCE")" && pwd)"
 ULTRA_ROOT="$(cd "$HOOK_DIR/../.." && pwd)"
 
-RUNNER="$ULTRA_ROOT/memory/scripts/memory-runner.ts"
+RUNNER="$ULTRA_ROOT/packages/memory/scripts/memory-runner.ts"
 
 # Load DATABASE_URL from .env
 if [[ -z "${DATABASE_URL:-}" ]]; then
@@ -142,15 +147,15 @@ else
       fi
 
       # Cache active Tekiō adaptations for PreToolUse prevention checks
-      CACHE_SCRIPT="$ULTRA_ROOT/memory/scripts/cache-adaptations.ts"
+      CACHE_SCRIPT="$ULTRA_ROOT/packages/memory/scripts/cache-adaptations.ts"
       if [[ -f "$CACHE_SCRIPT" ]]; then
         timeout 10 npx tsx "$CACHE_SCRIPT" > /tmp/ultrathink-status/adaptations-cache.json 2>/dev/null || echo '[]' > /tmp/ultrathink-status/adaptations-cache.json
       fi
 
       # Non-critical stats — all fire-and-forget
-      WEEKLY_SCRIPT="$ULTRA_ROOT/memory/scripts/weekly-stats.ts"
-      WHEEL_SCRIPT="$ULTRA_ROOT/memory/scripts/wheel-count.ts"
-      CONTEXT_TREE_SCRIPT="$ULTRA_ROOT/memory/scripts/context-tree-summary.ts"
+      WEEKLY_SCRIPT="$ULTRA_ROOT/packages/memory/scripts/weekly-stats.ts"
+      WHEEL_SCRIPT="$ULTRA_ROOT/packages/memory/scripts/wheel-count.ts"
+      CONTEXT_TREE_SCRIPT="$ULTRA_ROOT/packages/memory/scripts/context-tree-summary.ts"
 
       timeout 10 npx tsx "$WEEKLY_SCRIPT" > /tmp/ultrathink-status/weekly-stats 2>/dev/null || true
       [[ -f "$WHEEL_SCRIPT" ]] && timeout 10 npx tsx "$WHEEL_SCRIPT" > /tmp/ultrathink-status/wheel-count 2>/dev/null || true

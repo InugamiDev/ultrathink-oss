@@ -6,7 +6,7 @@ Review predictions stored in memory, check which ones have reached their deadlin
 
 ### 1. Fetch all predictions from memory
 ```bash
-cd /Users/inugami/Documents/GitHub/InuVerse/ai-agents/ultrathink && npx tsx -e "
+cd "$(git rev-parse --show-toplevel)" && npx tsx -e "
 import { config } from 'dotenv';
 import { resolve, join } from 'path';
 config({ path: join(resolve(import.meta.dirname, '../..'), '.env') });
