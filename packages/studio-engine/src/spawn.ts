@@ -182,8 +182,12 @@ export function createSpawn(opts: SpawnOptions, cfg: EngineConfig = {}): SpawnHa
           sessionId,
           "--add-dir",
           opts.projectDir,
-          "--permission-mode",
-          opts.permissionMode ?? "acceptEdits",
+          // Studio runs claude single-shot. In `-p` mode some models default
+          // to a "describe what I'd do, this session is read-only" posture
+          // instead of actually editing, because there's no interactive
+          // thread to gate approvals. Skip permissions outright so claude
+          // proceeds with Edit/Write/Bash directly.
+          "--dangerously-skip-permissions",
         ];
         if (opts.model) args.push("--model", opts.model);
         if (opts.bare) args.push("--bare");
