@@ -4,7 +4,13 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-DASHBOARD_DIR="$PROJECT_ROOT/dashboard"
+# Dashboard moved to apps/dashboard/ during the workspace reorg. Keep the old
+# root-level path as a fallback for any branch still using the prior layout.
+if [[ -d "$PROJECT_ROOT/apps/dashboard" ]]; then
+  DASHBOARD_DIR="$PROJECT_ROOT/apps/dashboard"
+else
+  DASHBOARD_DIR="$PROJECT_ROOT/dashboard"
+fi
 
 # Load .env if exists and sync to dashboard/.env.local (Next.js reads from its own dir)
 if [[ -f "$PROJECT_ROOT/.env" ]]; then

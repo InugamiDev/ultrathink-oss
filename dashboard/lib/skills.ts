@@ -27,11 +27,25 @@ export function invalidateCache() {
   cachedMtime = 0;
 }
 
+/**
+ * Locate the skills registry. The dashboard lives at `apps/dashboard/` post-
+ * reorg, so the relative path is two levels up. Old `dashboard/` (at the
+ * workspace root) is still supported for branches mid-migration.
+ */
+function resolveRegistryPath(): string | null {
+  const candidates = [
+    join(process.cwd(), "../../.claude/skills/_registry.json"), // apps/dashboard/ layout
+    join(process.cwd(), "../.claude/skills/_registry.json"), // legacy dashboard/ at root
+  ];
+  for (const p of candidates) if (existsSync(p)) return p;
+  return null;
+}
+
 export function getSkillRegistry(): SkillRegistry {
-  const registryPath = join(process.cwd(), "../.claude/skills/_registry.json");
+  const registryPath = resolveRegistryPath();
 
   // In development, invalidate cache when registry file changes
-  if (cachedRegistry && process.env.NODE_ENV === "development") {
+  if (cachedRegistry && registryPath && process.env.NODE_ENV === "development") {
     try {
       const mtime = statSync(registryPath).mtimeMs;
       if (mtime !== cachedMtime) {
@@ -44,7 +58,7 @@ export function getSkillRegistry(): SkillRegistry {
 
   if (cachedRegistry) return cachedRegistry;
 
-  if (existsSync(registryPath)) {
+  if (registryPath && existsSync(registryPath)) {
     const raw = readFileSync(registryPath, "utf-8");
     const parsed = JSON.parse(raw);
 
