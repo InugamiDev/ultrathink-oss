@@ -166,15 +166,21 @@ async function update(): Promise<void> {
 }
 
 async function list(): Promise<void> {
-  if (!existsSync(SKILLS_LINK)) {
-    emit({ skills: [] });
+  // Resolve the skills dir in priority order: studio-link → repo → ~/.claude/skills.
+  // Most users have ~/.claude/skills/ populated by install.sh — relying solely on
+  // SKILLS_LINK (~/.ultrathink-studio/skills) returned an empty list for everyone
+  // who never opened Studio's "Install skill kit" flow.
+  const discovered = discoverLocalSkills();
+  const root = discovered?.path;
+  if (!root || !existsSync(root)) {
+    emit({ skills: [], origin: "none" });
     return;
   }
-  const entries = await readdir(SKILLS_LINK, { withFileTypes: true });
+  const entries = await readdir(root, { withFileTypes: true });
   const skills: Array<{ name: string; layer?: string; description?: string }> = [];
   for (const e of entries) {
     if (!e.isDirectory() || e.name.startsWith("_")) continue;
-    const skillFile = join(SKILLS_LINK, e.name, "SKILL.md");
+    const skillFile = join(root, e.name, "SKILL.md");
     if (!existsSync(skillFile)) continue;
     const head = await readFile(skillFile, "utf8")
       .then((s) => s.slice(0, 1500))
@@ -186,7 +192,7 @@ async function list(): Promise<void> {
       description: fm.description,
     });
   }
-  emit({ skills });
+  emit({ skills, origin: discovered?.origin ?? "claude-config" });
 }
 
 /**

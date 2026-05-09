@@ -8,7 +8,7 @@
 // at .claude/skills/_registry.json and shells out to the prebuilt prompt-analyzer.
 
 import { spawn as spawnProcess } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { resolve, join } from "node:path";
 
 import type { SkillRouterDecision } from "./types.js";
@@ -36,6 +36,10 @@ function buildPersistentDirective(skillCount: number, pickedNames: string[]): st
     ? ` The skills routed above each declare \`linksTo\` companions in the registry — load them too if their domain applies (e.g. nextjs → react, server-actions, suspense).`
     : "";
   return [
+    `## You have full file-system access`,
+    `This is an UltraThink Studio session, not a chat-only assistant. You have **Edit, Write, Bash, Read, Glob, Grep, LS** tools available, and \`--dangerously-skip-permissions\` is on — every edit is auto-applied without an approval prompt. The CWD is set to the user's project directory; \`mcp__vfs__\` and \`mcp__code-intel__\` MCPs are wired.`,
+    `**Do the work directly.** Don't say "this session is read-only", don't ask "should I create the files?", don't list "what I'd do if I had write access". When the user says "build me X", scaffold the files and run the build. If you hit a real failure, surface the failure — but never refuse on permission grounds.`,
+    ``,
     `## UltraThink mesh — ${skillCount} skills available`,
     `Auto-routed skills (if any) are listed below. Browse the full library at \`.claude/skills/\` or query \`.claude/skills/_registry.json\` directly.${linksHint}`,
     ``,
@@ -199,11 +203,36 @@ function runAnalyzer(analyzerJs: string, prompt: string, timeoutMs: number): Pro
   });
 }
 
-/** Resolve a project's UltraThink root by walking up looking for .claude/skills/. */
+/**
+ * Resolve a project's UltraThink root by walking up looking for the skills
+ * registry. Two subtleties:
+ *   1. `~/.claude/skills/_registry.json` is a SYMLINK created by install.sh,
+ *      pointing at the real workspace. If we naively return `~/.claude` as
+ *      the root, the analyzer subprocess can't find `.claude/hooks/dist/`
+ *      and the skill mesh silently dies.
+ *   2. So when we hit a registry, we follow symlinks via realpath and check
+ *      that the resolved location ALSO has `.claude/hooks/dist/prompt-analyzer.js`
+ *      (the marker for a real workspace, not just an install symlink).
+ */
 export function findUltrathinkRoot(startDir: string): string | null {
   let dir = resolve(startDir);
   while (true) {
-    if (existsSync(join(dir, ".claude/skills/_registry.json"))) return dir;
+    const registryPath = join(dir, ".claude/skills/_registry.json");
+    if (existsSync(registryPath)) {
+      // 1. If registry is a symlink (install layout), follow it to the real
+      //    workspace and return the workspace root if it has the analyzer.
+      try {
+        const real = realpathSync(registryPath);
+        const workspace = real.replace(/\/\.claude\/skills\/_registry\.json$/, "");
+        if (workspace && workspace !== real && existsSync(join(workspace, ".claude/hooks/dist/prompt-analyzer.js"))) {
+          return workspace;
+        }
+      } catch {
+        /* ignore — fall through to the dir-based check */
+      }
+      // 2. Direct hit: this dir IS a workspace root if the analyzer is here too.
+      if (existsSync(join(dir, ".claude/hooks/dist/prompt-analyzer.js"))) return dir;
+    }
     const parent = resolve(dir, "..");
     if (parent === dir) return null;
     dir = parent;
