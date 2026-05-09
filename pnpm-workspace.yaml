@@ -1,0 +1,26 @@
+# Workspace layout — see docs/CODEBASE-LAYOUT.md for rationale
+packages:
+  # First-party libraries (apps depend on these)
+  - "packages/*"
+
+  # MCP servers (separate deployment shape)
+  - "mcp/*"
+
+  # User-facing apps
+  - "apps/*"
+
+  # Dev tooling (test harness)
+  - "tools/harness"
+
+  # Vendored Paperclip (paused — see docs/CODEBASE-LAYOUT.md, project_company-paused memory)
+  - "paperclip/server"
+  - "paperclip/db"
+  - "paperclip/shared"
+  - "paperclip/plugin-sdk"
+  - "paperclip/adapter-utils"
+  - "paperclip/adapters/*"
+  - "paperclip/plugins/*"
+  - "paperclip/ui"
+
+  # Remotion video project (kept as-is)
+  - "videos"

@@ -1,0 +1,34 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main",
+  "description": "Default capability set for UltraThink Studio: own-app events, basic shell, dialog, fs read of user project dirs.",
+  "windows": [
+    "main"
+  ],
+  "permissions": [
+    "core:default",
+    "core:event:default",
+    "core:window:default",
+    "core:window:allow-start-dragging",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-set-focus",
+    "core:webview:default",
+    "core:path:default",
+    "core:app:default",
+    "shell:default",
+    "shell:allow-open",
+    "dialog:default",
+    "fs:default",
+    {
+      "identifier": "fs:scope",
+      "allow": [
+        { "path": "$HOME/Studio/**" },
+        { "path": "$HOME/.ultrathink-studio/**" },
+        { "path": "$HOME/.ultrathink-core/**" },
+        { "path": "$HOME/.claude/skills/**" }
+      ]
+    },
+    "global-shortcut:default",
+    "global-shortcut:allow-register"
+  ]
+}
