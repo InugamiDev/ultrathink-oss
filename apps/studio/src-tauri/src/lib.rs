@@ -834,6 +834,63 @@ async fn reset_project_sessions(
     })
 }
 
+/// Seed a demo project's memory graph with ~20 realistic, ecommerce-themed
+/// memories so the Memory tab is populated on first run (useful for live demos
+/// and onboarding). Calls `packages/memory/scripts/seed-demo-project.ts` via
+/// `npx tsx` from the workspace root, then returns `{created, skipped, linked}`.
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SeedResult {
+    pub created: u32,
+    pub skipped: u32,
+    pub linked: u32,
+    pub scope: String,
+}
+
+#[tauri::command]
+async fn seed_demo_memories(scope: Option<String>) -> std::result::Result<SeedResult, String> {
+    let target = scope.unwrap_or_else(|| "acomo".to_string());
+    let root = find_workspace_root().ok_or_else(|| "workspace root not found".to_string())?;
+    // npx tsx <script> <scope> — same path as the CLI version. dotenv loads
+    // DATABASE_URL from the workspace .env when CWD is set correctly (see
+    // run_engine_script for the same pattern).
+    let output = Command::new("npx")
+        .args([
+            "tsx",
+            "packages/memory/scripts/seed-demo-project.ts",
+            &target,
+        ])
+        .current_dir(&root)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .await
+        .map_err(|e| format!("spawn npx tsx failed: {}", e))?;
+    if !output.status.success() {
+        return Err(format!(
+            "seed exited {}: {}",
+            output.status,
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    // The script JSON-stringifies its summary on the last non-empty line.
+    let line = stdout
+        .lines()
+        .filter(|l| !l.trim().is_empty())
+        .last()
+        .unwrap_or("");
+    let parsed: serde_json::Value =
+        serde_json::from_str(line).map_err(|e| format!("seed output not JSON: {} (line={:?})", e, line))?;
+    Ok(SeedResult {
+        created: parsed.get("created").and_then(|v| v.as_u64()).unwrap_or(0) as u32,
+        skipped: parsed.get("skipped").and_then(|v| v.as_u64()).unwrap_or(0) as u32,
+        linked: parsed.get("linked").and_then(|v| v.as_u64()).unwrap_or(0) as u32,
+        scope: target,
+    })
+}
+
 // --- Memory graph (knowledge-graph view) -------------------------------------
 
 #[tauri::command]
@@ -2485,6 +2542,7 @@ pub fn run() {
             delete_project,
             duplicate_project,
             reset_project_sessions,
+            seed_demo_memories,
             git_branch,
             list_checkpoints,
             revert_to_checkpoint,

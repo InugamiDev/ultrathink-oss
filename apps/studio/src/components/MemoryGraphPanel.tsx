@@ -43,6 +43,7 @@ export function MemoryGraphPanel({ projectName, projectDir }: MemoryGraphPanelPr
   const [maxNodes, setMaxNodes] = useState<number>(80);
   // "project" → only memories scoped to this project; "all" → entire graph.
   const [scopeMode, setScopeMode] = useState<"project" | "all">(projectName ? "project" : "all");
+  const [seeding, setSeeding] = useState<boolean>(false);
   // Track wrap dimensions so the canvas resizes with the panel.
   const wrapRef = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState<{ w: number; h: number }>({ w: 800, h: 500 });
@@ -193,7 +194,50 @@ export function MemoryGraphPanel({ projectName, projectDir }: MemoryGraphPanelPr
                 Have a chat in Build mode — claude saves project decisions, patterns, and context via{" "}
                 <code>mcp__memory__memory_save</code> as it works.
                 <br />
-                Or click <strong>All</strong> above to see the global graph.
+                <br />
+                Or load the <strong>starter pack</strong> — 21 ecommerce-themed memories across architecture decisions,
+                patterns, insights, and user preferences:
+              </div>
+              <div style={{ display: "flex", justifyContent: "center", gap: "8px", marginTop: "12px" }}>
+                <button
+                  type="button"
+                  disabled={seeding}
+                  onClick={async () => {
+                    if (!projectName) return;
+                    setSeeding(true);
+                    try {
+                      const r = await invoke<{ created: number; skipped: number; linked: number }>(
+                        "seed_demo_memories",
+                        { scope: projectName }
+                      );
+                      await load();
+                      // Brief toast in the error slot — yes, semantically wrong, but it's the
+                      // existing dismissible banner and the demo flow benefits from feedback.
+                      setError(
+                        r.created > 0
+                          ? `✓ Seeded ${r.created} memories (${r.linked} relations)`
+                          : `✓ Already seeded — ${r.skipped} memories present`
+                      );
+                      setTimeout(() => setError(null), 4000);
+                    } catch (e) {
+                      setError(`Seed failed: ${e}`);
+                    } finally {
+                      setSeeding(false);
+                    }
+                  }}
+                  style={seedBtnStyle}
+                >
+                  {seeding && <span className="ut-spinner" />}
+                  {seeding ? "Seeding…" : "✨ Load starter pack"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setScopeMode("all")}
+                  style={ghostButtonStyle}
+                  title="Show every memory in the graph"
+                >
+                  Or browse global graph →
+                </button>
               </div>
             </div>
           </div>
@@ -257,6 +301,19 @@ const ghostButtonStyle: React.CSSProperties = {
   border: "1px solid var(--border)",
   borderRadius: "6px",
   padding: "5px 10px",
+};
+const seedBtnStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "6px",
+  fontSize: "12px",
+  fontWeight: 600,
+  color: "#0c0d10",
+  background: "var(--accent)",
+  border: "none",
+  borderRadius: "var(--radius-md)",
+  padding: "8px 14px",
+  cursor: "pointer",
 };
 const scopeToggleStyle: React.CSSProperties = {
   display: "inline-flex",
