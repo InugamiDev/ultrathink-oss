@@ -364,6 +364,32 @@ export function ChatPanel({
         </div>
       )}
 
+      {/* Skill badges — passengers boarded the bus this turn. Surfaces the
+          otherwise-invisible skill-mesh routing decision in front of the user.
+          Pulled from the most-recent skill-injected event in the stream. */}
+      {activeProjectDir &&
+        (() => {
+          let lastSkills: Array<{ name: string; score: number }> | null = null;
+          for (let i = events.length - 1; i >= 0; i--) {
+            const e = events[i];
+            if (e.kind === "skill-injected") {
+              lastSkills = e.skills;
+              break;
+            }
+          }
+          if (!lastSkills?.length) return null;
+          return (
+            <div style={skillBadgeRowStyle}>
+              <span style={{ color: "var(--text-dim)", fontSize: "10px", letterSpacing: "0.06em" }}>🚌 PASSENGERS</span>
+              {lastSkills.map((s) => (
+                <span key={s.name} style={skillBadgeStyle} title={`relevance score ${s.score.toFixed(1)}`}>
+                  {s.name}
+                </span>
+              ))}
+            </div>
+          );
+        })()}
+
       {/* Stream — only when a project is active. Otherwise the empty-state
           hero owns the available vertical space. */}
       {activeProjectDir && (
@@ -516,6 +542,31 @@ const errorDismissBtnStyle: React.CSSProperties = {
   fontSize: "14px",
   padding: "0 4px",
   opacity: 0.7,
+};
+// Skill-mesh "passengers boarded" row — visible right above the chat stream.
+const skillBadgeRowStyle: React.CSSProperties = {
+  display: "flex",
+  flexWrap: "wrap",
+  alignItems: "center",
+  gap: "6px",
+  padding: "8px 14px",
+  borderBottom: "1px solid var(--border)",
+  background: "linear-gradient(180deg, rgba(124, 92, 255, 0.06), transparent)",
+  fontSize: "11px",
+};
+const skillBadgeStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "4px",
+  padding: "3px 9px",
+  fontFamily: "var(--font-mono)",
+  fontSize: "10.5px",
+  fontWeight: 600,
+  color: "var(--accent)",
+  background: "var(--accent-soft)",
+  border: "1px solid var(--accent)",
+  borderRadius: "999px",
+  letterSpacing: "0.02em",
 };
 
 // --- Project context bar ----------------------------------------------------
