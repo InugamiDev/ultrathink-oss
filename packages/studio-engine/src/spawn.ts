@@ -155,11 +155,23 @@ export function createSpawn(opts: SpawnOptions, cfg: EngineConfig = {}): SpawnHa
       if (adapter === "codex") {
         // OpenAI Codex CLI doesn't expose --mcp-config, --add-dir, or --append-system-prompt.
         // System hint goes into the prompt prelude; cwd is set on the spawn options.
+        //
         // --skip-git-repo-check: codex refuses to run outside a git repo by default;
         //   Studio projects under ~/Studio/projects/<slug>/ are bare dirs at first.
+        //
+        // Codex defaults to a read-only sandbox + per-command approval prompt.
+        // In Studio's automation flow there's no human to click "approve" so the
+        // session would silently die after 60s. Passing the bypass flag matches
+        // the semantics we already grant claude via --dangerously-skip-permissions.
         bin = CODEX_BIN;
         const prelude = decision.appendSystemPrompt ? `${decision.appendSystemPrompt}\n\n---\n\n` : "";
-        args = ["exec", "--json", "--skip-git-repo-check", `${prelude}${opts.prompt}`];
+        args = [
+          "exec",
+          "--json",
+          "--skip-git-repo-check",
+          "--dangerously-bypass-approvals-and-sandbox",
+          `${prelude}${opts.prompt}`,
+        ];
         if (opts.model) {
           args.push("--model", opts.model);
         }
@@ -182,12 +194,17 @@ export function createSpawn(opts: SpawnOptions, cfg: EngineConfig = {}): SpawnHa
           sessionId,
           "--add-dir",
           opts.projectDir,
-          // Studio runs claude single-shot. In `-p` mode some models default
-          // to a "describe what I'd do, this session is read-only" posture
-          // instead of actually editing, because there's no interactive
-          // thread to gate approvals. Skip permissions outright so claude
-          // proceeds with Edit/Write/Bash directly.
+          // Studio runs claude single-shot. Two things that block writes by default:
+          //   1. -p mode is conservative ("session is read-only" posture).
+          //      → --dangerously-skip-permissions tells claude to skip approval prompts.
+          //   2. The user's ~/.claude/settings.json may have an explicit allowlist
+          //      (e.g. only mcp__stitch / mcp__pencil) that excludes Edit/Write/Bash.
+          //      That denies the policy check even when permission prompts are skipped,
+          //      surfacing as "patch rejected: writing is blocked by read-only sandbox".
+          //      → --allowedTools with the full core toolset overrides for this session.
           "--dangerously-skip-permissions",
+          "--allowedTools",
+          "Bash Edit Write Read Glob Grep LS WebFetch WebSearch TodoWrite NotebookEdit Task MultiEdit",
         ];
         if (opts.model) args.push("--model", opts.model);
         if (opts.bare) args.push("--bare");
