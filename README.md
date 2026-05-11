@@ -44,24 +44,37 @@ UltraThink gives you the pipeline. You own it. You ship.
 - **install-pack.sh** — `./install-pack.sh https://github.com/acme/skills`
   drops any skill repo into your workflow
 
-## Install
+## Install — one line
 
-See **[INSTALL.md](INSTALL.md)** for the full guide. Short version:
+```sh
+curl -fsSL https://raw.githubusercontent.com/InugamiDev/ultrathink-oss/main/scripts/install-studio.sh | bash
+```
+
+This clones the repo to `~/ultrathink`, installs deps, builds Studio.app, and
+(macOS) symlinks it into `/Applications/`. Prereqs: **Node 22+**, **pnpm 9+**,
+**Rust 1.77+** (for the Studio Tauri build). It will tell you what's missing.
+
+After install, edit `~/ultrathink/.env` and set:
+
+- `DATABASE_URL=postgres://...neon.tech/...` — required for the memory graph
+- `ANTHROPIC_API_KEY=sk-ant-...` — optional if you have the `claude` CLI
+
+Open Studio: `open '/Applications/UltraThink Studio.app'` (or run from
+`~/ultrathink/apps/studio/src-tauri/target/release/bundle/macos/`).
+
+## Install — manual
 
 ```sh
 git clone https://github.com/InugamiDev/ultrathink-oss.git ~/ultrathink
 cd ~/ultrathink
 cp .env.example .env  # set DATABASE_URL + ANTHROPIC_API_KEY
 pnpm install
-./scripts/install.sh
+./scripts/install.sh          # symlinks skills + hooks into ~/.claude
+cd apps/studio && pnpm tauri:dev   # or: pnpm tauri:build
 ```
 
-Then either chat from any terminal (`claude` will pick up the skills + memory
-automatically) or fire up Studio:
-
-```sh
-cd apps/studio && pnpm tauri:dev
-```
+See **[INSTALL.md](INSTALL.md)** for prereq details, troubleshooting, and the
+dashboard/release flows.
 
 ## Install a skill pack
 

@@ -37,21 +37,62 @@ For Studio (the desktop app) only:
 | **Rust 1.77+** | Tauri backend | `curl https://sh.rustup.rs -sSf \| sh` |
 | **macOS / Windows / Linux** | Tauri target | — |
 
-## Install
+## Install — the one-liner
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/InugamiDev/ultrathink-oss/main/scripts/install-studio.sh | bash
+```
+
+What it does:
+
+1. Validates Node 22+, pnpm 9+, Rust 1.77+ on PATH (fails fast if missing)
+2. Clones the OSS repo to `~/ultrathink` (or pulls latest if already there)
+3. Creates a `.env` from the example
+4. `pnpm install` + builds `studio-engine`
+5. Runs `scripts/install.sh` to symlink every skill + hook into `~/.claude/`
+6. Builds **UltraThink Studio.app** via `pnpm tauri:build`
+7. (macOS) symlinks the .app into `/Applications/`
+
+After the script finishes, edit `~/ultrathink/.env`:
+
+- `DATABASE_URL=postgres://…neon.tech/…` — required for the memory graph
+- `ANTHROPIC_API_KEY=sk-ant-…` — optional if you have the `claude` CLI
+
+Then open Studio. First launch may show macOS Gatekeeper warning (ad-hoc-signed
+alpha) — right-click → Open the first time.
+
+## Install — manual
+
+If you want to inspect each step instead of curl-piping:
 
 ```sh
 git clone https://github.com/InugamiDev/ultrathink-oss.git ~/ultrathink
 cd ~/ultrathink
-cp .env.example .env
-# Open .env and set:
-#   DATABASE_URL=postgres://...neon.tech/...   ← required
-#   ANTHROPIC_API_KEY=sk-ant-...                ← optional if claude CLI is installed
+cp .env.example .env       # set DATABASE_URL + ANTHROPIC_API_KEY
 pnpm install
-./scripts/install.sh
+./scripts/install.sh       # symlinks skills + hooks into ~/.claude
+cd apps/studio && pnpm tauri:build   # or pnpm tauri:dev for hot reload
 ```
 
 `install.sh` symlinks every skill into `~/.claude/skills/`, registers hooks in
 `~/.claude/settings.json`, and runs database migrations against your `DATABASE_URL`.
+
+## Update
+
+```sh
+cd ~/ultrathink && git pull && bash scripts/install-studio.sh
+```
+
+Same script handles updates — it pulls latest, reinstalls deps, rebuilds Studio.
+
+## Uninstall
+
+```sh
+rm -rf ~/ultrathink
+rm -f '/Applications/UltraThink Studio.app'   # macOS only
+# Skills + hooks linked into ~/.claude/ are now dead symlinks — clean if desired:
+find ~/.claude/skills -type l ! -exec test -e {} \; -print -delete
+```
 
 ## Verify
 
