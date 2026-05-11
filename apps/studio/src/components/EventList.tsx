@@ -3,7 +3,7 @@
 // next: tool-result expand/collapse, file-diff inline rendering, thinking accordion
 // confidence: high
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import type { EngineEvent } from "../types.js";
 
 interface Props {
@@ -25,6 +25,8 @@ interface Block {
   text?: string;
   toolName?: string;
   toolInput?: unknown;
+  toolResult?: unknown;
+  toolUseId?: string;
   toolError?: boolean;
   skills?: Array<{ name: string; score: number }>;
   durationMs?: number;
@@ -120,19 +122,20 @@ function reduceEvents(events: EngineEvent[]): Block[] {
         blocks.push({
           id: id(),
           kind: "tool-call",
-          toolName: ev.name,
+          toolName: ev.name || inferToolName(ev.input),
           toolInput: ev.input,
+          toolUseId: ev.toolUseId,
         });
         break;
-      case "tool-result":
-        // Mark prior tool-call block as errored if applicable
-        if (ev.isError) {
-          const last = [...blocks]
-            .reverse()
-            .find((b) => b.kind === "tool-call" && b.toolName === toolNames.get(ev.toolUseId));
-          if (last) last.toolError = true;
+      case "tool-result": {
+        // Attach result content to the matching tool-call block + flag errors.
+        const last = [...blocks].reverse().find((b) => b.kind === "tool-call" && b.toolUseId === ev.toolUseId);
+        if (last) {
+          if (ev.isError) last.toolError = true;
+          last.toolResult = ev.content;
         }
         break;
+      }
       case "completion":
         clearStatus();
         curText = null;
@@ -179,6 +182,14 @@ function reduceEvents(events: EngineEvent[]): Block[] {
 
 export function EventList({ events }: Props) {
   const blocks = useMemo(() => reduceEvents(events), [events]);
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const toggle = (blockId: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(blockId)) next.delete(blockId);
+      else next.add(blockId);
+      return next;
+    });
 
   if (events.length === 0 && blocks.length === 0) {
     return (
@@ -194,13 +205,13 @@ export function EventList({ events }: Props) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "12px", padding: "20px" }}>
       {blocks.map((b) => (
-        <BlockView key={b.id} block={b} />
+        <BlockView key={b.id} block={b} isExpanded={expanded.has(b.id)} onToggle={() => toggle(b.id)} />
       ))}
     </div>
   );
 }
 
-function BlockView({ block }: { block: Block }) {
+function BlockView({ block, isExpanded, onToggle }: { block: Block; isExpanded: boolean; onToggle: () => void }) {
   switch (block.kind) {
     case "skills":
       return (
@@ -222,13 +233,46 @@ function BlockView({ block }: { block: Block }) {
       return <div style={assistantTextStyle}>{block.text}</div>;
     case "thinking":
       return <div style={thinkingStyle}>⟪ {truncate(block.text ?? "", 200)} ⟫</div>;
-    case "tool-call":
+    case "tool-call": {
+      const summary = summariseInput(block.toolInput);
+      const hasDetail = !!block.toolInput || !!block.toolResult;
       return (
         <div style={block.toolError ? toolCallErrorStyle : toolCallStyle}>
-          <span style={{ color: "var(--amber)" }}>▸</span> <span style={{ fontWeight: 600 }}>{block.toolName}</span>{" "}
-          <span style={{ color: "var(--text-dim)" }}>{summariseInput(block.toolInput)}</span>
+          <button
+            type="button"
+            onClick={hasDetail ? onToggle : undefined}
+            disabled={!hasDetail}
+            style={toolHeaderBtnStyle}
+            aria-expanded={isExpanded}
+          >
+            <span style={{ color: "var(--amber)", display: "inline-block", width: "14px" }}>
+              {isExpanded ? "▾" : hasDetail ? "▸" : "·"}
+            </span>{" "}
+            <span style={{ fontWeight: 600, color: "var(--text)" }}>{block.toolName || "(unnamed tool)"}</span>{" "}
+            {summary && <span style={{ color: "var(--text-dim)" }}>{summary}</span>}
+            {block.toolError && <span style={{ marginLeft: "8px", color: "var(--red)", fontWeight: 600 }}>error</span>}
+          </button>
+          {isExpanded && hasDetail && (
+            <div style={toolDetailStyle}>
+              {block.toolInput != null && (
+                <>
+                  <div style={toolDetailLabelStyle}>input</div>
+                  <pre style={toolJsonStyle}>{prettyJson(block.toolInput)}</pre>
+                </>
+              )}
+              {block.toolResult != null && (
+                <>
+                  <div style={{ ...toolDetailLabelStyle, marginTop: "10px" }}>
+                    result {block.toolError && <span style={{ color: "var(--red)" }}>(error)</span>}
+                  </div>
+                  <pre style={toolJsonStyle}>{prettyResult(block.toolResult)}</pre>
+                </>
+              )}
+            </div>
+          )}
         </div>
       );
+    }
     case "completion": {
       const parts: string[] = [];
       parts.push(`done in ${((block.durationMs ?? 0) / 1000).toFixed(1)}s`);
@@ -284,7 +328,51 @@ function summariseInput(input: unknown): string {
   if (typeof obj.command === "string") return truncate(obj.command, 80);
   if (typeof obj.pattern === "string") return `'${truncate(obj.pattern, 60)}'`;
   if (typeof obj.url === "string") return obj.url;
+  if (typeof obj.query === "string") return `'${truncate(obj.query, 60)}'`;
+  if (typeof obj.title === "string") return `'${truncate(obj.title, 60)}'`;
   return "";
+}
+
+/** Best-effort tool name when the upstream JSON omits it. */
+function inferToolName(input: unknown): string {
+  if (!input || typeof input !== "object") return "";
+  const obj = input as Record<string, unknown>;
+  if (typeof obj.command === "string") return "Bash";
+  if (typeof obj.url === "string") return "WebFetch";
+  if (typeof obj.pattern === "string") return "Grep";
+  if (typeof obj.file_path === "string") return obj.old_string ? "Edit" : obj.content ? "Write" : "Read";
+  if (typeof obj.path === "string") return "Read";
+  if (typeof obj.query === "string") return "Search";
+  return "tool";
+}
+
+/** Pretty-print JSON, capped to keep large blobs readable. */
+function prettyJson(value: unknown): string {
+  try {
+    const out = JSON.stringify(value, null, 2);
+    return out.length > 6000 ? out.slice(0, 6000) + "\n…(truncated)" : out;
+  } catch {
+    return String(value);
+  }
+}
+
+/** Tool results can be a string or an array of {type:"text", text}. Render either. */
+function prettyResult(value: unknown): string {
+  if (typeof value === "string") return truncate(value, 6000);
+  if (Array.isArray(value)) {
+    const text = value
+      .map((part) => {
+        if (typeof part === "string") return part;
+        if (part && typeof part === "object") {
+          const p = part as { type?: string; text?: string };
+          if (p.type === "text" && typeof p.text === "string") return p.text;
+        }
+        return JSON.stringify(part);
+      })
+      .join("\n");
+    return truncate(text, 6000);
+  }
+  return prettyJson(value);
 }
 
 function truncate(s: string, n: number): string {
@@ -342,14 +430,55 @@ const toolCallStyle: React.CSSProperties = {
   color: "var(--text-muted)",
   background: "var(--bg-card)",
   border: "1px solid var(--border)",
-  borderRadius: "6px",
-  padding: "6px 10px",
+  borderRadius: "8px",
+  overflow: "hidden",
 };
 
 const toolCallErrorStyle: React.CSSProperties = {
   ...toolCallStyle,
   borderColor: "rgba(248,113,113,0.4)",
   color: "var(--red)",
+};
+
+const toolHeaderBtnStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "6px",
+  width: "100%",
+  textAlign: "left",
+  background: "transparent",
+  border: "none",
+  padding: "8px 12px",
+  font: "inherit",
+  color: "inherit",
+  cursor: "pointer",
+};
+
+const toolDetailStyle: React.CSSProperties = {
+  borderTop: "1px solid var(--border)",
+  background: "rgba(0,0,0,0.25)",
+  padding: "10px 12px",
+};
+
+const toolDetailLabelStyle: React.CSSProperties = {
+  fontSize: "10px",
+  fontFamily: "var(--font-mono)",
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+  color: "var(--text-dim)",
+  marginBottom: "4px",
+};
+
+const toolJsonStyle: React.CSSProperties = {
+  margin: 0,
+  fontSize: "11.5px",
+  fontFamily: "var(--font-mono)",
+  color: "var(--text)",
+  whiteSpace: "pre-wrap",
+  wordBreak: "break-word",
+  lineHeight: 1.5,
+  maxHeight: "320px",
+  overflowY: "auto",
 };
 
 const completionStyle: React.CSSProperties = {
