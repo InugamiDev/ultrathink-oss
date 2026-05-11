@@ -86,14 +86,23 @@ export function MemoryGraph3D({ data, width, height, onNodeClick }: Graph3DProps
     return { nodes, links };
   }, [data]);
 
-  // Wire the bloom postprocessing pass once on mount.
+  // Wire the bloom postprocessing pass + tune the d3 force layout once on mount.
   useEffect(() => {
     const fg = fgRef.current;
     if (!fg) return;
     const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 1.6, 0.55, 0.05);
     fg.postProcessingComposer().addPass(bloom);
-    // Slightly tilted starting camera so the graph reads as 3D from the first frame.
-    fg.cameraPosition({ x: 0, y: 0, z: 360 });
+    // Push nodes farther apart — default charge (~-30) clusters orbs too close.
+    // -260 + linkDistance 110 gives the graph room to breathe at our typical
+    // 60-node density and reads nicely on a presentation screen.
+    type ForceLike = { strength?: (s: number) => unknown; distance?: (d: number) => unknown };
+    const fgWithForce = fg as unknown as { d3Force: (name: string) => ForceLike | undefined };
+    const charge = fgWithForce.d3Force?.("charge");
+    if (charge?.strength) charge.strength(-260);
+    const link = fgWithForce.d3Force?.("link");
+    if (link?.distance) link.distance(110);
+    // Pull camera back so the wider graph still fits.
+    fg.cameraPosition({ x: 0, y: 0, z: 540 });
   }, []);
 
   // Custom node geometry: emissive sphere with optional glow halo for the
