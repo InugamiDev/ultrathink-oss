@@ -23,7 +23,7 @@ interface ContextNode {
   children?: ContextNode[];
 }
 
-async function buildContextTree(scope?: string): Promise<ContextNode> {
+async function buildContextTree(_scope?: string): Promise<ContextNode> {
   const sql = getClient();
 
   // 1. Memory categories + counts
@@ -189,7 +189,7 @@ async function buildContextTree(scope?: string): Promise<ContextNode> {
 /**
  * Generate a compact summary string for injection into additionalContext.
  */
-export async function getContextTreeSummary(scope?: string): Promise<string> {
+export async function getContextTreeSummary(_scope?: string): Promise<string> {
   const sql = getClient();
 
   // Quick counts only — no full tree build

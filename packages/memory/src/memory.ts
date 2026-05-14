@@ -798,8 +798,7 @@ export async function updateMemory(
 ): Promise<Memory | null> {
   const sql = getClient();
 
-  // Build dynamic SET clause: undefined = keep existing, null = set to null, value = use value
-  const setClauses: string[] = [];
+  // Track whether anything changed: undefined = keep existing, null = set to null, value = use value
   const values: Record<string, unknown> = {};
 
   if (updates.content !== undefined) {

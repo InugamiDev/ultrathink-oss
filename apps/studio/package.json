@@ -1,5 +1,5 @@
 {
-  "name": "@inuverse/studio",
+  "name": "@ultrathink/studio",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -22,7 +22,8 @@
     "@codemirror/state": "^6.5.2",
     "@codemirror/theme-one-dark": "^6.1.2",
     "@codemirror/view": "^6.36.1",
-    "@inuverse/studio-engine": "workspace:*",
+    "@ultrathink/studio-engine": "workspace:*",
+    "@tanstack/react-query": "^5.100.5",
     "@tauri-apps/api": "^2.1.1",
     "@tauri-apps/plugin-dialog": "^2.0.1",
     "@tauri-apps/plugin-fs": "^2.0.3",
@@ -33,6 +34,7 @@
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-force-graph-3d": "^1.29.1",
+    "react-resizable-panels": "^4.11.0",
     "three": "^0.183.2"
   },
   "devDependencies": {

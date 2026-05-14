@@ -50,6 +50,8 @@ Thumbs.db
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+.playwright-mcp/
+*.log
 
 # Reports (local only)
 reports/
@@ -57,6 +59,15 @@ reports/
 # Temp files
 /tmp/
 *.tmp
+paperclip/server/ui-dist.backup.*/
+
+# Package manager hygiene
+package-lock.json
+**/package-lock.json
+yarn.lock
+
+# Local MCP config may contain command paths and tokens. Commit .mcp.example.json instead.
+.mcp.json
 
 # Secrets
 *.pem
@@ -66,6 +77,7 @@ reports/
 *.keystore
 credentials*.json
 dashboard/.env.local
+apps/dashboard/.env.local
 
 # discord-bot slash-command registration idempotency state (INU-41 doc rev 2)
 apps/discord-bot/.discord-cmd-hash

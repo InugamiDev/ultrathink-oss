@@ -8,7 +8,7 @@
 1. **Surfaces vs libraries.** `apps/` is what users interact with. `packages/` is what those apps depend on. No library lives in `apps/`; no surface lives in `packages/`.
 2. **First-party vs vendored.** First-party code lives at the top level. Third-party / paused code lives under `vendored/`. New developers should be able to tell at a glance what's "ours".
 3. **Tools vs product.** Things that exist for development (the test harness, the Übersicht widget, smoke scripts) live under `tools/`, not at root and not in `apps/`.
-4. **One npm scope for first-party.** Pick one (`@ultrathink/*` or `@inuverse/*`) and migrate. Mixed scopes are technical debt.
+4. **One npm scope for first-party.** First-party packages use `@ultrathink/*`. Mixed scopes are technical debt.
 5. **Skills are first-class.** They're not a Claude Code implementation detail — they're a top-level artefact others can install. Visible at the root.
 
 ## Target shape
@@ -123,17 +123,16 @@ Workspace deps via `workspace:*` keep working — paths only need updating in wo
 
 Recommend: revisit when Paperclip's fate is decided (delete vs revive).
 
-### Phase D — naming polish (deferred)
+### Phase D — naming polish (done)
 
-Standardise to one npm scope for first-party. Existing inventory:
+Standardise to one npm scope for first-party. Current inventory:
 
 | Scope | Packages |
 |---|---|
-| `@ultrathink/*` | memory, code-intel, dashboard, harness, mcp-memory, mcp-design-doc, mcp-agora |
-| `@inuverse/*` | studio, studio-engine, ut-cli, ut-bridge, transparency |
+| `@ultrathink/*` | memory, code-intel, dashboard, harness, studio, studio-engine, ut-cli, ut-bridge, discord-bot, mcp-memory, mcp-design-doc, mcp-agora, transparency |
 | `@paperclipai/*` | (vendored — leave alone) |
 
-Recommendation: standardise to `@ultrathink/*` (matches project + skill name + most existing packages). Rename `@inuverse/*` to `@ultrathink/*` in a single PR with codemod.
+Recommendation complete: first-party packages are now on `@ultrathink/*`.
 
 ### Phase E — agent-doc consolidation
 

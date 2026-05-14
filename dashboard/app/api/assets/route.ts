@@ -8,7 +8,6 @@ import {
   getBackendConfig,
   saveBackendConfig,
   type AssetManifest,
-  type AssetEntry,
   type Backend,
 } from "@/lib/assets";
 
@@ -18,7 +17,21 @@ export async function GET(req: NextRequest) {
     const id = req.nextUrl.searchParams.get("id");
 
     if (id === "config") {
-      return NextResponse.json({ config: getBackendConfig() });
+      // intent: never return raw secrets to the browser
+      // status: done — audit 08 HIGH (api/assets returned tinyfish.apiKey + gemini session cookies in clear)
+      // confidence: high
+      const raw = getBackendConfig();
+      const mask = (v: string) => (v ? `…${v.slice(-4)}` : null);
+      const config = {
+        ...raw,
+        tinyfish: { ...raw.tinyfish, apiKey: mask(raw.tinyfish.apiKey) },
+        geminiApi: {
+          ...raw.geminiApi,
+          secure1psid: mask(raw.geminiApi.secure1psid),
+          secure1psidts: mask(raw.geminiApi.secure1psidts),
+        },
+      };
+      return NextResponse.json({ config });
     }
 
     if (id) {

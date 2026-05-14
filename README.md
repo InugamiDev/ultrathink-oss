@@ -47,7 +47,7 @@ UltraThink gives you the pipeline. You own it. You ship.
 ## Install — one line
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/InugamiDev/ultrathink-oss/main/scripts/install-studio.sh | bash
+curl -fsSL https://raw.githubusercontent.com/InuVerse/ultrathink/main/scripts/install-studio.sh | bash
 ```
 
 This clones the repo to `~/ultrathink`, installs deps, builds Studio.app, and
@@ -65,7 +65,7 @@ Open Studio: `open '/Applications/UltraThink Studio.app'` (or run from
 ## Install — manual
 
 ```sh
-git clone https://github.com/InugamiDev/ultrathink-oss.git ~/ultrathink
+git clone https://github.com/InuVerse/ultrathink.git ~/ultrathink
 cd ~/ultrathink
 cp .env.example .env  # set DATABASE_URL + ANTHROPIC_API_KEY
 pnpm install
@@ -100,7 +100,7 @@ yours, your next prompt sees it, you keep moving.
 - **Agora** — voice-driven agent integration (separately licensed)
 - A handful of proprietary domain skills under InuVerse's allowlist
 
-If you need those, talk to InuVerse — Core is a private distribution.
+Some integrations still require separate credentials or licenses.
 
 ## License
 

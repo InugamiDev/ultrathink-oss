@@ -68,8 +68,8 @@ Skills go in `~/.openclaw/skills/<name>/SKILL.md` or via `clawhub install`.
 
 ```bash
 clawhub package publish openclaw/skills/ultrathink \
-  --owner InugamiDev \
-  --source-repo InugamiDev/ultrathink-oss \
+  --owner InuVerse \
+  --source-repo InuVerse/ultrathink \
   --source-commit $(git rev-parse HEAD)
 ```
 

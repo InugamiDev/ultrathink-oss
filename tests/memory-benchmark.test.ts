@@ -1,8 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { execFileSync } from "child_process";
-import { resolve, join } from "path";
-import { writeFileSync, unlinkSync, mkdirSync, existsSync } from "fs";
-import { tmpdir } from "os";
+import { resolve } from "path";
 
 const ROOT = resolve(__dirname, "..");
 const RUNNER = resolve(ROOT, "memory/scripts/memory-runner.ts");

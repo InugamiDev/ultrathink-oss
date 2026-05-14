@@ -3,8 +3,9 @@
 // next: tool-result expand/collapse, file-diff inline rendering, thinking accordion
 // confidence: high
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import type { EngineEvent } from "../types.js";
+import { usePersistedState } from "../lib/persistedState.js";
 
 interface Props {
   events: EngineEvent[];
@@ -120,7 +121,7 @@ function reduceEvents(events: EngineEvent[]): Block[] {
         curText = null;
         toolNames.set(ev.toolUseId, ev.name);
         blocks.push({
-          id: id(),
+          id: `tool-${ev.toolUseId}`,
           kind: "tool-call",
           toolName: ev.name || inferToolName(ev.input),
           toolInput: ev.input,
@@ -182,13 +183,14 @@ function reduceEvents(events: EngineEvent[]): Block[] {
 
 export function EventList({ events }: Props) {
   const blocks = useMemo(() => reduceEvents(events), [events]);
-  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+  const [expandedIds, setExpandedIds] = usePersistedState<string[]>("studio:chat:expanded-tool-calls", []);
+  const expanded = useMemo(() => new Set(expandedIds), [expandedIds]);
   const toggle = (blockId: string) =>
-    setExpanded((prev) => {
+    setExpandedIds((prev) => {
       const next = new Set(prev);
       if (next.has(blockId)) next.delete(blockId);
       else next.add(blockId);
-      return next;
+      return [...next];
     });
 
   if (events.length === 0 && blocks.length === 0) {
@@ -397,9 +399,12 @@ const skillBadgeRow: React.CSSProperties = {
 const skillBadge: React.CSSProperties = {
   fontSize: "11px",
   fontWeight: 500,
+  // --accent-glow (#c084fc) is a LIGHTER violet than --accent — using it as
+  // background under violet text gave unreadable violet-on-violet. Switch to
+  // the dark soft surface so the accent text actually stands out.
   color: "var(--accent)",
-  background: "var(--accent-glow)",
-  border: "1px solid rgba(167,139,250,0.3)",
+  background: "var(--accent-soft)",
+  border: "1px solid var(--accent-soft-translucent)",
   padding: "3px 8px",
   borderRadius: "12px",
 };

@@ -216,7 +216,7 @@ Migrate from REST to tRPC over 3 phases, maintaining backwards compatibility thr
 ## Notable Details
 - Estimated 30% reduction in API boilerplate
 - Breaking change in User response shape (Phase 2)
-- Requires Node 18+ (currently on 16 -- upgrade first)
+- Requires Node 22+ (currently on 16 -- upgrade first)
 ```
 
 ### Example: Document outline with issues

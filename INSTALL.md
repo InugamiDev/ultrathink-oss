@@ -1,9 +1,11 @@
-# Installing UltraThink OSS
+# Installing UltraThink (Historical OSS Notes)
 
-UltraThink OSS is the public, MIT-licensed distribution. Everything in here works
-end-to-end on your laptop — skill mesh, persistent memory, dashboard, code-intel
-graph, decision engine, identity graph, Studio desktop app — without paying or
-phoning home.
+> Historical note: UltraThink is now published from this canonical MIT-licensed repository. Prefer the root `README.md` install instructions unless you are intentionally auditing the retired OSS/Core split.
+
+UltraThink is now published from the canonical MIT-licensed repository.
+Everything in here works end-to-end on your laptop — skill mesh, persistent
+memory, dashboard, code-intel graph, decision engine, identity graph, Studio
+desktop app — without paying or phoning home.
 
 ## What you get
 
@@ -25,7 +27,7 @@ phoning home.
 | Requirement | Why | Install |
 |---|---|---|
 | **Node.js 22+** | Engine sidecar, dashboard, MCPs | `brew install node@22` / `nvm install 22` |
-| **pnpm 9+** | Workspace package manager | `npm i -g pnpm` |
+| **pnpm 10+** | Workspace package manager | `npm i -g pnpm` |
 | **Git** | Cloning + skill packs | already there |
 | **Neon Postgres URL** (or any Postgres 15+) | Memory storage | [neon.tech](https://neon.tech) free tier works |
 | **Claude Code CLI** *or* Anthropic API key | Agent runtime | `curl -fsSL https://claude.ai/install.sh \| bash` or set `ANTHROPIC_API_KEY` |
@@ -40,13 +42,13 @@ For Studio (the desktop app) only:
 ## Install — the one-liner
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/InugamiDev/ultrathink-oss/main/scripts/install-studio.sh | bash
+curl -fsSL https://raw.githubusercontent.com/InuVerse/ultrathink/main/scripts/install-studio.sh | bash
 ```
 
 What it does:
 
 1. Validates Node 22+, pnpm 9+, Rust 1.77+ on PATH (fails fast if missing)
-2. Clones the OSS repo to `~/ultrathink` (or pulls latest if already there)
+2. Clones the canonical repo to `~/ultrathink` (or pulls latest if already there)
 3. Creates a `.env` from the example
 4. `pnpm install` + builds `studio-engine`
 5. Runs `scripts/install.sh` to symlink every skill + hook into `~/.claude/`
@@ -66,7 +68,7 @@ alpha) — right-click → Open the first time.
 If you want to inspect each step instead of curl-piping:
 
 ```sh
-git clone https://github.com/InugamiDev/ultrathink-oss.git ~/ultrathink
+git clone https://github.com/InuVerse/ultrathink.git ~/ultrathink
 cd ~/ultrathink
 cp .env.example .env       # set DATABASE_URL + ANTHROPIC_API_KEY
 pnpm install
@@ -98,12 +100,12 @@ find ~/.claude/skills -type l ! -exec test -e {} \; -print -delete
 
 ```sh
 # 1. Memory engine
-npx tsx packages/memory/scripts/memory-runner.ts session-start
+pnpm exec tsx packages/memory/scripts/memory-runner.ts session-start
 # 2. Skill registry
 node .claude/hooks/dist/prompt-analyzer.js "build me a next.js dashboard"
 # Should print 3-5 routed skills.
 # 3. Dashboard (port 3333)
-pnpm --filter dashboard dev
+pnpm --filter @ultrathink/dashboard dev
 open http://localhost:3333
 ```
 
@@ -174,14 +176,13 @@ pnpm install
 
 For Studio, rebuild after pulling: `cd apps/studio && pnpm tauri:build`.
 
-## What's NOT in OSS (Core only)
+## Optional External Surfaces
 
-- **Tekiō** adaptive learning — auto-counter for repeat failures, reinforcement
-  for successes
-- **Agora** voice integration (separately licensed)
-- A handful of proprietary domain skills under InuVerse's allowlist
+- **Agora** voice integration requires separate Agora credentials.
+- Some third-party/vendor skills keep their own license terms; see
+  `THIRD_PARTY_NOTICES.md`.
 
-If you want those, talk to InuVerse — Core is a private distribution.
+First-party UltraThink code in this repository is MIT-licensed.
 
 ## Troubleshooting
 

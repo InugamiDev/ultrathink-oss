@@ -10,7 +10,7 @@
 //   - Sessions tracked in a Mutex<HashMap<sessionId, Sender>> so follow-ups + stop work
 
 use std::collections::HashMap;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Stdio;
 
 use anyhow::{anyhow, Result};
@@ -39,6 +39,71 @@ struct CarRunHandle {
     project_dir: Option<String>,
     /// Path under `~/.ultrathink-studio/worktrees/` if isolation kicked in.
     worktree_path: Option<String>,
+}
+
+// intent: shared path scoping for renderer-supplied paths
+// status: done
+// next: revisit if Studio adds writable roots beyond projects + .ultrathink-studio
+// confidence: high
+fn canonical_or_original(path: PathBuf) -> PathBuf {
+    path.canonicalize().unwrap_or(path)
+}
+
+fn studio_projects_root() -> std::result::Result<PathBuf, String> {
+    let home = dirs::home_dir().ok_or_else(|| "HOME not set".to_string())?;
+    Ok(canonical_or_original(home.join("Studio").join("projects")))
+}
+
+fn studio_allowed_roots() -> std::result::Result<[PathBuf; 2], String> {
+    let home = dirs::home_dir().ok_or_else(|| "HOME not set".to_string())?;
+    Ok([
+        canonical_or_original(home.join("Studio").join("projects")),
+        canonical_or_original(home.join(".ultrathink-studio")),
+    ])
+}
+
+fn ensure_path_in_roots(
+    path: &Path,
+    roots: &[PathBuf],
+    label: &str,
+) -> std::result::Result<(), String> {
+    if roots.iter().any(|root| path.starts_with(root)) {
+        return Ok(());
+    }
+    Err(format!("Path {} is outside {}", path.display(), label))
+}
+
+/// Canonicalize a renderer-supplied path and verify it lives under one of
+/// the allowed Studio roots. Rejects paths that resolve outside scope or
+/// fail to canonicalize (broken symlinks, missing intermediates, etc.).
+fn resolve_allowed_path(input: &str) -> std::result::Result<PathBuf, String> {
+    let canonical = PathBuf::from(input)
+        .canonicalize()
+        .map_err(|e| format!("Path resolution failed: {e}"))?;
+    let roots = studio_allowed_roots()?;
+    ensure_path_in_roots(&canonical, &roots, "the allowed Studio roots")?;
+    Ok(canonical)
+}
+
+fn resolve_project_path(input: &str) -> std::result::Result<PathBuf, String> {
+    let canonical = PathBuf::from(input)
+        .canonicalize()
+        .map_err(|e| format!("Path resolution failed: {e}"))?;
+    let root = studio_projects_root()?;
+    ensure_path_in_roots(&canonical, &[root], "~/Studio/projects")?;
+    Ok(canonical)
+}
+
+fn resolve_project_child_path(
+    parent: &Path,
+    child_name: &str,
+) -> std::result::Result<PathBuf, String> {
+    let parent = parent
+        .canonicalize()
+        .map_err(|e| format!("Path resolution failed: {e}"))?;
+    let root = studio_projects_root()?;
+    ensure_path_in_roots(&parent, &[root], "~/Studio/projects")?;
+    Ok(parent.join(child_name))
 }
 
 /// Create an isolated git worktree under `~/.ultrathink-studio/worktrees/<run_id>`
@@ -118,6 +183,50 @@ pub struct ProjectInfo {
     pub last_modified: String,
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BuilderApplyPayload {
+    pub user_handle: String,
+    pub email: Option<String>,
+    pub proof_type: String,
+    pub proof_url: String,
+    pub proof_description: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BuilderApplyResponse {
+    pub id: String,
+    pub status: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BuilderValidateResponse {
+    pub valid: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expires_at: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BuilderStatus {
+    pub tier: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub key: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub valid: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub expires_at: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+struct BuilderValidateApiResponse {
+    valid: bool,
+    expires_at: Option<String>,
+    validated_at: Option<String>,
+    token: Option<String>,
+    error: Option<String>,
+}
+
 /// Locate a script under packages/studio-engine/dist/. Multiple fallback
 /// strategies because the .app's binary path isn't predictable when launched
 /// via Finder/Launch Services (vs. a direct dev run from cargo).
@@ -135,20 +244,20 @@ fn locate_engine_script(app: &AppHandle, name: &str) -> Result<PathBuf> {
     let mut tried: Vec<String> = Vec::new();
 
     // 1. Bundled resources
-    if let Ok(bundled) = app
-        .path()
-        .resolve(format!(".engine/{}", name), tauri::path::BaseDirectory::Resource)
-    {
+    if let Ok(bundled) = app.path().resolve(
+        format!(".engine/{}", name),
+        tauri::path::BaseDirectory::Resource,
+    ) {
         tried.push(format!("[bundle] {}", bundled.display()));
         if bundled.exists() {
             return Ok(bundled);
         }
     }
     // Legacy bundle path
-    if let Ok(bundled) = app
-        .path()
-        .resolve(format!("resources/{}", name), tauri::path::BaseDirectory::Resource)
-    {
+    if let Ok(bundled) = app.path().resolve(
+        format!("resources/{}", name),
+        tauri::path::BaseDirectory::Resource,
+    ) {
         if bundled.exists() {
             return Ok(bundled);
         }
@@ -240,7 +349,9 @@ fn find_workspace_root() -> Option<PathBuf> {
     cur.pop();
     while let Some(parent) = cur.parent() {
         if parent.join(".claude/skills/_registry.json").exists()
-            || parent.join("packages/studio-engine/dist/sidecar.js").exists()
+            || parent
+                .join("packages/studio-engine/dist/sidecar.js")
+                .exists()
         {
             return Some(parent.to_path_buf());
         }
@@ -291,11 +402,15 @@ async fn spawn_sidecar_session(
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .kill_on_drop(true);
-    // CWD = workspace root so the sidecar's dotenv loads .env (DATABASE_URL,
-    // ANTHROPIC_API_KEY, etc.). Without this the memory MCP fails silently
-    // and claude falls back to writing memory to disk.
+    // CWD = workspace root so the sidecar's dotenv finds `.env` for source-tree
+    // installs. End-user .dmg/.msi installs don't have a workspace `.env`; for
+    // them, Studio injects DATABASE_URL + ANTHROPIC_API_KEY + others from the
+    // OS keychain (managed via Settings → Memory database / API keys).
     if let Some(root) = find_workspace_root() {
         cmd.current_dir(root);
+    }
+    for (k, v) in studio_secret_envs() {
+        cmd.env(k, v);
     }
     let mut child = cmd.spawn()?;
 
@@ -354,7 +469,9 @@ async fn spawn_sidecar_session(
             "topSkills": req.top_skills.unwrap_or(3),
         }
     });
-    cmd_tx.send(serde_json::to_string(&start_msg)? + "\n").await?;
+    cmd_tx
+        .send(serde_json::to_string(&start_msg)? + "\n")
+        .await?;
 
     // Read stdout until we see the "ready" message; spawn the rest as background event pump
     let mut stdout_lines = BufReader::new(stdout).lines();
@@ -411,7 +528,8 @@ async fn spawn_sidecar_session(
                     // gets persisted.
                     let scrubbed = scrub_event(&event);
                     append_session_log(&session_id, &scrubbed);
-                    let _ = app_handle.emit(&format!("engine:event:{}", session_id), scrubbed.clone());
+                    let _ =
+                        app_handle.emit(&format!("engine:event:{}", session_id), scrubbed.clone());
                     let _ = app_handle.emit(
                         "engine:event",
                         serde_json::json!({ "sessionId": session_id, "event": scrubbed }),
@@ -427,7 +545,8 @@ async fn spawn_sidecar_session(
                         "signal": null
                     });
                     append_session_log(&session_id, &exit_event);
-                    let _ = app_handle.emit(&format!("engine:event:{}", session_id), exit_event.clone());
+                    let _ = app_handle
+                        .emit(&format!("engine:event:{}", session_id), exit_event.clone());
                     let _ = app_handle.emit(
                         "engine:event",
                         serde_json::json!({ "sessionId": session_id, "event": exit_event }),
@@ -463,7 +582,10 @@ async fn spawn_sidecar_session(
                         "recoverable": false
                     });
                     append_session_log(&session_id_owned, &err_event);
-                    let _ = app_handle.emit(&format!("engine:event:{}", session_id_owned), err_event.clone());
+                    let _ = app_handle.emit(
+                        &format!("engine:event:{}", session_id_owned),
+                        err_event.clone(),
+                    );
                     let _ = app_handle.emit(
                         "engine:event",
                         serde_json::json!({ "sessionId": session_id_owned, "event": err_event }),
@@ -483,6 +605,10 @@ async fn start_session(
     app: AppHandle,
     state: State<'_, AppState>,
 ) -> std::result::Result<StartSessionResponse, String> {
+    let mut req = req;
+    if let Some(project_dir) = req.project_dir.as_deref() {
+        req.project_dir = Some(resolve_project_path(project_dir)?.to_string_lossy().to_string());
+    }
     let (resp, cmd_tx, child) = spawn_sidecar_session(&req, &app)
         .await
         .map_err(|e| e.to_string())?;
@@ -582,16 +708,24 @@ async fn create_project(name: String) -> std::result::Result<ProjectInfo, String
         .take(64)
         .collect();
     if safe.is_empty() {
-        return Err(format!("Project name '{}' has no valid characters", trimmed));
+        return Err(format!(
+            "Project name '{}' has no valid characters",
+            trimmed
+        ));
     }
     let home = dirs::home_dir().ok_or("no home dir")?;
     let projects_dir = home.join("Studio").join("projects");
     std::fs::create_dir_all(&projects_dir).map_err(|e| e.to_string())?;
     let target = projects_dir.join(&safe);
     if target.exists() {
-        return Err(format!("Project '{}' already exists at {}", safe, target.to_string_lossy()));
+        return Err(format!(
+            "Project '{}' already exists at {}",
+            safe,
+            target.to_string_lossy()
+        ));
     }
-    std::fs::create_dir(&target).map_err(|e| format!("Failed to create {}: {}", target.to_string_lossy(), e))?;
+    std::fs::create_dir(&target)
+        .map_err(|e| format!("Failed to create {}: {}", target.to_string_lossy(), e))?;
     // Seed a minimal AGENTS.md so future spawns get a project anchor.
     let agents_md = format!(
         "# {name}\n\nProject scaffold created by UltraThink Studio.\n",
@@ -635,8 +769,11 @@ async fn create_project(name: String) -> std::result::Result<ProjectInfo, String
 
 /// Rename a project. Sanitises new_name like create_project; refuses if dest exists.
 #[tauri::command]
-async fn rename_project(old_path: String, new_name: String) -> std::result::Result<ProjectInfo, String> {
-    let old = std::path::PathBuf::from(&old_path);
+async fn rename_project(
+    old_path: String,
+    new_name: String,
+) -> std::result::Result<ProjectInfo, String> {
+    let old = resolve_project_path(&old_path)?;
     if !old.is_dir() {
         return Err(format!("Source not a directory: {}", old_path));
     }
@@ -660,7 +797,7 @@ async fn rename_project(old_path: String, new_name: String) -> std::result::Resu
     if safe.is_empty() {
         return Err(format!("Name '{}' has no valid characters", trimmed));
     }
-    let new_path = parent.join(&safe);
+    let new_path = resolve_project_child_path(parent, &safe)?;
     if new_path.exists() {
         return Err(format!("'{}' already exists", safe));
     }
@@ -693,8 +830,14 @@ async fn delete_project(project_dir: String) -> std::result::Result<(), String> 
     {
         let trash = home.join(".Trash");
         let stamp = chrono_like::Iso::from_systime(std::time::SystemTime::now()).to_string();
-        let safe_stamp: String = stamp.chars().filter(|c| c.is_ascii_alphanumeric()).collect();
-        let basename = canon.file_name().and_then(|s| s.to_str()).unwrap_or("project");
+        let safe_stamp: String = stamp
+            .chars()
+            .filter(|c| c.is_ascii_alphanumeric())
+            .collect();
+        let basename = canon
+            .file_name()
+            .and_then(|s| s.to_str())
+            .unwrap_or("project");
         let dest = trash.join(format!("{}-studio-{}", basename, safe_stamp));
         std::fs::rename(&canon, &dest).map_err(|e| format!("Move to Trash failed: {}", e))?;
         return Ok(());
@@ -712,7 +855,7 @@ async fn duplicate_project(
     project_dir: String,
     new_name: String,
 ) -> std::result::Result<ProjectInfo, String> {
-    let src = std::path::PathBuf::from(&project_dir);
+    let src = resolve_project_path(&project_dir)?;
     if !src.is_dir() {
         return Err(format!("Source not a directory: {}", project_dir));
     }
@@ -733,7 +876,7 @@ async fn duplicate_project(
     if safe.is_empty() {
         return Err(format!("Name '{}' has no valid characters", trimmed));
     }
-    let dest = parent.join(&safe);
+    let dest = resolve_project_child_path(parent, &safe)?;
     if dest.exists() {
         return Err(format!("'{}' already exists", safe));
     }
@@ -881,8 +1024,8 @@ async fn seed_demo_memories(scope: Option<String>) -> std::result::Result<SeedRe
         .filter(|l| !l.trim().is_empty())
         .last()
         .unwrap_or("");
-    let parsed: serde_json::Value =
-        serde_json::from_str(line).map_err(|e| format!("seed output not JSON: {} (line={:?})", e, line))?;
+    let parsed: serde_json::Value = serde_json::from_str(line)
+        .map_err(|e| format!("seed output not JSON: {} (line={:?})", e, line))?;
     Ok(SeedResult {
         created: parsed.get("created").and_then(|v| v.as_u64()).unwrap_or(0) as u32,
         skipped: parsed.get("skipped").and_then(|v| v.as_u64()).unwrap_or(0) as u32,
@@ -923,6 +1066,108 @@ async fn query_memory_node(
         .map_err(|e| e.to_string())
 }
 
+// intent: Studio UI write path into the Second Brain memory store
+// status: done
+// next: invalidate the React Query memory cache once Task 3 installs it
+// confidence: high
+#[tauri::command]
+async fn create_memory(
+    title: Option<String>,
+    content: String,
+    wing: String,
+    hall: String,
+    category: Option<String>,
+    importance: u8,
+    links: Option<Vec<String>>,
+) -> std::result::Result<serde_json::Value, String> {
+    let content = content.trim().to_string();
+    if content.chars().count() < 10 {
+        return Err("content must be at least 10 characters".to_string());
+    }
+
+    let wing = wing.trim().to_ascii_lowercase();
+    let hall = hall.trim().to_ascii_lowercase();
+    let valid_hall = matches!(
+        (wing.as_str(), hall.as_str()),
+        ("agent", "core")
+            | ("agent", "rules")
+            | ("agent", "skills")
+            | ("user", "profile")
+            | ("user", "preferences")
+            | ("user", "projects")
+            | ("knowledge", "decisions")
+            | ("knowledge", "patterns")
+            | ("knowledge", "insights")
+            | ("knowledge", "reference")
+            | ("experience", "sessions")
+            | ("experience", "outcomes")
+            | ("experience", "errors")
+    );
+    if !valid_hall {
+        return Err(format!("invalid wing/hall pair: {}/{}", wing, hall));
+    }
+
+    let clean_title = title.and_then(|value| {
+        let trimmed = value.trim().to_string();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed)
+        }
+    });
+    let clean_category = category.and_then(|value| {
+        let trimmed = value.trim().to_string();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed)
+        }
+    });
+    let payload = serde_json::json!({
+        "title": clean_title,
+        "content": content,
+        "wing": wing,
+        "hall": hall,
+        "category": clean_category,
+        "importance": importance.clamp(1, 10),
+        "links": links.unwrap_or_default(),
+        "source": "studio-ui"
+    });
+    let payload_json = payload.to_string();
+    let root = find_workspace_root().ok_or_else(|| "workspace root not found".to_string())?;
+    let output = Command::new("npx")
+        .arg("tsx")
+        .arg("packages/memory/scripts/memory-runner.ts")
+        .arg("save")
+        .arg(&payload_json)
+        .current_dir(&root)
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .output()
+        .await
+        .map_err(|e| format!("spawn npx tsx failed: {}", e))?;
+
+    if !output.status.success() {
+        return Err(format!(
+            "memory save exited {}: {}",
+            output.status,
+            scrub_secrets(&String::from_utf8_lossy(&output.stderr))
+        ));
+    }
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let line = stdout
+        .lines()
+        .filter(|line| !line.trim().is_empty())
+        .last()
+        .unwrap_or("")
+        .trim();
+    if line.is_empty() {
+        return Err("memory save returned no JSON".to_string());
+    }
+    serde_json::from_str(line).map_err(|e| format!("memory save output not JSON: {}", e))
+}
+
 // --- Workspace files ---------------------------------------------------------
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -936,11 +1181,11 @@ pub struct FileNode {
 
 #[tauri::command]
 async fn list_files(dir: String) -> std::result::Result<Vec<FileNode>, String> {
-    let path = std::path::Path::new(&dir);
+    let path = resolve_allowed_path(&dir)?;
     if !path.exists() {
         return Err(format!("not found: {}", dir));
     }
-    let read = std::fs::read_dir(path).map_err(|e| e.to_string())?;
+    let read = std::fs::read_dir(&path).map_err(|e| e.to_string())?;
     let mut out: Vec<FileNode> = Vec::new();
     for entry in read.flatten() {
         let p = entry.path();
@@ -949,18 +1194,25 @@ async fn list_files(dir: String) -> std::result::Result<Vec<FileNode>, String> {
             .map(|s| s.to_string_lossy().to_string())
             .unwrap_or_default();
         // skip noisy default-ignores
-        if matches!(name.as_str(), "node_modules" | ".git" | ".next" | "dist" | "build") {
+        if matches!(
+            name.as_str(),
+            "node_modules" | ".git" | ".next" | "dist" | "build"
+        ) {
             continue;
         }
         if name.starts_with('.') && !matches!(name.as_str(), ".env.example" | ".gitignore") {
             continue;
         }
-        let meta = entry.metadata().map_err(|e| e.to_string())?;
+        let meta = std::fs::symlink_metadata(&p).map_err(|e| e.to_string())?;
         out.push(FileNode {
             path: p.to_string_lossy().to_string(),
             name,
             is_dir: meta.is_dir(),
-            size: if meta.is_file() { Some(meta.len()) } else { None },
+            size: if meta.is_file() {
+                Some(meta.len())
+            } else {
+                None
+            },
         });
     }
     out.sort_by(|a, b| match (a.is_dir, b.is_dir) {
@@ -973,6 +1225,7 @@ async fn list_files(dir: String) -> std::result::Result<Vec<FileNode>, String> {
 
 #[tauri::command]
 async fn read_file_text(path: String) -> std::result::Result<String, String> {
+    let path = resolve_allowed_path(&path)?;
     // Cap reads at 5MB to avoid the UI choking on a huge binary
     let meta = std::fs::metadata(&path).map_err(|e| e.to_string())?;
     if meta.len() > 5 * 1024 * 1024 {
@@ -991,31 +1244,57 @@ async fn detect_framework(
     project_dir: String,
     app: AppHandle,
 ) -> std::result::Result<serde_json::Value, String> {
+    let project_dir = resolve_project_path(&project_dir)?.to_string_lossy().to_string();
     run_engine_script(&app, "preview-server.js", &["detect", &project_dir])
+        .await
+        .map_err(|e| e.to_string())
+}
+
+// intent: expose the Foundations schema scanner to the Studio UI
+// status: done
+// next: stream scanner progress if very large projects need feedback
+// confidence: high
+#[tauri::command]
+async fn scan_foundations(
+    project_dir: String,
+    app: AppHandle,
+) -> std::result::Result<serde_json::Value, String> {
+    let project_dir = resolve_project_path(&project_dir)?.to_string_lossy().to_string();
+    run_engine_script(&app, "foundations-scan.js", &[&project_dir])
         .await
         .map_err(|e| e.to_string())
 }
 
 /// Start a preview dev server in the background. Streams events via `preview:event:<projectDir>`.
 /// Returns immediately with `started: true`; ready/port arrive over the event stream.
+///
+/// intent: spawn in a fresh process group so stop_preview can kill the entire
+///         tree (Node → vite → esbuild workers, etc.) not just the immediate
+///         Node child. Without this, vite kept :3000 bound after stop and the
+///         next run had to fall back to :3001.
+/// status: done — unix uses process_group(0); on Windows tokio's child.kill
+///         already terminates job-object descendants.
+/// confidence: high
 #[tauri::command]
 async fn start_preview(
     project_dir: String,
     app: AppHandle,
     state: State<'_, AppState>,
 ) -> std::result::Result<(), String> {
+    let project_dir = resolve_project_path(&project_dir)?.to_string_lossy().to_string();
     let script = locate_engine_script(&app, "preview-server.js").map_err(|e| e.to_string())?;
     let node_bin = std::env::var("NODE_BIN").unwrap_or_else(|_| "node".to_string());
-    let mut child = Command::new(node_bin)
-        .arg(&script)
+    let mut cmd = Command::new(node_bin);
+    cmd.arg(&script)
         .arg("start")
         .arg(&project_dir)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
-        .kill_on_drop(true)
-        .spawn()
-        .map_err(|e| e.to_string())?;
+        .kill_on_drop(true);
+    #[cfg(unix)]
+    cmd.process_group(0);
+    let mut child = cmd.spawn().map_err(|e| e.to_string())?;
 
     let stdout = child.stdout.take().ok_or("no stdout")?;
     let app_handle = app.clone();
@@ -1036,13 +1315,97 @@ async fn start_preview(
     Ok(())
 }
 
+// intent: open the user's default terminal in the project dir so they can
+//         run interactive CLI commands (vercel login, gh auth login,
+//         wrangler login, etc.) that the headless deploy/run path can't.
+// status: done — macOS via `open -a Terminal`, Linux via common emulators,
+//         Windows via `cmd /K`
+// next: full embedded xterm.js + portable-pty if users want native interop
+// confidence: high
+#[tauri::command]
+async fn open_terminal_in_project(project_dir: String) -> std::result::Result<(), String> {
+    let project = resolve_project_path(&project_dir)?;
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg("-a")
+            .arg("Terminal")
+            .arg(&project)
+            .spawn()
+            .map_err(|e| format!("Failed to open Terminal.app: {e}"))?;
+        return Ok(());
+    }
+    #[cfg(target_os = "linux")]
+    {
+        // Try the common Linux terminals — first one that spawns wins.
+        let candidates: &[(&str, &[&str])] = &[
+            ("gnome-terminal", &["--working-directory"]),
+            ("konsole", &["--workdir"]),
+            ("xfce4-terminal", &["--working-directory"]),
+            ("alacritty", &["--working-directory"]),
+            ("kitty", &["--directory"]),
+            ("xterm", &[]),
+        ];
+        for (bin, flag) in candidates {
+            let mut cmd = std::process::Command::new(bin);
+            if flag.is_empty() {
+                cmd.current_dir(&project);
+            } else {
+                cmd.arg(flag[0]).arg(&project);
+            }
+            if cmd.spawn().is_ok() {
+                return Ok(());
+            }
+        }
+        return Err("No supported terminal emulator found on PATH".into());
+    }
+    #[cfg(target_os = "windows")]
+    {
+        // `start cmd /K` opens a new console window in the given directory.
+        std::process::Command::new("cmd")
+            .args(["/C", "start", "cmd", "/K"])
+            .current_dir(&project)
+            .spawn()
+            .map_err(|e| format!("Failed to open cmd: {e}"))?;
+        return Ok(());
+    }
+    #[allow(unreachable_code)]
+    Err("Unsupported OS".into())
+}
+
 #[tauri::command]
 async fn stop_preview(
     project_dir: String,
     state: State<'_, AppState>,
 ) -> std::result::Result<(), String> {
+    let project_dir = resolve_project_path(&project_dir)?.to_string_lossy().to_string();
     if let Some(mut child) = state.previews.lock().await.remove(&project_dir) {
+        // The Node child spawned vite as a grandchild; killing only the Node
+        // process leaves vite bound to its port, so the next start picked the
+        // next free port (3001, 3002…). Since we spawned in our own process
+        // group, SIGTERM to the negative pgid drops everything in the tree.
+        // Give the dev server a brief grace period to release its port, then
+        // SIGKILL anything still alive. Finally `child.wait` to reap zombies.
+        #[cfg(unix)]
+        {
+            if let Some(pid) = child.id() {
+                let pgid = -(pid as i32);
+                // Best-effort signal — ignore errors (group may already be gone).
+                let _ = std::process::Command::new("kill")
+                    .arg("-TERM")
+                    .arg(pgid.to_string())
+                    .status();
+                // Short grace before escalating. dev servers cleanly close ports
+                // on SIGTERM within ~150ms; SIGKILL only if they ignore it.
+                tokio::time::sleep(std::time::Duration::from_millis(250)).await;
+                let _ = std::process::Command::new("kill")
+                    .arg("-KILL")
+                    .arg(pgid.to_string())
+                    .status();
+            }
+        }
         let _ = child.kill().await;
+        let _ = child.wait().await;
     }
     Ok(())
 }
@@ -1055,6 +1418,7 @@ async fn deploy_run(
     provider: String,
     app: AppHandle,
 ) -> std::result::Result<(), String> {
+    let project_dir = resolve_project_path(&project_dir)?.to_string_lossy().to_string();
     let script = locate_engine_script(&app, "deploy.js").map_err(|e| e.to_string())?;
     let node_bin = std::env::var("NODE_BIN").unwrap_or_else(|_| "node".to_string());
     let mut child = Command::new(node_bin)
@@ -1090,7 +1454,11 @@ async fn deploy_run(
 // --- Helpers -----------------------------------------------------------------
 
 /// Run a one-shot engine script with args, capture stdout, parse as JSON.
-async fn run_engine_script(app: &AppHandle, name: &str, args: &[&str]) -> Result<serde_json::Value> {
+async fn run_engine_script(
+    app: &AppHandle,
+    name: &str,
+    args: &[&str],
+) -> Result<serde_json::Value> {
     let script = locate_engine_script(app, name)?;
     let node_bin = std::env::var("NODE_BIN").unwrap_or_else(|_| "node".to_string());
     let mut cmd = Command::new(node_bin);
@@ -1099,11 +1467,14 @@ async fn run_engine_script(app: &AppHandle, name: &str, args: &[&str]) -> Result
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
-    // Set CWD to workspace root so the engine's dotenv finds `.env` and
-    // DATABASE_URL ends up in the script's process.env. Without this the
-    // memory MCP can't reach Postgres and the graph view is empty.
+    // Set CWD to workspace root so the engine's dotenv finds `.env` for
+    // source-tree installs. For .dmg/.msi installs, inject DATABASE_URL and
+    // API keys directly from the OS keychain (Settings → Memory database).
     if let Some(root) = find_workspace_root() {
         cmd.current_dir(root);
+    }
+    for (k, v) in studio_secret_envs() {
+        cmd.env(k, v);
     }
     let output = cmd.output().await?;
     if !output.status.success() {
@@ -1144,7 +1515,13 @@ async fn detect_cli(bin: &str, install_hint: &str) -> CliPrereq {
             name: bin.to_string(),
             bin: bin.to_string(),
             ok: true,
-            version: Some(String::from_utf8_lossy(&o.stdout).lines().next().unwrap_or("").to_string()),
+            version: Some(
+                String::from_utf8_lossy(&o.stdout)
+                    .lines()
+                    .next()
+                    .unwrap_or("")
+                    .to_string(),
+            ),
             install_hint: install_hint.to_string(),
         },
         _ => CliPrereq {
@@ -1166,7 +1543,11 @@ async fn check_prereqs() -> std::result::Result<Vec<CliPrereq>, String> {
         detect_cli("wrangler", "npm i -g wrangler  # then `wrangler login`").await,
         detect_cli("netlify", "npm i -g netlify-cli  # then `netlify login`").await,
         detect_cli("gh", "brew install gh  # then `gh auth login`").await,
-        detect_cli("git", "Already on macOS via Xcode CLT; otherwise install git").await,
+        detect_cli(
+            "git",
+            "Already on macOS via Xcode CLT; otherwise install git",
+        )
+        .await,
     ])
 }
 
@@ -1182,13 +1563,261 @@ async fn check_codex_cli() -> std::result::Result<ClaudeStatus, String> {
     Ok(check_cli_version(&bin).await)
 }
 
+fn builder_api_url() -> String {
+    std::env::var("ULTRATHINK_API_URL").unwrap_or_else(|_| "http://localhost:3333".to_string())
+}
+
+fn ultrathink_config_path() -> std::result::Result<PathBuf, String> {
+    let home = dirs::home_dir().ok_or_else(|| "Could not resolve home directory".to_string())?;
+    Ok(home.join(".ultrathink").join("config.json"))
+}
+
+// Audit 02 HIGH — /tmp/ultrathink-builder-token-$USER is world-predictable
+// and prone to symlink hijack + open-with-default-umask race. The home dir
+// alternative goes through write_json_file (chmod 0700 on parent + 0600 on
+// file) and removes the multi-user-on-same-tmp attack surface entirely.
+fn builder_token_path() -> PathBuf {
+    if let Some(home) = dirs::home_dir() {
+        return home.join(".ultrathink-studio").join("builder-token.json");
+    }
+    // Fallback only if HOME is unset.
+    let user = std::env::var("USER")
+        .or_else(|_| std::env::var("USERNAME"))
+        .unwrap_or_else(|_| "user".to_string());
+    PathBuf::from(format!("/tmp/ultrathink-builder-token-{user}"))
+}
+
+fn read_json_file(path: &PathBuf) -> serde_json::Value {
+    std::fs::read_to_string(path)
+        .ok()
+        .and_then(|s| serde_json::from_str(&s).ok())
+        .unwrap_or_else(|| serde_json::json!({}))
+}
+
+fn write_json_file(path: &PathBuf, value: &serde_json::Value) -> std::result::Result<(), String> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent).map_err(|e| format!("Could not create {}: {e}", parent.display()))?;
+        #[cfg(unix)]
+        {
+            let _ = std::fs::set_permissions(parent, std::os::unix::fs::PermissionsExt::from_mode(0o700));
+        }
+    }
+    let body = serde_json::to_string_pretty(value).map_err(|e| e.to_string())?;
+    std::fs::write(path, body).map_err(|e| format!("Could not write {}: {e}", path.display()))?;
+    #[cfg(unix)]
+    {
+        let _ = std::fs::set_permissions(path, std::os::unix::fs::PermissionsExt::from_mode(0o600));
+    }
+    Ok(())
+}
+
+fn write_builder_token(
+    key: &str,
+    expires_at: &str,
+    token: Option<&str>,
+) -> std::result::Result<(), String> {
+    let path = builder_token_path();
+    let mut value = serde_json::json!({
+        "key_id": key,
+        "expires_at": expires_at,
+    });
+    if let Some(token) = token {
+        value["token"] = serde_json::Value::String(token.to_string());
+    }
+    // Route through write_json_file so the parent dir gets chmod 0700 and the
+    // file gets chmod 0600 alongside the write. Removes the open-with-default-
+    // umask race that the prior /tmp implementation had.
+    write_json_file(&path, &value)
+}
+
+fn remove_builder_token() {
+    let _ = std::fs::remove_file(builder_token_path());
+}
+
+fn iso_now() -> String {
+    chrono_like::Iso::from_systime(std::time::SystemTime::now()).0
+}
+
+fn iso_in_24h() -> String {
+    chrono_like::Iso::from_systime(std::time::SystemTime::now() + std::time::Duration::from_secs(24 * 60 * 60)).0
+}
+
+async fn curl_builder_post(path: &str, payload: serde_json::Value) -> std::result::Result<String, String> {
+    let api_url = builder_api_url();
+    let url = format!("{api_url}{path}");
+    let body = serde_json::to_string(&payload).map_err(|e| e.to_string())?;
+    // Audit 02 HIGH — `-d <body>` puts the JSON (which contains the builder
+    // key on validate calls) into argv, visible to any local user via
+    // `ps` / `/proc/<pid>/cmdline`. Use `-d @-` so curl reads the body from
+    // stdin instead — the key never appears in argv.
+    let mut child = Command::new("curl")
+        .arg("-sf")
+        .arg("--max-time")
+        .arg("8")
+        .arg("-X")
+        .arg("POST")
+        .arg("-H")
+        .arg("Content-Type: application/json")
+        .arg("-d")
+        .arg("@-")
+        .arg(&url)
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .spawn()
+        .map_err(|_| format!("Builder API unreachable at {api_url}"))?;
+    if let Some(mut stdin) = child.stdin.take() {
+        use tokio::io::AsyncWriteExt;
+        let _ = stdin.write_all(body.as_bytes()).await;
+        // stdin dropped here → curl sees EOF
+    }
+    let output = child
+        .wait_with_output()
+        .await
+        .map_err(|_| format!("Builder API unreachable at {api_url}"))?;
+
+    if !output.status.success() {
+        return Err(format!("Builder API unreachable at {api_url}"));
+    }
+
+    Ok(String::from_utf8_lossy(&output.stdout).to_string())
+}
+
+#[tauri::command]
+async fn builder_status() -> std::result::Result<BuilderStatus, String> {
+    let config_path = ultrathink_config_path()?;
+    let config = read_json_file(&config_path);
+    let tier = config.get("tier").and_then(|v| v.as_str()).unwrap_or("oss");
+    let key = config
+        .get("builder_key")
+        .and_then(|v| v.as_str())
+        .filter(|v| !v.is_empty())
+        .map(|v| v.to_string());
+
+    if tier != "builder" || key.is_none() {
+        return Ok(BuilderStatus {
+            tier: "oss".to_string(),
+            key: None,
+            valid: None,
+            expires_at: None,
+        });
+    }
+
+    let token = read_json_file(&builder_token_path());
+    let token_expires_at = token
+        .get("expires_at")
+        .and_then(|v| v.as_str())
+        .filter(|v| !v.is_empty())
+        .map(|v| v.to_string());
+    let config_expires_at = config
+        .get("expires_at")
+        .and_then(|v| v.as_str())
+        .filter(|v| !v.is_empty())
+        .map(|v| v.to_string());
+    let valid = token_expires_at
+        .as_ref()
+        .map(|expires| expires.as_str() > iso_now().as_str())
+        .unwrap_or(false);
+    let expires_at = token_expires_at.or(config_expires_at);
+
+    Ok(BuilderStatus {
+        tier: "builder".to_string(),
+        key,
+        valid: Some(valid),
+        expires_at,
+    })
+}
+
+#[tauri::command]
+async fn builder_apply(
+    payload: BuilderApplyPayload,
+) -> std::result::Result<BuilderApplyResponse, String> {
+    let body = serde_json::json!({
+        "user_handle": payload.user_handle,
+        "email": payload.email,
+        "proof_type": payload.proof_type,
+        "proof_url": payload.proof_url,
+        "proof_description": payload.proof_description,
+    });
+    let raw = curl_builder_post("/api/builder/apply", body).await?;
+    serde_json::from_str::<BuilderApplyResponse>(&raw)
+        .map_err(|e| format!("Builder API returned an invalid response: {e}"))
+}
+
+#[tauri::command]
+async fn builder_validate(key: String) -> std::result::Result<BuilderValidateResponse, String> {
+    let trimmed = key.trim().to_string();
+    if trimmed.is_empty() {
+        return Ok(BuilderValidateResponse {
+            valid: false,
+            expires_at: None,
+            error: Some("Missing builder key".to_string()),
+        });
+    }
+
+    let raw = curl_builder_post("/api/builder/validate", serde_json::json!({ "key": trimmed })).await?;
+    let parsed = serde_json::from_str::<BuilderValidateApiResponse>(&raw)
+        .map_err(|e| format!("Builder API returned an invalid response: {e}"))?;
+
+    if !parsed.valid {
+        remove_builder_token();
+        return Ok(BuilderValidateResponse {
+            valid: false,
+            expires_at: parsed.expires_at,
+            error: parsed.error.or_else(|| Some("Invalid or expired key".to_string())),
+        });
+    }
+
+    let expires_at = parsed.expires_at.unwrap_or_else(iso_in_24h);
+    let validated_at = parsed.validated_at.unwrap_or_else(iso_now);
+    let config_path = ultrathink_config_path()?;
+    let mut config = read_json_file(&config_path);
+    if !config.is_object() {
+        config = serde_json::json!({});
+    }
+    if let Some(obj) = config.as_object_mut() {
+        obj.insert("tier".to_string(), serde_json::Value::String("builder".to_string()));
+        obj.insert("builder_key".to_string(), serde_json::Value::String(trimmed.clone()));
+        obj.insert("validated_at".to_string(), serde_json::Value::String(validated_at));
+        obj.insert("expires_at".to_string(), serde_json::Value::String(expires_at.clone()));
+    }
+    write_json_file(&config_path, &config)?;
+    write_builder_token(&trimmed, &expires_at, parsed.token.as_deref())?;
+
+    Ok(BuilderValidateResponse {
+        valid: true,
+        expires_at: Some(expires_at),
+        error: None,
+    })
+}
+
+#[tauri::command]
+async fn builder_revoke() -> std::result::Result<(), String> {
+    let config_path = ultrathink_config_path()?;
+    let mut config = read_json_file(&config_path);
+    if let Some(obj) = config.as_object_mut() {
+        obj.remove("tier");
+        obj.remove("builder_key");
+        obj.remove("validated_at");
+        obj.remove("expires_at");
+    } else {
+        config = serde_json::json!({});
+    }
+    write_json_file(&config_path, &config)?;
+    remove_builder_token();
+    Ok(())
+}
+
 async fn check_cli_version(bin: &str) -> ClaudeStatus {
     match Command::new(bin).arg("--version").output().await {
         Ok(o) if o.status.success() => ClaudeStatus {
             ok: true,
             version: Some(String::from_utf8_lossy(&o.stdout).trim().to_string()),
         },
-        _ => ClaudeStatus { ok: false, version: None },
+        _ => ClaudeStatus {
+            ok: false,
+            version: None,
+        },
     }
 }
 
@@ -1217,8 +1846,15 @@ async fn skill_registry_list(app: AppHandle) -> std::result::Result<serde_json::
 /// so any Claude Code session — including spawns from ~/Studio/projects/foo/ —
 /// picks them up via the global config dir.
 #[tauri::command]
-async fn skill_registry_sync_global(app: AppHandle) -> std::result::Result<serde_json::Value, String> {
-    run_engine_script(&app, "skill-sync.js", &["sync"])
+async fn skill_registry_sync_global(
+    source: Option<String>,
+    app: AppHandle,
+) -> std::result::Result<serde_json::Value, String> {
+    let mut args = vec!["sync"];
+    if let Some(src) = source.as_deref() {
+        args.push(src);
+    }
+    run_engine_script(&app, "skill-sync.js", &args)
         .await
         .map_err(|e| e.to_string())
 }
@@ -1240,7 +1876,13 @@ fn session_log_path(session_id: &str) -> Option<PathBuf> {
     // Sanitize: strip path separators & null bytes.
     let safe: String = session_id
         .chars()
-        .map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '_' { c } else { '_' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '-' || c == '_' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect();
     Some(dir.join(format!("{}.jsonl", safe)))
 }
@@ -1281,9 +1923,11 @@ fn scrub_secrets(input: &str) -> String {
     while i < bytes.len() {
         let rest = &input[i..];
         // Scan for any of the prefixes
-        let prefix_match = ["sk-ant-", "sk-proj-", "sk-", "ghp_", "gho_", "ghs_", "ghu_", "ghr_"]
-            .iter()
-            .find(|p| rest.starts_with(*p));
+        let prefix_match = [
+            "sk-ant-", "sk-proj-", "sk-", "ghp_", "gho_", "ghs_", "ghu_", "ghr_",
+        ]
+        .iter()
+        .find(|p| rest.starts_with(*p));
         if let Some(p) = prefix_match {
             out.push_str(p);
             out.push_str("***");
@@ -1291,7 +1935,9 @@ fn scrub_secrets(input: &str) -> String {
             let mut j = i + p.len();
             while j < bytes.len() {
                 let c = bytes[j];
-                if c.is_ascii_whitespace() || matches!(c, b'"' | b'\'' | b',' | b'}' | b']' | b';' | b')') {
+                if c.is_ascii_whitespace()
+                    || matches!(c, b'"' | b'\'' | b',' | b'}' | b']' | b';' | b')')
+                {
                     break;
                 }
                 j += 1;
@@ -1399,7 +2045,10 @@ async fn list_sessions() -> std::result::Result<Vec<serde_json::Value>, String> 
         return Ok(vec![]);
     }
     let mut out = Vec::new();
-    for entry in std::fs::read_dir(&dir).map_err(|e| e.to_string())?.flatten() {
+    for entry in std::fs::read_dir(&dir)
+        .map_err(|e| e.to_string())?
+        .flatten()
+    {
         let path = entry.path();
         if path.extension().and_then(|s| s.to_str()) != Some("jsonl") {
             continue;
@@ -1441,7 +2090,11 @@ async fn diagnose_spawn(app: AppHandle) -> std::result::Result<serde_json::Value
     let codex_bin = std::env::var("CODEX_BIN").unwrap_or_else(|_| "codex".to_string());
 
     async fn which(bin: &str) -> Option<String> {
-        let out = Command::new("/usr/bin/which").arg(bin).output().await.ok()?;
+        let out = Command::new("/usr/bin/which")
+            .arg(bin)
+            .output()
+            .await
+            .ok()?;
         if out.status.success() {
             Some(String::from_utf8_lossy(&out.stdout).trim().to_string())
         } else {
@@ -1453,7 +2106,11 @@ async fn diagnose_spawn(app: AppHandle) -> std::result::Result<serde_json::Value
         if out.status.success() {
             Some(String::from_utf8_lossy(&out.stdout).trim().to_string())
         } else {
-            Some(format!("exit {}: {}", out.status, String::from_utf8_lossy(&out.stderr).trim()))
+            Some(format!(
+                "exit {}: {}",
+                out.status,
+                String::from_utf8_lossy(&out.stderr).trim()
+            ))
         }
     }
 
@@ -1476,7 +2133,7 @@ async fn diagnose_spawn(app: AppHandle) -> std::result::Result<serde_json::Value
     }))
 }
 
-/// Status of the OSS skill kit: cloned to ~/.ultrathink-core, count of skills.
+/// Status of the OSS skill kit: cloned to ~/.ultrathink-studio/oss-kit, count of skills.
 #[tauri::command]
 async fn oss_kit_status(app: AppHandle) -> std::result::Result<serde_json::Value, String> {
     run_engine_script(&app, "skill-sync.js", &["oss-status"])
@@ -1484,15 +2141,15 @@ async fn oss_kit_status(app: AppHandle) -> std::result::Result<serde_json::Value
         .map_err(|e| e.to_string())
 }
 
-/// Install/update the OSS skill kit. Clones https://github.com/InugamiDev/ultrathink-core
-/// to ~/.ultrathink-core, then symlinks each skill into ~/.claude/skills/.
+/// Install/update the OSS skill kit. Clones https://github.com/InuVerse/ultrathink
+/// to ~/.ultrathink-studio/oss-kit, then symlinks each skill into ~/.claude/skills/.
 /// Idempotent: re-running pulls + re-syncs.
 #[tauri::command]
 async fn oss_kit_install(
     source: Option<String>,
     app: AppHandle,
 ) -> std::result::Result<serde_json::Value, String> {
-    let src = source.unwrap_or_else(|| "https://github.com/InugamiDev/ultrathink-core.git".into());
+    let src = source.unwrap_or_else(|| "https://github.com/InuVerse/ultrathink.git".into());
     run_engine_script(&app, "skill-sync.js", &["install-oss", &src])
         .await
         .map_err(|e| e.to_string())
@@ -1527,7 +2184,11 @@ async fn report_error(report: TelemetryReport) -> std::result::Result<(), String
     let scrubbed_stack = report.stack.as_deref().map(scrub_paths_and_secrets);
     let component = report.component.as_deref().unwrap_or("unknown");
     if dsn.is_empty() {
-        log::info!("[telemetry disabled] {} :: component={}", scrubbed_message, component);
+        log::info!(
+            "[telemetry disabled] {} :: component={}",
+            scrubbed_message,
+            component
+        );
         return Ok(());
     }
     // Sentry envelope shape — works against both Sentry SaaS and self-hosted
@@ -1602,6 +2263,37 @@ async fn secret_set(account: String, value: String) -> std::result::Result<(), S
     Ok(())
 }
 
+// intent: pull every studio-managed secret out of the keychain in one shot
+// status: done — bridges the keychain UI to the spawned engine processes
+// next: surface 1Password / Bitwarden integration if users ask for it
+// confidence: high
+//
+// End users install Studio from a signed .dmg/.msi — they don't have a
+// workspace `.env` to source DATABASE_URL or ANTHROPIC_API_KEY from. Studio
+// stores those in the OS keychain via its Settings panel; this helper
+// materialises them as env-var pairs that get injected into every engine
+// sidecar / script spawn.
+fn studio_secret_envs() -> Vec<(&'static str, String)> {
+    const ACCOUNTS: &[(&str, &str)] = &[
+        ("database-url", "DATABASE_URL"),
+        ("anthropic-api-key", "ANTHROPIC_API_KEY"),
+        ("openai-api-key", "OPENAI_API_KEY"),
+        ("openai-base-url", "OPENAI_BASE_URL"),
+        ("ollama-base-url", "OLLAMA_BASE_URL"),
+    ];
+    let mut out = Vec::with_capacity(ACCOUNTS.len());
+    for (account, env_name) in ACCOUNTS {
+        if let Ok(entry) = keyring::Entry::new(SECRET_SERVICE, account) {
+            if let Ok(value) = entry.get_password() {
+                if !value.trim().is_empty() {
+                    out.push((*env_name, value));
+                }
+            }
+        }
+    }
+    out
+}
+
 #[tauri::command]
 async fn secret_get(account: String) -> std::result::Result<Option<String>, String> {
     validate_secret_account(&account)?;
@@ -1642,10 +2334,10 @@ async fn secret_has(account: String) -> std::result::Result<bool, String> {
 pub struct CarLane {
     pub id: String,
     pub label: String,
-    pub cli: String,           // "claude" or "codex"
+    pub cli: String, // "claude" or "codex"
     pub model: String,
     pub system_hint: String,
-    pub color: String,         // CSS variable name
+    pub color: String, // CSS variable name
 }
 
 fn car_lanes_config_path() -> std::result::Result<PathBuf, String> {
@@ -1669,7 +2361,7 @@ fn default_car_lanes() -> Vec<CarLane> {
             id: "codex-coder".into(),
             label: "Codex Coder".into(),
             cli: "codex".into(),
-            model: "gpt-5-codex".into(),
+            model: "".into(),
             system_hint: "Implement code changes. Make tests pass. No design discussions.".into(),
             color: "var(--cyan)".into(),
         },
@@ -1677,7 +2369,7 @@ fn default_car_lanes() -> Vec<CarLane> {
             id: "codex-tester".into(),
             label: "Codex Tester".into(),
             cli: "codex".into(),
-            model: "gpt-5-codex".into(),
+            model: "".into(),
             system_hint: "Write and improve tests. Cover edge cases.".into(),
             color: "var(--teal)".into(),
         },
@@ -1699,7 +2391,12 @@ async fn car_list_lanes() -> std::result::Result<Vec<CarLane>, String> {
         return Ok(default_car_lanes());
     }
     let text = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
-    let lanes: Vec<CarLane> = serde_json::from_str(&text).unwrap_or_else(|_| default_car_lanes());
+    let mut lanes: Vec<CarLane> = serde_json::from_str(&text).unwrap_or_else(|_| default_car_lanes());
+    for lane in &mut lanes {
+        if lane.cli == "codex" && lane.model.starts_with("gpt-5-codex") {
+            lane.model.clear();
+        }
+    }
     Ok(lanes)
 }
 
@@ -1728,7 +2425,9 @@ pub struct CarRunSummary {
 }
 
 #[tauri::command]
-async fn car_list_runs(state: State<'_, AppState>) -> std::result::Result<Vec<CarRunSummary>, String> {
+async fn car_list_runs(
+    state: State<'_, AppState>,
+) -> std::result::Result<Vec<CarRunSummary>, String> {
     let map = state.car_runs.lock().await;
     Ok(map
         .iter()
@@ -1773,12 +2472,24 @@ async fn car_start_run(
     //   claude: --print "<prompt>" --output-format stream-json --verbose --model X
     //           --add-dir CWD --append-system-prompt SYSTEM_HINT --include-partial-messages
     //   codex:  exec --json (prompt on argv, cwd via current_dir)
-    let host_project = project_dir.clone();
-    let initial_cwd = project_dir.unwrap_or_else(|| {
-        dirs::home_dir()
-            .map(|p| p.to_string_lossy().to_string())
-            .unwrap_or_else(|| ".".to_string())
-    });
+    let scoped_project_dir = project_dir
+        .as_deref()
+        .map(resolve_project_path)
+        .transpose()?;
+    let host_project = scoped_project_dir
+        .as_ref()
+        .map(|p| p.to_string_lossy().to_string());
+    let initial_cwd_path = match scoped_project_dir {
+        Some(path) => path,
+        None => {
+            let root = studio_projects_root()?;
+            std::fs::create_dir_all(&root)
+                .map_err(|e| format!("Could not create {}: {e}", root.to_string_lossy()))?;
+            root.canonicalize()
+                .map_err(|e| format!("Path resolution failed: {e}"))?
+        }
+    };
+    let initial_cwd = initial_cwd_path.to_string_lossy().to_string();
 
     // Per-lane git worktree: each CAR run gets its own checkout under
     // ~/.ultrathink-studio/worktrees/<run_id>/ so concurrent lanes can mutate
@@ -1870,10 +2581,11 @@ async fn car_start_run(
             if trimmed.is_empty() {
                 continue;
             }
-            // Always emit raw log so the user can drill in.
+            // Always emit sanitized raw log so the user can drill in.
+            let safe_line = scrub_secrets(trimmed);
             let _ = app_stdout.emit(
                 &topic_stdout,
-                serde_json::json!({ "kind": "log", "stream": "stdout", "line": trimmed }),
+                serde_json::json!({ "kind": "log", "stream": "stdout", "line": safe_line }),
             );
             let val: serde_json::Value = match serde_json::from_str(trimmed) {
                 Ok(v) => v,
@@ -1881,14 +2593,23 @@ async fn car_start_run(
             };
             for ev in normalize_run_event(&cli_kind, &val, &model_kind) {
                 if let Some(usage) = ev.get("usage") {
-                    acc_input += usage.get("inputTokens").and_then(|v| v.as_u64()).unwrap_or(0);
-                    acc_output += usage.get("outputTokens").and_then(|v| v.as_u64()).unwrap_or(0);
-                    acc_cached += usage.get("cachedInputTokens").and_then(|v| v.as_u64()).unwrap_or(0);
+                    acc_input += usage
+                        .get("inputTokens")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(0);
+                    acc_output += usage
+                        .get("outputTokens")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(0);
+                    acc_cached += usage
+                        .get("cachedInputTokens")
+                        .and_then(|v| v.as_u64())
+                        .unwrap_or(0);
                     if let Some(c) = usage.get("costUsd").and_then(|v| v.as_f64()) {
                         acc_cost = c.max(acc_cost);
                     }
                 }
-                let _ = app_stdout.emit(&topic_stdout, ev);
+                let _ = app_stdout.emit(&topic_stdout, scrub_event(&ev));
             }
         }
 
@@ -1900,7 +2621,11 @@ async fn car_start_run(
 
         // Final task-completed with accumulated usage + computed cost (if pricing known).
         let computed_cost = compute_cost(&model_kind, acc_input, acc_output, acc_cached);
-        let final_cost = if acc_cost > 0.0 { acc_cost } else { computed_cost };
+        let final_cost = if acc_cost > 0.0 {
+            acc_cost
+        } else {
+            computed_cost
+        };
         let _ = app_stdout.emit(
             &topic_stdout,
             serde_json::json!({
@@ -1944,9 +2669,10 @@ async fn car_start_run(
             if line.trim().is_empty() {
                 continue;
             }
+            let safe_line = scrub_secrets(&line);
             let _ = app_stderr.emit(
                 &topic_stderr,
-                serde_json::json!({ "kind": "log", "stream": "stderr", "line": line }),
+                serde_json::json!({ "kind": "log", "stream": "stderr", "line": safe_line }),
             );
         }
     });
@@ -2032,16 +2758,13 @@ pub struct Checkpoint {
 /// List checkpoint commits in a project. Returns empty list if not a git repo.
 #[tauri::command]
 async fn list_checkpoints(project_dir: String) -> std::result::Result<Vec<Checkpoint>, String> {
-    let dot_git = std::path::Path::new(&project_dir).join(".git");
+    let project_dir = resolve_project_path(&project_dir)?;
+    let dot_git = project_dir.join(".git");
     if !dot_git.exists() {
         return Ok(vec![]);
     }
     let out = std::process::Command::new("git")
-        .args([
-            "log",
-            "--pretty=format:%H%x1f%cI%x1f%s",
-            "--max-count=200",
-        ])
+        .args(["log", "--pretty=format:%H%x1f%cI%x1f%s", "--max-count=200"])
         .current_dir(&project_dir)
         .output()
         .map_err(|e| e.to_string())?;
@@ -2065,11 +2788,9 @@ async fn list_checkpoints(project_dir: String) -> std::result::Result<Vec<Checkp
 /// Hard-revert the working tree to a specific commit. Caller is expected to
 /// confirm with the user — this discards uncommitted changes inside project_dir.
 #[tauri::command]
-async fn revert_to_checkpoint(
-    project_dir: String,
-    sha: String,
-) -> std::result::Result<(), String> {
-    if !std::path::Path::new(&project_dir).join(".git").exists() {
+async fn revert_to_checkpoint(project_dir: String, sha: String) -> std::result::Result<(), String> {
+    let project_dir = resolve_project_path(&project_dir)?;
+    if !project_dir.join(".git").exists() {
         return Err("not a git repository".to_string());
     }
     // Validate sha is a hex string of plausible length so we don't pass a flag.
@@ -2092,7 +2813,8 @@ async fn revert_to_checkpoint(
 /// We avoid spawning `git` — read .git/HEAD directly.
 #[tauri::command]
 async fn git_branch(project_dir: String) -> std::result::Result<Option<String>, String> {
-    let head = std::path::Path::new(&project_dir).join(".git").join("HEAD");
+    let project_dir = resolve_project_path(&project_dir)?;
+    let head = project_dir.join(".git").join("HEAD");
     if !head.exists() {
         return Ok(None);
     }
@@ -2182,11 +2904,7 @@ fn append_telemetry(row: &serde_json::Value) {
 ///   "tool-result" { name, isError }
 ///   "thinking"    { text }
 ///   "usage"       { usage: {...} }   (interim, model may stream multiple)
-fn normalize_run_event(
-    cli: &str,
-    raw: &serde_json::Value,
-    model: &str,
-) -> Vec<serde_json::Value> {
+fn normalize_run_event(cli: &str, raw: &serde_json::Value, model: &str) -> Vec<serde_json::Value> {
     let mut out = Vec::new();
     let t = raw.get("type").and_then(|v| v.as_str()).unwrap_or("");
     if cli == "claude" {
@@ -2202,11 +2920,14 @@ fn normalize_run_event(
                         match bt {
                             "text" => {
                                 if let Some(text) = block.get("text").and_then(|v| v.as_str()) {
-                                    out.push(serde_json::json!({ "kind": "text-delta", "text": text }));
+                                    out.push(
+                                        serde_json::json!({ "kind": "text-delta", "text": text }),
+                                    );
                                 }
                             }
                             "tool_use" => {
-                                let name = block.get("name").and_then(|v| v.as_str()).unwrap_or("?");
+                                let name =
+                                    block.get("name").and_then(|v| v.as_str()).unwrap_or("?");
                                 out.push(serde_json::json!({
                                     "kind": "tool-call",
                                     "name": name,
@@ -2215,7 +2936,9 @@ fn normalize_run_event(
                             }
                             "thinking" => {
                                 if let Some(text) = block.get("thinking").and_then(|v| v.as_str()) {
-                                    out.push(serde_json::json!({ "kind": "thinking", "text": text }));
+                                    out.push(
+                                        serde_json::json!({ "kind": "thinking", "text": text }),
+                                    );
                                 }
                             }
                             _ => {}
@@ -2379,7 +3102,9 @@ pub struct TelemetryEvent {
     pub project: Option<String>,
     pub prompt: Option<String>,
     pub status: Option<String>,
+    #[serde(alias = "duration_ms")]
     pub duration_ms: Option<u64>,
+    #[serde(alias = "cost_usd")]
     pub cost_usd: Option<f64>,
     pub skill: Option<String>,
 }
@@ -2398,23 +3123,143 @@ pub struct InsightsSummary {
     pub has_data: bool,
 }
 
+fn read_session_events_as_telemetry() -> Vec<TelemetryEvent> {
+    let Some(home) = dirs::home_dir() else {
+        return Vec::new();
+    };
+    let dir = home.join(".ultrathink-studio").join("sessions");
+    let Ok(entries) = std::fs::read_dir(&dir) else {
+        return Vec::new();
+    };
+    let mut out = Vec::new();
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension().and_then(|s| s.to_str()) != Some("jsonl") {
+            continue;
+        }
+        let project = path.file_stem().and_then(|s| s.to_str()).map(|s| s.to_string());
+        let Ok(text) = std::fs::read_to_string(path) else {
+            continue;
+        };
+        for line in text.lines().filter(|l| !l.trim().is_empty()) {
+            let Ok(row) = serde_json::from_str::<serde_json::Value>(line) else {
+                continue;
+            };
+            let at = row
+                .get("at")
+                .and_then(|v| v.as_str())
+                .unwrap_or("")
+                .to_string();
+            let Some(event) = row.get("event") else {
+                continue;
+            };
+            let kind = event
+                .get("kind")
+                .and_then(|v| v.as_str())
+                .unwrap_or("event")
+                .to_string();
+
+            if kind == "skill-injected" {
+                if let Some(skills) = event.get("skills").and_then(|v| v.as_array()) {
+                    for skill in skills {
+                        if let Some(name) = skill.get("name").and_then(|v| v.as_str()) {
+                            out.push(TelemetryEvent {
+                                at: at.clone(),
+                                kind: kind.clone(),
+                                project: project.clone(),
+                                prompt: Some("Skill injected".into()),
+                                status: None,
+                                duration_ms: None,
+                                cost_usd: None,
+                                skill: Some(name.to_string()),
+                            });
+                        }
+                    }
+                }
+                continue;
+            }
+
+            let status = match kind.as_str() {
+                "completion" => Some("completed".to_string()),
+                "error" => Some("error".to_string()),
+                "spawn-exited" => {
+                    let code = event
+                        .get("exitCode")
+                        .or_else(|| event.get("code"))
+                        .and_then(|v| v.as_i64());
+                    code.and_then(|code| {
+                        if code == 0 {
+                            None
+                        } else {
+                            Some("failed".to_string())
+                        }
+                    })
+                }
+                _ => None,
+            };
+            if status.is_none() {
+                continue;
+            }
+            let prompt = event
+                .get("message")
+                .and_then(|v| v.as_str())
+                .or_else(|| event.get("toolName").and_then(|v| v.as_str()))
+                .map(|s| s.to_string())
+                .or_else(|| Some(kind.clone()));
+            out.push(TelemetryEvent {
+                at,
+                kind,
+                project: project.clone(),
+                prompt,
+                status,
+                duration_ms: event
+                    .get("durationMs")
+                    .or_else(|| event.get("duration_ms"))
+                    .and_then(|v| v.as_u64()),
+                cost_usd: event
+                    .get("costUsd")
+                    .or_else(|| event.get("cost_usd"))
+                    .and_then(|v| v.as_f64()),
+                skill: None,
+            });
+        }
+    }
+    out
+}
+
 #[tauri::command]
-async fn read_telemetry(_window: Option<String>) -> std::result::Result<InsightsSummary, String> {
+async fn read_telemetry(window: Option<String>) -> std::result::Result<InsightsSummary, String> {
     let path = dirs::home_dir()
         .ok_or("no home dir")?
         .join(".ultrathink-studio")
         .join("telemetry.jsonl");
 
-    if !path.exists() {
-        return Ok(InsightsSummary::default());
+    let mut events: Vec<TelemetryEvent> = if path.exists() {
+        let text = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
+        text.lines()
+            .filter(|l| !l.trim().is_empty())
+            .filter_map(|l| serde_json::from_str::<TelemetryEvent>(l).ok())
+            .collect()
+    } else {
+        Vec::new()
+    };
+    events.extend(read_session_events_as_telemetry());
+    events.sort_by(|a, b| a.at.cmp(&b.at));
+    if let Some(window) = window.as_deref() {
+        let seconds = match window {
+            "24h" => Some(24 * 60 * 60),
+            "7d" => Some(7 * 24 * 60 * 60),
+            "30d" => Some(30 * 24 * 60 * 60),
+            _ => None,
+        };
+        if let Some(seconds) = seconds {
+            let cutoff = chrono_like::Iso::from_systime(
+                std::time::SystemTime::now() - std::time::Duration::from_secs(seconds),
+            )
+            .to_string();
+            events.retain(|event| event.at.as_str() >= cutoff.as_str());
+        }
     }
-
-    let text = std::fs::read_to_string(&path).map_err(|e| e.to_string())?;
-    let events: Vec<TelemetryEvent> = text
-        .lines()
-        .filter(|l| !l.trim().is_empty())
-        .filter_map(|l| serde_json::from_str::<TelemetryEvent>(l).ok())
-        .collect();
 
     if events.is_empty() {
         return Ok(InsightsSummary::default());
@@ -2488,7 +3333,9 @@ async fn read_telemetry(_window: Option<String>) -> std::result::Result<Insights
 
 #[cfg(desktop)]
 fn install_global_shortcut(app: &AppHandle) -> Result<()> {
-    use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
+    use tauri_plugin_global_shortcut::{
+        Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState,
+    };
 
     // Cmd+Shift+U on macOS, Ctrl+Shift+U elsewhere.
     let modifier = if cfg!(target_os = "macos") {
@@ -2554,12 +3401,18 @@ pub fn run() {
             read_file_text,
             query_memory_graph,
             query_memory_node,
+            create_memory,
             detect_framework,
+            scan_foundations,
             start_preview,
             stop_preview,
             deploy_run,
             check_claude_cli,
             check_codex_cli,
+            builder_status,
+            builder_apply,
+            builder_validate,
+            builder_revoke,
             check_prereqs,
             skill_registry_status,
             skill_registry_install,
@@ -2578,6 +3431,7 @@ pub fn run() {
             car_start_run,
             car_cancel_run,
             read_telemetry,
+            open_terminal_in_project,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

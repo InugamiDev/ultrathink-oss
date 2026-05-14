@@ -83,7 +83,7 @@ else note('scrapling not on PATH — optional, install via `pipx install "scrapl
 section("Sidecar resolution");
 const sidecar = resolve(REPO, "packages", "studio-engine", "dist", "sidecar.js");
 if (existsSync(sidecar)) ok(`sidecar.js found at ${sidecar}`);
-else bad(`sidecar.js missing — run \`pnpm --filter @inuverse/studio-engine build\``);
+else bad(`sidecar.js missing — run \`pnpm --filter @ultrathink/studio-engine build\``);
 
 section("API keys (env → fallback for Settings)");
 process.env.ANTHROPIC_API_KEY
@@ -146,12 +146,12 @@ section("Build artifacts");
 const studioDist = resolve(REPO, "apps", "studio", "dist", "index.html");
 existsSync(studioDist)
   ? ok(`Studio frontend built at apps/studio/dist/`)
-  : note(`apps/studio/dist/ missing — run \`pnpm --filter @inuverse/studio build\``);
+  : note(`apps/studio/dist/ missing — run \`pnpm --filter @ultrathink/studio build\``);
 
 const tauriBin = resolve(REPO, "apps", "studio", "src-tauri", "target", "debug", "ultrathink-studio");
 existsSync(tauriBin)
   ? ok(`Tauri debug binary present`)
-  : note(`Tauri debug binary not built — run \`pnpm --filter @inuverse/studio tauri:dev\``);
+  : note(`Tauri debug binary not built — run \`pnpm --filter @ultrathink/studio tauri:dev\``);
 
 console.log("");
 console.log(

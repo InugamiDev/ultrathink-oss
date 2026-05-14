@@ -22,6 +22,7 @@
 **/tokens*
 **/.auth*
 **/service-account*.json
+.mcp.json
 
 # SSH and cloud config
 ~/.ssh/
@@ -49,8 +50,12 @@ node_modules/
 .next/
 dist/
 *.lock
+package-lock.json
+**/package-lock.json
 *.snap
 coverage/
+.playwright-mcp/
+paperclip/server/ui-dist.backup.*/
 
 # Allow overrides (safe templates and examples)
 !.env.example

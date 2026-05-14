@@ -20,8 +20,11 @@ if ! command -v jq &>/dev/null; then
   exit 2
 fi
 
-# Get all keys from registry
-REGISTRY_KEYS=$(jq -r 'keys[]' "$REGISTRY" 2>/dev/null) || {
+# Get every registered skill id. Older code used `jq -r 'keys[]'` against the
+# top-level object, which returns the metadata keys (lastUpdated, layers,
+# skillCount, skills) — so every actual skill on disk got false-flagged as
+# "missing." Read from .skills[].id (the real skill identifiers).
+REGISTRY_KEYS=$(jq -r '.skills[].id' "$REGISTRY" 2>/dev/null) || {
   echo "ERROR: Failed to parse registry JSON" >&2
   exit 2
 }

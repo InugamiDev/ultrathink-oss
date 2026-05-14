@@ -12,7 +12,7 @@ confidence: high
 
 ## Prerequisites
 
-- Node.js 18+
+- Node.js 22+
 - Codex CLI (`npm install -g @openai/codex` or `brew install --cask codex`)
 - OpenAI API key or ChatGPT Plus/Pro account
 - Neon Postgres account ([neon.tech](https://neon.tech), free tier works)
@@ -20,14 +20,14 @@ confidence: high
 ## macOS
 
 ```bash
-git clone https://github.com/InugamiDev/ultrathink-oss.git ~/ultrathink
+git clone https://github.com/InuVerse/ultrathink.git ~/ultrathink
 cd ~/ultrathink
 
 # Install deps, create .env, run migrations
 ./scripts/setup.sh
 
 # Install into ~/.claude/, ~/.codex/, and ~/.ultrathink/
-./scripts/install.sh --tier=core
+./scripts/install.sh
 ```
 
 ### Codex-specific config
@@ -83,7 +83,7 @@ startup_timeout_sec = 30
 
 Replace `<ULTRATHINK_ROOT>` with your actual path, such as `/Users/you/ultrathink`.
 
-Core installs may also enable additional local MCP servers:
+Full installs may also enable additional local MCP servers:
 
 ```toml
 [mcp_servers.code-intel]
@@ -97,7 +97,7 @@ args = ["<ULTRATHINK_ROOT>/mcp/agora/dist/index.js"]
 startup_timeout_sec = 15
 ```
 
-These are Core-only in some distributions. If `packages/code-intel/` or `mcp/agora/` is absent, remove those MCP blocks rather than leaving broken server definitions in Codex config.
+These are optional in some distributions. If `packages/code-intel/` or `mcp/agora/` is absent, remove those MCP blocks rather than leaving broken server definitions in Codex config.
 
 ## Linux
 
@@ -105,10 +105,10 @@ Same as macOS. Codex CLI runs natively on Linux.
 
 ```bash
 npm install -g @openai/codex
-git clone https://github.com/InugamiDev/ultrathink-oss.git ~/ultrathink
+git clone https://github.com/InuVerse/ultrathink.git ~/ultrathink
 cd ~/ultrathink
 ./scripts/setup.sh
-./scripts/install.sh --tier=core
+./scripts/install.sh
 ```
 
 ## Windows
@@ -212,7 +212,7 @@ Current behavior:
 
 ```bash
 cd ~/ultrathink
-npm run dashboard:dev
+pnpm run dashboard:dev
 # -> http://localhost:3333
 ```
 
@@ -231,7 +231,7 @@ npm run dashboard:dev
 
 - Use `command = "..."` and `args = [...]` in TOML. Do not use `command = ["cmd", "arg"]`.
 - Prefer absolute paths for binaries and compiled MCP entrypoints.
-- Rebuild TypeScript MCP servers after changing source with `npm run codeintel:build` or `npm --prefix mcp/agora run build`.
+- Rebuild TypeScript MCP servers after changing source with `pnpm run codeintel:build` or `pnpm --filter @ultrathink/mcp-agora build`.
 - If Codex starts slowly or reports server startup failures, raise `startup_timeout_sec` to `30`.
 - If a server is optional and unavailable on your tier, remove its block from `~/.codex/config.toml`.
 
@@ -246,7 +246,7 @@ Required pieces:
 Useful checks:
 
 ```bash
-npm run codeintel:build
+pnpm run codeintel:build
 test -f packages/code-intel/dist/index.js && printf 'code-intel mcp built\n'
 test -n "$DATABASE_URL" && printf 'DATABASE_URL set\n'
 ```
@@ -272,7 +272,7 @@ Required pieces:
 Useful checks:
 
 ```bash
-npm --prefix mcp/agora run build
+pnpm --filter @ultrathink/mcp-agora build
 test -f mcp/agora/dist/index.js && printf 'agora mcp built\n'
 test -n "$AGORA_APP_ID" && test -n "$AGORA_APP_CERTIFICATE" && printf 'agora app env set\n'
 test -n "$AGORA_CUSTOMER_ID" && test -n "$AGORA_CUSTOMER_SECRET" && printf 'agora REST env set\n'

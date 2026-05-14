@@ -4,7 +4,10 @@
 # confidence: high
 # usage: source "$(dirname "$0")/builder-gate.sh" && builder_check || exit 0
 
-TOKEN_FILE="/tmp/ultrathink-builder-token-$USER"
+# Moved from /tmp to ~/.ultrathink-studio/ to close the symlink-hijack +
+# default-umask race documented in audit 02. The Studio writer (lib.rs) now
+# emits to this path via write_json_file (parent chmod 0700, file chmod 0600).
+TOKEN_FILE="$HOME/.ultrathink-studio/builder-token.json"
 
 builder_check() {
   # No token file → not a builder

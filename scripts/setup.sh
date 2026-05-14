@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 # UltraThink — One-command setup
+# intent: bootstrap the canonical pnpm workspace without stale root-level package paths
+# status: done
+# next: keep workspace filters aligned with package.json names
+# blockers: none
+# confidence: high
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -22,17 +27,17 @@ if ! command -v node &>/dev/null; then
 fi
 
 NODE_VERSION=$(node -v | sed 's/v//' | cut -d. -f1)
-if [[ "$NODE_VERSION" -lt 18 ]]; then
-  echo "  ERROR: Node.js 18+ required (found v$NODE_VERSION)"
+if [[ "$NODE_VERSION" -lt 22 ]]; then
+  echo "  ERROR: Node.js 22+ required (found v$NODE_VERSION)"
   exit 1
 fi
 echo "  Node.js $(node -v) — OK"
 
-if ! command -v npm &>/dev/null; then
-  echo "  ERROR: npm is required"
+if ! command -v pnpm &>/dev/null; then
+  echo "  ERROR: pnpm is required. Run: corepack enable && corepack prepare pnpm@10.28.0 --activate"
   exit 1
 fi
-echo "  npm $(npm -v) — OK"
+echo "  pnpm $(pnpm -v) — OK"
 
 # Step 2: Environment file
 echo ""
@@ -50,27 +55,25 @@ else
   echo "  .env already exists — OK"
 fi
 
+if [[ -f .env ]]; then
+  DATABASE_URL=""
+  while IFS= read -r line; do
+    [[ "$line" == DATABASE_URL=* ]] || continue
+    DATABASE_URL="${line#DATABASE_URL=}"
+  done < .env
+  DATABASE_URL="${DATABASE_URL%\"}"
+  DATABASE_URL="${DATABASE_URL#\"}"
+  DATABASE_URL="${DATABASE_URL%\'}"
+  DATABASE_URL="${DATABASE_URL#\'}"
+  export DATABASE_URL
+fi
+
 # Step 3: Install dependencies
 echo ""
 echo "Step 3: Installing dependencies..."
 
-npm install
-echo "  Root dependencies — OK"
-
-cd dashboard
-npm install
-echo "  Dashboard dependencies — OK"
-cd ..
-
-cd memory
-npm install
-echo "  Memory dependencies — OK"
-cd ..
-
-cd code-intel
-npm install
-echo "  Code-intel dependencies — OK"
-cd ..
+pnpm install
+echo "  Workspace dependencies — OK"
 
 # Step 4: Make hooks executable
 echo ""
@@ -103,11 +106,11 @@ echo "Step 6: Database..."
 
 if [[ -n "${DATABASE_URL:-}" ]]; then
   echo "  DATABASE_URL detected. Running migrations..."
-  cd memory && npx tsx scripts/migrate.ts && cd ..
+  pnpm --filter @ultrathink/memory migrate
   echo "  Migrations — OK"
 else
   echo "  DATABASE_URL not set — skipping migrations"
-  echo "  Run 'npm run migrate' after configuring .env"
+  echo "  Run 'pnpm run migrate' after configuring .env"
 fi
 
 # Done
@@ -118,8 +121,8 @@ echo "=================================="
 echo ""
 echo "  Next steps:"
 echo "  1. Edit .env with your Neon DATABASE_URL"
-echo "  2. Run: npm run migrate"
-echo "  3. Run: npm run dashboard:dev"
+echo "  2. Run: pnpm run migrate"
+echo "  3. Run: pnpm run dashboard:dev"
 echo "  4. Open: http://localhost:3333"
 echo ""
 echo "  Recommended: Add to your shell profile (~/.zshrc or ~/.bashrc):"

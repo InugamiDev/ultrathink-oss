@@ -139,7 +139,7 @@ const ghostBtnStyle: React.CSSProperties = {
 const primaryBtnStyle: React.CSSProperties = {
   fontSize: "12px",
   fontWeight: 600,
-  color: "#0c0d10",
+  color: "var(--bg)",
   background: "var(--accent)",
   border: "none",
   borderRadius: "var(--radius-md)",

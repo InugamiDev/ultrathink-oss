@@ -70,11 +70,11 @@ const CATALOG: Record<AdapterId, ModelGroup[]> = {
   ],
   codex: [
     {
-      label: "GPT-5 Codex",
+      label: "Codex CLI account-safe",
       options: [
-        { value: "gpt-5-codex", label: "gpt-5-codex", hint: "full coder · $1.25/$10 per 1M" },
-        { value: "gpt-5-codex-mini", label: "gpt-5-codex-mini", hint: "cheaper / faster" },
-        { value: "gpt-5-codex-high", label: "gpt-5-codex-high", hint: "extended reasoning" },
+        { value: "", label: "Account default", hint: "recommended for ChatGPT auth" },
+        { value: "gpt-5", label: "gpt-5", hint: "safe with API-key auth" },
+        { value: "gpt-5-mini", label: "gpt-5-mini", hint: "faster / cheaper" },
       ],
     },
     {
@@ -192,7 +192,7 @@ export function ModelPicker({ adapter, value, onChange, placeholder }: ModelPick
   useEffect(() => {
     if (value && !flat.includes(value)) setCustom(true);
     else setCustom(false);
-  }, [adapter, value]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [adapter, value]);
 
   if (custom) {
     return (

@@ -150,8 +150,10 @@ function TreeNode({ node, tree, expanded, selected, onToggle, depth }: TreeNodeP
 
   return (
     <div>
-      <div
+      <button
+        type="button"
         onClick={() => onToggle(node)}
+        aria-expanded={node.isDir ? isOpen : undefined}
         style={{
           ...rowStyle,
           paddingLeft: `${10 + depth * 12}px`,
@@ -164,7 +166,7 @@ function TreeNode({ node, tree, expanded, selected, onToggle, depth }: TreeNodeP
         </span>
         <span style={{ marginRight: "6px" }}>{node.isDir ? "📁" : "📄"}</span>
         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{node.name}</span>
-      </div>
+      </button>
       {isOpen &&
         children.map((c) => (
           <TreeNode
@@ -221,12 +223,16 @@ const treeHeaderStyle: React.CSSProperties = {
   borderBottom: "1px solid var(--border)",
 };
 const rowStyle: React.CSSProperties = {
+  width: "100%",
   display: "flex",
   alignItems: "center",
   fontSize: "12px",
   height: "26px",
   cursor: "pointer",
   userSelect: "none",
+  background: "transparent",
+  border: "none",
+  textAlign: "left",
 };
 const editorPaneStyle: React.CSSProperties = {
   display: "flex",

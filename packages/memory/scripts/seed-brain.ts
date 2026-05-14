@@ -12,23 +12,23 @@ const SEED_MEMORIES = [
   // ── agent/rules ──
   {
     content:
-      "Never leak Tekio, Code-Intel, or Identity Graph into OSS-tier files. These are Core-tier only. The tier boundary is enforced at the file level — OSS repo must not contain any implementation code, imports, CLI commands, dashboard pages, migrations, or test fixtures for these systems.",
+      "Treat this repository as the canonical MIT UltraThink repo. Do not revive the retired Core/OSS split or label first-party systems as private without an explicit product decision.",
     category: "rule",
     importance: 10,
     confidence: 1.0,
     scope: "ultrathink",
     source: "explicit",
-    tags: ["tier-boundary", "oss", "core"],
+    tags: ["canonical-repo", "license", "workflow"],
   },
   {
     content:
-      "Only ultrathink-oss has git. The private ultrathink directory is NOT a git repo. Never run git commands in the core repo. All commits happen in ultrathink-oss after syncing files.",
+      "This UltraThink checkout is a git repo. Use normal git hygiene here: inspect status before staging, never commit secrets, and keep .mcp.json and .env files local and ignored.",
     category: "rule",
     importance: 10,
     confidence: 1.0,
     scope: "ultrathink",
     source: "explicit",
-    tags: ["git", "oss", "workflow"],
+    tags: ["git", "secrets", "workflow"],
   },
   {
     content:

@@ -1,28 +1,28 @@
 #!/usr/bin/env bash
 # intent: one-command Ultrathink Studio installer for alpha users
-# status: done — clones OSS, installs deps, builds Studio, symlinks .app
+# status: done — clones the canonical repo, installs deps, builds Studio, symlinks .app
 # next: pre-built .dmg from GitHub Releases when signing infrastructure is up
 # confidence: medium — Studio is alpha; expect rough edges
 #
 # Usage (one-liner):
-#   curl -fsSL https://raw.githubusercontent.com/InugamiDev/ultrathink-oss/main/scripts/install-studio.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/InuVerse/ultrathink/main/scripts/install-studio.sh | bash
 #
 # Manual:
-#   git clone https://github.com/InugamiDev/ultrathink-oss ~/ultrathink
+#   git clone https://github.com/InuVerse/ultrathink ~/ultrathink
 #   cd ~/ultrathink && ./scripts/install-studio.sh
 #
 # What this does:
 #   1. Validates prereqs (Node 22+, pnpm 9+, Rust 1.77+)
-#   2. Clones or updates the OSS repo at $ULTRA_DIR (default ~/ultrathink)
+#   2. Clones or updates the UltraThink repo at $ULTRA_DIR (default ~/ultrathink)
 #   3. pnpm install + builds the studio-engine + builds the Studio .app
 #   4. Runs scripts/install.sh to symlink skills + hooks into ~/.claude
 #   5. (macOS) symlinks the .app into /Applications/
 #   6. Prints what to do next
 
-set -uo pipefail
+set -euo pipefail
 
 ULTRA_DIR="${ULTRA_DIR:-$HOME/ultrathink}"
-OSS_REPO="${OSS_REPO:-https://github.com/InugamiDev/ultrathink-oss.git}"
+OSS_REPO="${OSS_REPO:-https://github.com/InuVerse/ultrathink.git}"
 SKIP_APP_BUILD="${SKIP_APP_BUILD:-0}"
 
 # ── colour log helpers ────────────────────────────────────────────────────────
@@ -112,7 +112,7 @@ pnpm install --frozen-lockfile 2>&1 | tail -3 || {
 log_ok "Workspace installed"
 
 # Build the studio-engine (Studio's Node sidecar)
-pnpm --filter @inuverse/studio-engine build >/dev/null 2>&1 && log_ok "Built studio-engine"
+pnpm --filter @ultrathink/studio-engine build >/dev/null 2>&1 && log_ok "Built studio-engine"
 
 # Run the project installer that symlinks skills + hooks into ~/.claude
 if [[ -x scripts/install.sh ]]; then
@@ -143,13 +143,25 @@ APP_PATH="$ULTRA_DIR/apps/studio/src-tauri/target/release/bundle/macos/UltraThin
 
 if [[ "$OSTYPE" == "darwin"* && -d "$APP_PATH" ]]; then
   log_step "6/6 Installing to /Applications"
-  # Remove any stale link / .app at the destination, then symlink.
-  if [[ -L "/Applications/UltraThink Studio.app" || -d "/Applications/UltraThink Studio.app" ]]; then
-    rm -rf "/Applications/UltraThink Studio.app"
+  DEST="/Applications/UltraThink Studio.app"
+  # Only remove an existing entry if it's our previous SYMLINK. A real .app
+  # directory at $DEST (e.g. a signed DMG install or a user copy) must be left
+  # alone — earlier versions of this script blindly `rm -rf`'d any directory
+  # match and destroyed legitimate installs on re-run.
+  if [[ -L "$DEST" ]]; then
+    rm -f "$DEST"
+    ln -s "$APP_PATH" "$DEST" \
+      && log_ok "Refreshed symlink to $DEST" \
+      || log_warn "Couldn't symlink (permission?) — open directly from $APP_PATH"
+  elif [[ -d "$DEST" ]]; then
+    log_warn "$DEST already exists as a real .app — leaving it untouched"
+    log_warn "  If you want this dev build instead, remove the existing .app yourself first"
+    log_warn "  This dev build is available at: $APP_PATH"
+  else
+    ln -s "$APP_PATH" "$DEST" \
+      && log_ok "Symlinked to $DEST" \
+      || log_warn "Couldn't symlink (permission?) — open directly from $APP_PATH"
   fi
-  ln -s "$APP_PATH" "/Applications/UltraThink Studio.app" \
-    && log_ok "Symlinked to /Applications/UltraThink Studio.app" \
-    || log_warn "Couldn't symlink (permission?) — open directly from $APP_PATH"
 fi
 
 # ── done ──────────────────────────────────────────────────────────────────────
@@ -163,7 +175,7 @@ echo "Next steps:"
 echo "  1. Edit $ULTRA_DIR/.env — set DATABASE_URL (and ANTHROPIC_API_KEY if no claude CLI)"
 echo "  2. Open Studio:  open '$APP_PATH'"
 echo "     macOS may say 'unidentified developer' — right-click → Open the first time."
-echo "  3. Dashboard:    pnpm --filter dashboard dev  →  http://localhost:3333"
+echo "  3. Dashboard:    pnpm --filter @ultrathink/dashboard dev  →  http://localhost:3333"
 echo
 echo "Update later:    cd $ULTRA_DIR && git pull && bash scripts/install-studio.sh"
 echo "Uninstall:       rm -rf $ULTRA_DIR && rm -f '/Applications/UltraThink Studio.app'"

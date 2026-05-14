@@ -1,5 +1,10 @@
 import { defineConfig } from "vitest/config";
 
+// intent: keep the root Vitest pass on root/package-neutral tests only.
+// status: done
+// next: run package-local Vitest configs for UI packages when changing them.
+// blockers: none
+// confidence: high
 export default defineConfig({
   test: {
     globals: true,
@@ -10,6 +15,7 @@ export default defineConfig({
       ".next",
       "dashboard/.next",
       "dashboard/**",
+      "paperclip/ui/**",
       "videos/**",
       "mcp/**",
       "code-intel/node_modules/**",

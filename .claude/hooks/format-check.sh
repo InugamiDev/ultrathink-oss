@@ -87,7 +87,10 @@ case "$EXT" in
       SYNTAX_ERR=$(bash -n "$FILE_PATH" 2>&1 || true)
       if [[ -n "$SYNTAX_ERR" ]]; then
         log_event "Shell syntax error detected — blocking"
-        echo "{\"decision\":\"block\",\"reason\":\"Shell syntax error: ${SYNTAX_ERR}\"}"
+        # Use jq to encode the error so newlines / quotes / backslashes in the
+        # bash -n output can't corrupt the JSON exactly when blocking matters.
+        jq -nc --arg reason "Shell syntax error: $SYNTAX_ERR" \
+          '{decision: "block", reason: $reason}'
         exit 0
       else
         log_event "Shell syntax OK"

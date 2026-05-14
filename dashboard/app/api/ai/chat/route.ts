@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import Groq from "groq-sdk";
-import type { ToolEvent, WebSource } from "@/lib/ai/types";
+import type { WebSource } from "@/lib/ai/types";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;

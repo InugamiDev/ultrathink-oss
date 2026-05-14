@@ -20,9 +20,10 @@ CC_SID=$(echo "$INPUT" | jq -r '.session_id // ""' 2>/dev/null | head -c 12)
 STATUS_DIR="/tmp/ultrathink-status"
 mkdir -p "$STATUS_DIR" 2>/dev/null || true
 
-# Skip short prompts (< 30 chars) — confirmations, "yes", "ok", "next" etc.
-# These don't benefit from skill scoring or memory recall
-if [[ ${#USER_PROMPT} -lt 30 ]]; then
+# Skip only acknowledgements and prompts too short to carry a skill trigger.
+PROMPT_TRIMMED="${USER_PROMPT//[[:space:]]/}"
+PROMPT_NORMALIZED="$(printf '%s' "$USER_PROMPT" | tr '[:upper:]' '[:lower:]' | xargs 2>/dev/null || true)"
+if [[ ${#PROMPT_TRIMMED} -lt 5 || "$PROMPT_NORMALIZED" =~ ^(ok|okay|yes|yep|no|nope|thanks|thank\ you|continue|go\ on|next)$ ]]; then
   [[ -n "$CC_SID" ]] && rm -f "$STATUS_DIR/skills-$CC_SID" 2>/dev/null || true
   echo '{}'
   exit 0

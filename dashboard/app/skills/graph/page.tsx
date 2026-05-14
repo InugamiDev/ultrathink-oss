@@ -52,7 +52,7 @@ function lightenHex(hex: string): string {
 
 export default function SkillGraphPage() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [nodes, setNodes] = useState<GraphNode[]>([]);
+  const [, setNodes] = useState<GraphNode[]>([]);
   const [edges, setEdges] = useState<GraphEdge[]>([]);
   const [stats, setStats] = useState<GraphStats | null>(null);
   const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);

@@ -14,11 +14,12 @@ import { spawn as spawnProcess } from "node:child_process";
 import { mkdir, readdir, readFile, rm, stat, symlink, unlink, writeFile } from "node:fs/promises";
 import { existsSync, readdirSync } from "node:fs";
 import { homedir } from "node:os";
-import { join } from "node:path";
+import { dirname, join, sep } from "node:path";
 
 const STUDIO_HOME = process.env.ULTRATHINK_STUDIO_HOME || join(homedir(), ".ultrathink-studio");
 const SKILLS_LINK = join(STUDIO_HOME, "skills");
 const META_FILE = join(STUDIO_HOME, "skill-source.json");
+const OSS_KIT_DIR = join(STUDIO_HOME, "oss-kit");
 // No canonical remote registry yet — UltraThink skills live in the main repo
 // at <repo>/.claude/skills/. Set ULTRATHINK_SKILL_SOURCE=<git-url> to point at
 // a curated remote once one exists.
@@ -61,6 +62,28 @@ function countSkillsAt(path: string): number {
   } catch {
     return 0;
   }
+}
+
+function countSkillDirsAt(path: string): number {
+  try {
+    return readdirSync(path, { withFileTypes: true }).filter((e) => {
+      if ((!e.isDirectory() && !e.isSymbolicLink()) || e.name.startsWith("_")) return false;
+      return existsSync(join(path, e.name, "SKILL.md"));
+    }).length;
+  } catch {
+    return 0;
+  }
+}
+
+function resolveSkillsDir(root: string): string | null {
+  const nested = join(root, ".claude", "skills");
+  if (existsSync(nested)) return nested;
+  return countSkillDirsAt(root) > 0 ? root : null;
+}
+
+function cloneRootForLinkedSkills(path: string): string {
+  const suffix = `${sep}.claude${sep}skills`;
+  return path.endsWith(suffix) ? dirname(dirname(path)) : path;
 }
 
 interface Meta {
@@ -125,10 +148,16 @@ async function install(source: string): Promise<void> {
     emit({ kind: "install-error", message: `git clone exited ${code}` });
     process.exit(1);
   }
-  // Atomically swap the symlink: write to a temp link, rename over the existing one
+  const skillsDir = resolveSkillsDir(dst);
+  if (!skillsDir) {
+    emit({ kind: "install-error", message: `No skills directory found inside ${dst}` });
+    process.exit(1);
+  }
+
+  // Atomically swap the symlink: write to a temp link, then replace the existing one.
   const tmpLink = `${SKILLS_LINK}.tmp`;
   if (existsSync(tmpLink)) await unlink(tmpLink);
-  await symlink(dst, tmpLink, "dir");
+  await symlink(skillsDir, tmpLink, "dir");
   if (existsSync(SKILLS_LINK)) {
     // best-effort: read existing target so we can clean it up after swap
     const oldTarget = await readLink(SKILLS_LINK);
@@ -136,19 +165,19 @@ async function install(source: string): Promise<void> {
     if (oldTarget) {
       // schedule old target for removal but only if it's under STUDIO_HOME (safety)
       if (oldTarget.startsWith(STUDIO_HOME)) {
-        // eslint-disable-next-line @typescript-eslint/no-floating-promises
-        rm(oldTarget, { recursive: true, force: true }).catch(() => undefined);
+        const oldClone = cloneRootForLinkedSkills(oldTarget);
+        rm(oldClone, { recursive: true, force: true }).catch(() => undefined);
       }
     }
   }
-  await symlink(dst, SKILLS_LINK, "dir");
+  await symlink(skillsDir, SKILLS_LINK, "dir");
   await unlink(tmpLink).catch(() => undefined);
   await writeMeta({
     source,
     installedAt: new Date().toISOString(),
-    installedAtPath: dst,
+    installedAtPath: skillsDir,
   });
-  emit({ kind: "install-done", path: dst });
+  emit({ kind: "install-done", path: dst, skillsDir });
 }
 
 async function update(): Promise<void> {
@@ -177,19 +206,23 @@ async function list(): Promise<void> {
     return;
   }
   const entries = await readdir(root, { withFileTypes: true });
-  const skills: Array<{ name: string; layer?: string; description?: string }> = [];
+  const skills: Array<{ name: string; layer?: string; description?: string; triggers?: string[]; detail?: string; path?: string }> = [];
   for (const e of entries) {
     if (!e.isDirectory() || e.name.startsWith("_")) continue;
     const skillFile = join(root, e.name, "SKILL.md");
     if (!existsSync(skillFile)) continue;
     const head = await readFile(skillFile, "utf8")
-      .then((s) => s.slice(0, 1500))
+      .then((s) => s.slice(0, 6000))
       .catch(() => "");
     const fm = parseFrontmatter(head);
+    const body = stripFrontmatter(head);
     skills.push({
       name: fm.name ?? e.name,
       layer: fm.layer,
-      description: fm.description,
+      description: fm.description ?? extractDescription(body),
+      triggers: extractTriggers(fm.triggers ?? "", body),
+      detail: body.trim().slice(0, 2400),
+      path: skillFile,
     });
   }
   emit({ skills, origin: discovered?.origin ?? "claude-config" });
@@ -205,13 +238,18 @@ async function list(): Promise<void> {
  * Strategy: per-skill symlinks (not a whole-dir symlink) so user-installed
  * skills in ~/.claude/skills/ aren't shadowed wholesale.
  */
-async function syncToGlobal(): Promise<void> {
+async function syncToGlobal(sourceOverride?: string): Promise<void> {
   // Find the source registry: explicit linked dir, or repo .claude/skills, or env override
   const envSrc = process.env.ULTRATHINK_SKILL_REPO;
-  let source: string | null = null;
+  let source: string | null = sourceOverride ? resolveSkillsDir(sourceOverride) : null;
 
-  if (envSrc && existsSync(envSrc)) {
-    source = envSrc;
+  if (sourceOverride && !source) {
+    emit({ kind: "sync-error", message: `No skills directory found inside ${sourceOverride}` });
+    process.exit(1);
+  }
+
+  if (!source && envSrc && existsSync(envSrc)) {
+    source = resolveSkillsDir(envSrc);
   } else if (existsSync(SKILLS_LINK)) {
     source = SKILLS_LINK;
   } else {
@@ -289,14 +327,14 @@ async function syncToGlobal(): Promise<void> {
 }
 
 /**
- * Install or update the UltraThink OSS skill kit.
- * Clones (or pulls) https://github.com/InugamiDev/ultrathink-core into ~/.ultrathink-core,
+ * Install or update the UltraThink skill kit.
+ * Clones (or pulls) https://github.com/InuVerse/ultrathink into ~/.ultrathink-studio/oss-kit,
  * then symlinks every skill from there into ~/.claude/skills/ for global pickup.
  *
  * Idempotent: if the dir exists, runs `git pull` instead of clone.
  */
 async function installOssKit(source: string): Promise<void> {
-  const target = join(homedir(), ".ultrathink-core");
+  const target = OSS_KIT_DIR;
   emit({ kind: "oss-install-start", source, target });
 
   if (existsSync(target)) {
@@ -333,7 +371,7 @@ async function installOssKit(source: string): Promise<void> {
 }
 
 async function ossStatus(): Promise<void> {
-  const target = join(homedir(), ".ultrathink-core");
+  const target = OSS_KIT_DIR;
   const skillsDir = join(target, ".claude", "skills");
   const installed = existsSync(skillsDir);
   emit({
@@ -358,14 +396,69 @@ function parseFrontmatter(content: string): Record<string, string> {
   const m = content.match(/^---\n([\s\S]*?)\n---/);
   if (!m) return {};
   const out: Record<string, string> = {};
+  let blockKey: string | null = null;
+  let blockMode: "literal" | "folded" | "array" | null = null;
+  let blockLines: string[] = [];
+  const flushBlock = () => {
+    if (!blockKey) return;
+    const value = (blockMode === "literal" ? blockLines.join("\n") : blockLines.join(blockMode === "array" ? ", " : " ")).trim();
+    if (value) out[blockKey] = value;
+    blockKey = null;
+    blockMode = null;
+    blockLines = [];
+  };
+
   for (const line of m[1].split("\n")) {
+    if (blockKey && /^\s+/.test(line)) {
+      const value = line.trim().replace(/^-\s+/, "").trim();
+      if (value || blockMode === "literal") blockLines.push(value);
+      continue;
+    }
+    flushBlock();
     const sep = line.indexOf(":");
     if (sep < 0) continue;
     const k = line.slice(0, sep).trim();
     const v = line.slice(sep + 1).trim();
+    if (v === "|" || v === ">") {
+      blockKey = k;
+      blockMode = v === "|" ? "literal" : "folded";
+      continue;
+    }
+    if (!v) {
+      blockKey = k;
+      blockMode = "array";
+      continue;
+    }
     if (k && v) out[k] = v;
   }
+  flushBlock();
   return out;
+}
+
+function stripFrontmatter(content: string): string {
+  return content.replace(/^---\n[\s\S]*?\n---\n?/, "");
+}
+
+function extractDescription(content: string): string | undefined {
+  const lines = content
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .filter((line) => !line.startsWith("#") && !line.startsWith("<!--") && !line.startsWith("```"));
+  const first = lines.find((line) => line.length > 24);
+  return first?.slice(0, 420);
+}
+
+function extractTriggers(frontmatterTriggers: string, content: string): string[] {
+  const raw = (frontmatterTriggers || content.match(/Triggers? on:\s*([^\n]+)/i)?.[1] || "")
+    .trim()
+    .replace(/^\[/, "")
+    .replace(/\]$/, "");
+  return raw
+    .split(/[,;|\n]/)
+    .map((item) => item.trim().replace(/^-\s+/, "").replace(/^['"]|['"]$/g, "").trim())
+    .filter((item) => item.length > 0)
+    .slice(0, 12);
 }
 
 async function main(): Promise<void> {
@@ -392,11 +485,10 @@ async function main(): Promise<void> {
       await list();
       break;
     case "sync":
-      await syncToGlobal();
+      await syncToGlobal(process.argv[3]);
       break;
     case "install-oss": {
-      const src =
-        process.argv[3] ?? process.env.ULTRATHINK_OSS_REPO ?? "https://github.com/InugamiDev/ultrathink-core.git";
+      const src = process.argv[3] ?? process.env.ULTRATHINK_REPO ?? "https://github.com/InuVerse/ultrathink.git";
       await installOssKit(src);
       break;
     }

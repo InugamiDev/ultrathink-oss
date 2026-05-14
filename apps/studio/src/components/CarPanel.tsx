@@ -31,6 +31,22 @@ interface LogEntry {
   line: string;
 }
 
+// intent: CLI tools (claude / codex / vercel / vite) render progress via ANSI
+//         escapes + \r-redraws that look like garbage in a plain log view.
+// status: done — strips CSI/OSC escapes, keeps text after last \r, collapses
+//         repeated spinner frames so the log doesn't grow to 1000 identical
+//         lines per second.
+// next: full xterm.js + PTY backend if users want true terminal interop
+// confidence: high
+const ANSI_ESCAPE_RE = /(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~]|\]8;[^]*(?:|\\))/g;
+function cleanCliLine(raw: string): string {
+  if (!raw) return "";
+  // Carriage returns inside a single chunk are the spinner redrawing the same
+  // line — keep only the latest segment.
+  const afterCR = raw.includes("\r") ? raw.slice(raw.lastIndexOf("\r") + 1) : raw;
+  return afterCR.replace(ANSI_ESCAPE_RE, "").trimEnd();
+}
+
 interface Run {
   id: string;
   laneId: string;
@@ -63,8 +79,6 @@ interface RunSummary {
   startedAt: string;
 }
 
-const MAX_RECENT_LINES = 6;
-
 const LANE_COLORS: Array<{ label: string; value: string }> = [
   { label: "Purple", value: "var(--accent)" },
   { label: "Cyan", value: "var(--cyan)" },
@@ -87,8 +101,8 @@ const MODELS_BY_CLI: Record<string, Array<{ id: string; label: string }>> = {
     { id: "claude-haiku-4-5", label: "Haiku 4.5 — fastest, cheapest" },
   ],
   codex: [
-    { id: "gpt-5-codex", label: "gpt-5-codex — full coder" },
-    { id: "gpt-5-codex-mini", label: "gpt-5-codex-mini — cheaper / faster" },
+    { id: "", label: "Account default — safest for ChatGPT auth" },
+    { id: "gpt-5", label: "gpt-5 — API-key compatible" },
   ],
 };
 
@@ -239,8 +253,16 @@ export function CarPanel({ activeProjectDir }: CarPanelProps = {}) {
               break;
             case "log": {
               const stream = (p.stream as "stdout" | "stderr") ?? "stdout";
-              const line = (p.line as string) ?? "";
-              next.log = [...r.log, { stream, line }].slice(-500);
+              const raw = (p.line as string) ?? "";
+              // Clean ANSI + \r-redraws so spinners don't fill the log with
+              // garbage. Skip empties (a stripped spinner frame often is one).
+              const cleaned = cleanCliLine(raw);
+              if (!cleaned) break;
+              // Collapse a repeated spinner: if this matches the previous line
+              // verbatim, do nothing instead of appending another duplicate.
+              const last = r.log[r.log.length - 1];
+              if (last && last.stream === stream && last.line === cleaned) break;
+              next.log = [...r.log, { stream, line: cleaned }].slice(-500);
               break;
             }
             case "thinking":
@@ -741,11 +763,8 @@ function RunCard({ run, onCancel }: { run: Run; onCancel: () => void }) {
             <span style={{ color: "var(--text-dim)" }}>waiting for first output…</span>
           ) : (
             run.log.map((l, i) => (
-              <div
-                key={i}
-                style={{ ...logLineStyle, color: l.stream === "stderr" ? "var(--amber)" : "var(--text-muted)" }}
-              >
-                {truncate(l.line, 200)}
+              <div key={i} style={{ ...logLineStyle, color: l.stream === "stderr" ? "var(--amber)" : "var(--text)" }}>
+                {l.line}
               </div>
             ))
           )}
@@ -901,7 +920,7 @@ const textareaStyle: React.CSSProperties = {
 const primaryBtnStyle: React.CSSProperties = {
   fontSize: "12px",
   fontWeight: 600,
-  color: "#0c0d10",
+  color: "var(--bg)",
   background: "var(--accent)",
   border: "none",
   borderRadius: "var(--radius-md)",
@@ -972,24 +991,26 @@ const runTaskStyle: React.CSSProperties = {
   lineHeight: 1.4,
 };
 const logStyle: React.CSSProperties = {
-  background: "var(--bg-elevated)",
+  // Was 10.5px / text-muted / nowrap+ellipsis — unreadable. Now actual
+  // terminal-style: full text color, wrapped lines, taller window.
+  background: "var(--bg)",
   border: "1px solid var(--border)",
   borderRadius: "var(--radius-sm)",
-  padding: "var(--space-2) var(--space-3)",
+  padding: "var(--space-3)",
   fontFamily: "var(--font-mono)",
-  fontSize: "10.5px",
-  color: "var(--text-muted)",
+  fontSize: "12px",
+  lineHeight: 1.5,
+  color: "var(--text)",
   display: "flex",
   flexDirection: "column",
-  gap: "2px",
-  minHeight: "60px",
-  maxHeight: "120px",
+  gap: "3px",
+  minHeight: "80px",
+  maxHeight: "260px",
   overflow: "auto",
 };
 const logLineStyle: React.CSSProperties = {
-  whiteSpace: "nowrap",
-  overflow: "hidden",
-  textOverflow: "ellipsis",
+  whiteSpace: "pre-wrap",
+  wordBreak: "break-word",
 };
 const runFootStyle: React.CSSProperties = {
   display: "flex",

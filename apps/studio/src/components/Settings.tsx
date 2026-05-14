@@ -7,6 +7,8 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { open as openInShell } from "@tauri-apps/plugin-shell";
 import { getKey, setKey, deleteKey, type KeyAccount } from "../lib/keychain.js";
+import { BuildFlowSection } from "./BuildFlowSection.js";
+import { MemoryDatabaseSection } from "./MemoryDatabaseSection.js";
 import { ModelPicker } from "./ModelPicker.js";
 
 const ONBOARDING_KEYS = [
@@ -43,6 +45,7 @@ const ADAPTER_DEFAULTS: Record<AdapterId, string> = {
 
 interface SettingsProps {
   onClose: () => void;
+  initialSection?: "builder";
 }
 
 interface SkillStatus {
@@ -61,7 +64,7 @@ interface CliPrereq {
   installHint: string;
 }
 
-export function Settings({ onClose }: SettingsProps) {
+export function Settings({ onClose, initialSection }: SettingsProps) {
   const [skills, setSkills] = useState<SkillStatus | null>(null);
   const [prereqs, setPrereqs] = useState<CliPrereq[]>([]);
   const [telemetry, setTelemetry] = useState<"opt-in" | "opt-out">(
@@ -267,6 +270,12 @@ export function Settings({ onClose }: SettingsProps) {
             </Hint>
           )}
         </Section>
+
+        {/* MEMORY DATABASE — Neon Postgres URL (replaces the per-machine .env path) */}
+        <MemoryDatabaseSection />
+
+        {/* BUILD FLOW — guided prompt clarification (replaced Builder Campaign) */}
+        <BuildFlowSection />
 
         {/* PREREQS */}
         <Section title="Required CLIs" hint="Studio relies on these. Click any one to copy the install command.">
@@ -487,11 +496,11 @@ export function Settings({ onClose }: SettingsProps) {
               href="#"
               onClick={(e) => {
                 e.preventDefault();
-                openInShell("https://github.com/InugamiDev/ultrathink-core").catch(() => undefined);
+                openInShell("https://github.com/InuVerse/ultrathink").catch(() => undefined);
               }}
               style={{ color: "var(--accent)" }}
             >
-              github.com/InugamiDev/ultrathink-core
+              github.com/InuVerse/ultrathink
             </a>
             <br />
             Shortcuts: <kbd style={kbdStyle}>⌘`</kbd> debug terminal · <kbd style={kbdStyle}>⌘/</kbd> shortcut cheat
@@ -624,13 +633,14 @@ function PrereqCard({ prereq }: { prereq: CliPrereq }) {
         )}
       </div>
       {!prereq.ok && (
-        <code
+        <button
+          type="button"
           onClick={() => navigator.clipboard.writeText(prereq.installHint)}
           style={prereqInstallStyle}
           title="Click to copy"
         >
           {prereq.installHint}
-        </code>
+        </button>
       )}
     </div>
   );
@@ -1030,4 +1040,5 @@ const prereqInstallStyle: React.CSSProperties = {
   whiteSpace: "nowrap",
   overflow: "hidden",
   textOverflow: "ellipsis",
+  textAlign: "left",
 };

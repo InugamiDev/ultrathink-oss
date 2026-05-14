@@ -46,6 +46,7 @@ export function InsightsPanel() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [range, setRange] = useState<"24h" | "7d" | "30d" | "all">("7d");
+  const [refreshNonce, setRefreshNonce] = useState(0);
 
   useEffect(() => {
     setLoading(true);
@@ -58,7 +59,7 @@ export function InsightsPanel() {
         setError(String(e));
         setLoading(false);
       });
-  }, [range]);
+  }, [range, refreshNonce]);
 
   return (
     <div style={rootStyle}>
@@ -75,18 +76,31 @@ export function InsightsPanel() {
                   : "No telemetry yet — once you run builds and CAR runs, KPIs appear here."}
           </p>
         </div>
-        <div style={rangeWrapStyle}>
-          {(["24h", "7d", "30d", "all"] as const).map((r) => (
-            <button
-              key={r}
-              onClick={() => setRange(r)}
-              style={{ ...rangeBtnStyle, ...(range === r ? rangeBtnActiveStyle : null) }}
-            >
-              {r}
-            </button>
-          ))}
+        <div style={headerActionsStyle}>
+          <button type="button" onClick={() => setRefreshNonce((n) => n + 1)} style={refreshBtnStyle}>
+            Refresh
+          </button>
+          <div style={rangeWrapStyle}>
+            {(["24h", "7d", "30d", "all"] as const).map((r) => (
+              <button
+                key={r}
+                type="button"
+                onClick={() => setRange(r)}
+                style={{ ...rangeBtnStyle, ...(range === r ? rangeBtnActiveStyle : null) }}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
+
+      {!loading && !error && !data.hasData && (
+        <div style={emptyHeroStyle}>
+          <strong>Insights is waiting for activity.</strong> Start a Build chat, run CAR, or finish a preview/deploy.
+          Studio now reads both telemetry and saved session logs.
+        </div>
+      )}
 
       <div style={kpiGridStyle}>
         <KpiCard label="Builds shipped" value={fmt(data.buildsShipped)} />
@@ -195,7 +209,7 @@ function ActivityItem({ ev }: { ev: TelemetryEvent }) {
               <span>{formatMs(ev.durationMs)}</span>
             </>
           )}
-          {ev.costUsd !== undefined && (
+          {typeof ev.costUsd === "number" && (
             <>
               <span>·</span>
               <span style={{ color: "var(--text)" }}>${ev.costUsd.toFixed(2)}</span>
@@ -239,6 +253,11 @@ const headerStyle: React.CSSProperties = {
   justifyContent: "space-between",
   marginBottom: "var(--space-6)",
 };
+const headerActionsStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "var(--space-2)",
+};
 const h2Style: React.CSSProperties = {
   fontSize: "20px",
   fontWeight: 700,
@@ -256,6 +275,16 @@ const rangeWrapStyle: React.CSSProperties = {
   border: "1px solid var(--border)",
   borderRadius: "var(--radius-md)",
   padding: "3px",
+};
+const refreshBtnStyle: React.CSSProperties = {
+  fontSize: "11px",
+  fontWeight: 600,
+  color: "var(--text-muted)",
+  background: "var(--bg-elevated)",
+  border: "1px solid var(--border)",
+  borderRadius: "var(--radius-md)",
+  padding: "7px 12px",
+  cursor: "pointer",
 };
 const rangeBtnStyle: React.CSSProperties = {
   fontSize: "11px",
@@ -276,6 +305,16 @@ const kpiGridStyle: React.CSSProperties = {
   gridTemplateColumns: "repeat(4, 1fr)",
   gap: "var(--space-4)",
   marginBottom: "var(--space-6)",
+};
+const emptyHeroStyle: React.CSSProperties = {
+  background: "linear-gradient(135deg, rgba(167,139,250,0.12), rgba(52,211,153,0.08))",
+  border: "1px solid rgba(167,139,250,0.28)",
+  borderRadius: "var(--radius-lg)",
+  color: "var(--text-muted)",
+  fontSize: "12px",
+  lineHeight: 1.55,
+  padding: "var(--space-4) var(--space-5)",
+  marginBottom: "var(--space-5)",
 };
 const kpiCardStyle: React.CSSProperties = {
   background: "var(--bg-elevated)",

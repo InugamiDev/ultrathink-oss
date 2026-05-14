@@ -9,9 +9,6 @@
 
 import { spawn as childSpawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { unlink } from "node:fs/promises";
-import { existsSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 
 import { JsonlStreamParser, normaliseClaudeEvent, normaliseCodexEvent } from "./parse.js";
@@ -149,7 +146,17 @@ export function createSpawn(opts: SpawnOptions, cfg: EngineConfig = {}): SpawnHa
       }
 
       // 3. spawn flags — branch by adapter
+      // intent: honor opts.permissionMode instead of always using dangerous bypass
+      // status: done — audit 03 HIGH (permissionMode was exposed but ignored)
+      // next: surface non-bypass modes in the Studio UI so users can pick
+      // confidence: high
+      //
+      // permissionMode === undefined keeps the historical bypass behavior so
+      // Studio's automation flow (no human to click approve) doesn't regress.
+      // Callers that explicitly request a safer mode now actually get it.
       const adapter = opts.adapter ?? "claude";
+      const mode = opts.permissionMode ?? "bypassPermissions";
+      const wantsBypass = mode === "bypassPermissions";
       let bin: string;
       let args: string[];
       if (adapter === "codex") {
@@ -158,23 +165,24 @@ export function createSpawn(opts: SpawnOptions, cfg: EngineConfig = {}): SpawnHa
         //
         // --skip-git-repo-check: codex refuses to run outside a git repo by default;
         //   Studio projects under ~/Studio/projects/<slug>/ are bare dirs at first.
-        //
-        // Codex defaults to a read-only sandbox + per-command approval prompt.
-        // In Studio's automation flow there's no human to click "approve" so the
-        // session would silently die after 60s. Passing the bypass flag matches
-        // the semantics we already grant claude via --dangerously-skip-permissions.
         bin = CODEX_BIN;
         const prelude = decision.appendSystemPrompt ? `${decision.appendSystemPrompt}\n\n---\n\n` : "";
-        args = [
-          "exec",
-          "--json",
-          "--skip-git-repo-check",
-          "--dangerously-bypass-approvals-and-sandbox",
-          `${prelude}${opts.prompt}`,
-        ];
-        if (opts.model) {
-          args.push("--model", opts.model);
+        args = ["exec", "--json", "--skip-git-repo-check"];
+        if (wantsBypass) {
+          // Studio's default automation flow: no human to click "approve".
+          args.push("--dangerously-bypass-approvals-and-sandbox");
+        } else if (mode === "acceptEdits" || mode === "auto") {
+          // Writes inside the project workspace, ask only when something fails.
+          args.push("--sandbox", "workspace-write", "--ask-for-approval", "on-failure");
+        } else if (mode === "plan") {
+          // Read-only; planning, no writes.
+          args.push("--sandbox", "read-only", "--ask-for-approval", "untrusted");
+        } else {
+          // "default" / "dontAsk" — read-only, ask on untrusted commands.
+          args.push("--sandbox", "read-only");
         }
+        args.push(`${prelude}${opts.prompt}`);
+        if (opts.model) args.push("--model", opts.model);
       } else {
         bin = CLAUDE_BIN;
         // Single-shot per turn: prompt comes via `-p`, output streams as JSON.
@@ -194,18 +202,23 @@ export function createSpawn(opts: SpawnOptions, cfg: EngineConfig = {}): SpawnHa
           sessionId,
           "--add-dir",
           opts.projectDir,
-          // Studio runs claude single-shot. Two things that block writes by default:
+        ];
+        if (wantsBypass) {
+          // Studio's automation path. Two things block writes by default:
           //   1. -p mode is conservative ("session is read-only" posture).
-          //      → --dangerously-skip-permissions tells claude to skip approval prompts.
+          //      → --dangerously-skip-permissions skips approval prompts.
           //   2. The user's ~/.claude/settings.json may have an explicit allowlist
           //      (e.g. only mcp__stitch / mcp__pencil) that excludes Edit/Write/Bash.
-          //      That denies the policy check even when permission prompts are skipped,
-          //      surfacing as "patch rejected: writing is blocked by read-only sandbox".
           //      → --allowedTools with the full core toolset overrides for this session.
-          "--dangerously-skip-permissions",
-          "--allowedTools",
-          "Bash Edit Write Read Glob Grep LS WebFetch WebSearch TodoWrite NotebookEdit Task MultiEdit",
-        ];
+          args.push(
+            "--dangerously-skip-permissions",
+            "--allowedTools",
+            "Bash Edit Write Read Glob Grep LS WebFetch WebSearch TodoWrite NotebookEdit Task MultiEdit"
+          );
+        } else {
+          // Honor the requested mode literally — claude maps these natively.
+          args.push("--permission-mode", mode);
+        }
         if (opts.model) args.push("--model", opts.model);
         if (opts.bare) args.push("--bare");
         if (mcpPath) args.push("--mcp-config", mcpPath);

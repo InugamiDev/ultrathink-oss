@@ -6,7 +6,8 @@ set -euo pipefail
 
 # ─── Config ───────────────────────────────────────────────────────────────────
 CONFIG_FILE="$HOME/.ultrathink/config.json"
-TOKEN_FILE="/tmp/ultrathink-builder-token-$USER"
+# Path moved from /tmp (audit 02 — symlink-hijack + default-umask race).
+TOKEN_FILE="$HOME/.ultrathink-studio/builder-token.json"
 API_URL="${ULTRATHINK_API_URL:-http://localhost:3333}"
 
 # ─── Guard: OSS users skip silently ──────────────────────────────────────────

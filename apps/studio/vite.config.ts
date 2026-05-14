@@ -38,5 +38,23 @@ export default defineConfig(async () => ({
     target: "esnext",
     minify: "esbuild",
     sourcemap: true,
+    // The 3D graph stack is isolated behind lazy panels; keep warnings focused on eager chunks.
+    chunkSizeWarningLimit: 1300,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return undefined;
+          if (id.includes("@tauri-apps")) return "tauri";
+          if (id.includes("@tanstack")) return "query";
+          if (id.includes("@codemirror") || id.includes("@uiw/react-codemirror")) return "editor";
+          if (id.includes("@xyflow")) return "flow";
+          if (id.includes("react-force-graph") || id.includes("three") || id.includes("3d-force-graph")) {
+            return "graph3d";
+          }
+          if (/node_modules\/(react|react-dom|scheduler)\//.test(id)) return "react";
+          return "vendor";
+        },
+      },
+    },
   },
 }));

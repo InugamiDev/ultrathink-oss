@@ -2,7 +2,7 @@
 // status: done
 // confidence: high
 
-import { getClient, type SqlClient } from "./client.js";
+import { getClient } from "./client.js";
 import { type Memory, calculateRecallScore, touchMemories } from "./memory.js";
 import { getActiveAdaptations, formatAdaptations } from "./adaptation.js";
 import { encodeMemoryAAAK, formatAdaptationsAAAK } from "./aaak.js";
@@ -90,8 +90,6 @@ export async function recall(scope?: string, options: RecallOptions = {}): Promi
   // Build output with budget tracking
   const sections: string[] = [];
   const touchIds: string[] = [];
-  let totalTokens = 0;
-
   for (const budget of budgets) {
     const bucket = layerBuckets.get(budget.layer) ?? [];
     if (bucket.length === 0) continue;
@@ -133,7 +131,6 @@ export async function recall(scope?: string, options: RecallOptions = {}): Promi
       } else {
         sections.push(lines.join("\n"));
       }
-      totalTokens += layerTokens;
     }
   }
 

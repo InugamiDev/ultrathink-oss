@@ -232,21 +232,21 @@ head -n $(grep -n "^---$" .claude/skills/my-skill/SKILL.md | tail -1 | cut -d: -
 **Diagnosis**:
 1. Check for missing dependencies:
    ```bash
-   cd dashboard && npm install
+   pnpm install --filter @ultrathink/dashboard...
    ```
 2. Check for port conflict:
    ```bash
    lsof -i :3333
    ```
-3. Check Node.js version (requires Node 18+):
+3. Check Node.js version (requires Node 22+):
    ```bash
    node --version
    ```
 
 **Fix**:
-- Install dependencies: `cd dashboard && npm install`
+- Install dependencies: `pnpm install --filter @ultrathink/dashboard...`
 - Kill the process using port 3333, or change the port in `ck.json`
-- Upgrade Node.js if below v18
+- Upgrade Node.js if below v22
 
 ### Dashboard Shows Empty Data
 

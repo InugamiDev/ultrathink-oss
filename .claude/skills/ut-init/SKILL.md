@@ -15,17 +15,17 @@ Set up UltraThink in the current project or globally.
 Run the global installer:
 
 ```bash
-"${ULTRATHINK_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}/scripts/init-global.sh"
+"${ULTRATHINK_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}/scripts/install.sh"
 ```
 
-This symlinks all skills, rules, agents, and hooks into `~/.claude/` so every Claude Code session has UltraThink.
+This symlinks skills, references, agents, hooks, and runner templates into `~/.claude/`, `~/.codex/`, and `~/.ultrathink/`.
 
 ## If $ARGUMENTS contains "--uninstall"
 
 Remove UltraThink from global config:
 
 ```bash
-"${ULTRATHINK_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}/scripts/init-global.sh" --uninstall
+"${ULTRATHINK_DIR:-$(cd "$(dirname "$0")/../.." && pwd)}/scripts/install.sh" --uninstall
 ```
 
 ## Default (local project init)

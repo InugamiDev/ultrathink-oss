@@ -3,8 +3,9 @@
 // next: filter chips by trigger; "open SKILL.md" button; usage stats from telemetry
 // confidence: medium
 
-import { useEffect, useState } from "react";
+import { useMemo, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 type Layer = "all" | "orchestrator" | "hub" | "utility" | "domain";
 
@@ -13,6 +14,8 @@ interface Skill {
   layer: Exclude<Layer, "all">;
   description: string;
   triggers: string[];
+  detail?: string;
+  path?: string;
   invocations?: number;
 }
 
@@ -21,6 +24,8 @@ interface RegistrySkill {
   layer?: string;
   description?: string;
   triggers?: string[] | string;
+  detail?: string;
+  path?: string;
 }
 
 interface RegistryListResponse {
@@ -56,39 +61,37 @@ const LAYER_META: Record<Exclude<Layer, "all">, { label: string; color: string; 
 };
 
 export function SkillsLibraryPanel() {
+  const queryClient = useQueryClient();
   const [layer, setLayer] = useState<Layer>("all");
   const [query, setQuery] = useState("");
-  const [skills, setSkills] = useState<Skill[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    invoke<RegistryListResponse>("skill_registry_list")
-      .then((res) => {
-        const rows = res?.skills ?? [];
-        if (rows.length === 0) {
-          setSkills([]);
-          setError(
-            "No skills found. Run `skill-sync sync` from Settings to symlink the UltraThink registry into ~/.claude/skills/."
-          );
-        } else {
-          setSkills(
-            rows.map((s) => ({
-              name: s.name,
-              layer: normalizeLayer(s.layer),
-              description: s.description ?? "",
-              triggers: normalizeTriggers(s.triggers),
-            }))
-          );
-        }
-        setLoading(false);
-      })
-      .catch((e) => {
-        setError(`Couldn't read skill registry: ${e}`);
-        setSkills([]);
-        setLoading(false);
-      });
-  }, []);
+  const [selectedName, setSelectedName] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const {
+    data: skills = [],
+    isLoading: loading,
+    error,
+  } = useQuery({
+    queryKey: ["skillRegistry"],
+    queryFn: async () => {
+      const res = await invoke<RegistryListResponse>("skill_registry_list");
+      const rows = res?.skills ?? [];
+      return rows.map((s) => ({
+        name: s.name,
+        layer: normalizeLayer(s.layer),
+        description: s.description ?? "",
+        triggers: normalizeTriggers(s.triggers),
+        detail: s.detail,
+        path: s.path,
+      }));
+    },
+  });
+  const errorMessage =
+    actionError ??
+    (error
+      ? `Couldn't read skill registry: ${error}`
+      : skills.length === 0
+        ? "No skills found. Run `skill-sync sync` from Settings to symlink the UltraThink registry into ~/.claude/skills/."
+        : null);
 
   const filtered = skills.filter((s) => {
     if (layer !== "all" && s.layer !== layer) return false;
@@ -109,6 +112,12 @@ export function SkillsLibraryPanel() {
     utility: skills.filter((s) => s.layer === "utility").length,
     domain: skills.filter((s) => s.layer === "domain").length,
   };
+
+  const selectedSkill = skills.find((s) => s.name === selectedName) ?? filtered[0] ?? null;
+  const linkedSkills = useMemo(
+    () => (selectedSkill ? findLinkedSkills(selectedSkill, skills) : []),
+    [selectedSkill, skills]
+  );
 
   return (
     <div style={rootStyle}>
@@ -135,8 +144,8 @@ export function SkillsLibraryPanel() {
             <p style={subStyle}>
               {loading
                 ? "Reading skill registry…"
-                : error
-                  ? error
+                : errorMessage
+                  ? errorMessage
                   : layer === "all"
                     ? `${skills.length} skills registered with this Studio install.`
                     : LAYER_META[layer].description}
@@ -153,70 +162,79 @@ export function SkillsLibraryPanel() {
           </div>
         </div>
 
-        <div style={gridStyle}>
-          {filtered.map((s) => (
-            <SkillCard key={s.name} skill={s} />
-          ))}
-          {!loading && filtered.length === 0 && (
-            <div style={emptyStyle}>
-              {skills.length === 0 ? (
-                <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "var(--space-3)" }}>
-                  <div>No skills loaded.</div>
-                  <button
-                    onClick={async () => {
-                      try {
-                        await invoke("oss_kit_install");
-                        const res = await invoke<{ skills?: Array<{ name: string }> }>("skill_registry_list");
-                        const rows = res?.skills ?? [];
-                        if (rows.length > 0) {
-                          setSkills(
-                            rows.map(
-                              (s: {
-                                name: string;
-                                layer?: string;
-                                description?: string;
-                                triggers?: string[] | string;
-                              }) => ({
-                                name: s.name,
-                                layer: normalizeLayer(s.layer),
-                                description: s.description ?? "",
-                                triggers: normalizeTriggers(s.triggers),
-                              })
-                            )
-                          );
-                          setError(null);
+        <div style={libraryBodyStyle}>
+          <div style={gridStyle}>
+            {filtered.map((s) => (
+              <SkillCard key={s.name} skill={s} active={selectedSkill?.name === s.name} onSelect={() => setSelectedName(s.name)} />
+            ))}
+            {!loading && filtered.length === 0 && (
+              <div style={emptyStyle}>
+                {skills.length === 0 ? (
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "var(--space-3)" }}>
+                    <div>No skills loaded.</div>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        try {
+                          await invoke("oss_kit_install", { source: "https://github.com/InuVerse/ultrathink.git" });
+                          setActionError(null);
+                          await queryClient.invalidateQueries({ queryKey: ["skillRegistry"] });
+                        } catch (e) {
+                          setActionError(`Install failed: ${e}`);
                         }
-                      } catch (e) {
-                        setError(`Install failed: ${e}`);
-                      }
-                    }}
-                    style={{
-                      fontSize: "12px",
-                      fontWeight: 600,
-                      color: "var(--bg)",
-                      background: "var(--accent)",
-                      border: "none",
-                      borderRadius: "var(--radius-md)",
-                      padding: "8px 16px",
-                      cursor: "pointer",
-                    }}
-                  >
-                    Install UltraThink Core kit
-                  </button>
-                  <div style={{ fontSize: "10.5px", color: "var(--text-dim)" }}>
-                    Clones <code>github.com/InugamiDev/ultrathink-core</code> to <code>~/.ultrathink-core</code> and
-                    symlinks 200+ skills.
+                      }}
+                      style={{
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        color: "var(--bg)",
+                        background: "var(--accent)",
+                        border: "none",
+                        borderRadius: "var(--radius-md)",
+                        padding: "8px 16px",
+                        cursor: "pointer",
+                      }}
+                    >
+                      Install UltraThink skill kit
+                    </button>
+                    <div style={{ fontSize: "10.5px", color: "var(--text-dim)" }}>
+                      Clones <code>github.com/InuVerse/ultrathink</code> to{" "}
+                      <code>~/.ultrathink-studio/oss-kit</code> and symlinks 200+ skills.
+                    </div>
                   </div>
-                </div>
-              ) : (
-                "No skills match this filter."
-              )}
-            </div>
+                ) : (
+                  "No skills match this filter."
+                )}
+              </div>
+            )}
+          </div>
+
+          {selectedSkill && (
+            <SkillDetail skill={selectedSkill} linkedSkills={linkedSkills} onSelect={(name) => setSelectedName(name)} />
           )}
         </div>
       </div>
     </div>
   );
+}
+
+function findLinkedSkills(skill: Skill, all: Skill[]): Skill[] {
+  const triggerWords = new Set(skill.triggers.map((t) => t.toLowerCase()).filter((t) => t.length > 2));
+  const haystack = `${skill.name} ${skill.description} ${skill.detail ?? ""}`.toLowerCase();
+  return all
+    .filter((candidate) => candidate.name !== skill.name)
+    .map((candidate) => {
+      let score = candidate.layer === skill.layer ? 1 : 0;
+      if (haystack.includes(candidate.name.toLowerCase())) score += 4;
+      for (const t of candidate.triggers) {
+        if (triggerWords.has(t.toLowerCase())) score += 2;
+      }
+      if (candidate.description && haystack.includes(candidate.description.slice(0, 32).toLowerCase())) score += 1;
+      return { candidate, score };
+    })
+    .filter((row) => row.score > 0)
+    .sort((a, b) => b.score - a.score || a.candidate.name.localeCompare(b.candidate.name))
+    .slice(0, 8)
+    .map((row) => row.candidate);
 }
 
 function NavItem({
@@ -241,15 +259,15 @@ function NavItem({
   );
 }
 
-function SkillCard({ skill }: { skill: Skill }) {
+function SkillCard({ skill, active, onSelect }: { skill: Skill; active: boolean; onSelect: () => void }) {
   const meta = LAYER_META[skill.layer];
   return (
-    <div style={cardStyle}>
+    <button type="button" onClick={onSelect} style={{ ...cardStyle, ...(active ? cardActiveStyle : null) }}>
       <div style={cardHeadStyle}>
         <span style={skillNameStyle}>{skill.name}</span>
         <span style={{ ...layerChipStyle, color: meta.color, borderColor: meta.color }}>{skill.layer}</span>
       </div>
-      <div style={descStyle}>{skill.description}</div>
+      <div style={descStyle}>{skill.description || "No summary yet. Open the detail panel for the raw skill excerpt."}</div>
       <div style={triggersStyle}>
         {skill.triggers.map((t) => (
           <span key={t} style={triggerChipStyle}>
@@ -263,7 +281,62 @@ function SkillCard({ skill }: { skill: Skill }) {
           <span style={footValueStyle}>{skill.invocations.toLocaleString()}</span>
         </div>
       )}
-    </div>
+    </button>
+  );
+}
+
+function SkillDetail({
+  skill,
+  linkedSkills,
+  onSelect,
+}: {
+  skill: Skill;
+  linkedSkills: Skill[];
+  onSelect: (name: string) => void;
+}) {
+  const meta = LAYER_META[skill.layer];
+  return (
+    <aside style={detailStyle} aria-label={`Skill detail for ${skill.name}`}>
+      <div style={detailHeaderStyle}>
+        <span style={{ ...layerChipStyle, color: meta.color, borderColor: meta.color }}>{skill.layer}</span>
+        <h3 style={detailTitleStyle}>{skill.name}</h3>
+      </div>
+      <p style={detailDescStyle}>{skill.description || "This skill does not expose a summary yet."}</p>
+      {skill.path && <div style={detailPathStyle}>{skill.path}</div>}
+      <div style={detailSectionTitleStyle}>Triggers</div>
+      <div style={triggersStyle}>
+        {skill.triggers.length > 0 ? (
+          skill.triggers.map((t) => (
+            <span key={t} style={triggerChipStyle}>
+              {t}
+            </span>
+          ))
+        ) : (
+          <span style={mutedTinyStyle}>No explicit triggers found.</span>
+        )}
+      </div>
+      <div style={detailSectionTitleStyle}>Linked Skills</div>
+      <div style={linkedListStyle}>
+        {linkedSkills.length > 0 ? (
+          linkedSkills.map((s) => (
+            <button key={s.name} type="button" onClick={() => onSelect(s.name)} style={linkedSkillStyle}>
+              <span style={{ flex: 1 }}>{s.name}</span>
+              <span style={{ ...layerChipStyle, color: LAYER_META[s.layer].color, borderColor: LAYER_META[s.layer].color }}>
+                {s.layer}
+              </span>
+            </button>
+          ))
+        ) : (
+          <span style={mutedTinyStyle}>No linked skills detected from this registry excerpt.</span>
+        )}
+      </div>
+      {skill.detail && (
+        <>
+          <div style={detailSectionTitleStyle}>Skill Excerpt</div>
+          <pre style={excerptStyle}>{skill.detail}</pre>
+        </>
+      )}
+    </aside>
   );
 }
 
@@ -371,12 +444,20 @@ const searchInputStyle: React.CSSProperties = {
   color: "var(--text)",
   fontSize: "12px",
 };
+const libraryBodyStyle: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "minmax(320px, 1fr) minmax(320px, 420px)",
+  gap: "var(--space-5)",
+  alignItems: "start",
+};
 const gridStyle: React.CSSProperties = {
   display: "grid",
   gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
   gap: "var(--space-4)",
 };
 const cardStyle: React.CSSProperties = {
+  width: "100%",
+  textAlign: "left",
   background: "var(--bg-elevated)",
   border: "1px solid var(--border)",
   borderRadius: "var(--radius-lg)",
@@ -384,6 +465,11 @@ const cardStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
   gap: "var(--space-3)",
+  cursor: "pointer",
+};
+const cardActiveStyle: React.CSSProperties = {
+  borderColor: "var(--accent)",
+  boxShadow: "0 0 0 1px rgba(167,139,250,0.25)",
 };
 const cardHeadStyle: React.CSSProperties = {
   display: "flex",
@@ -455,4 +541,95 @@ const emptyStyle: React.CSSProperties = {
   color: "var(--text-dim)",
   fontSize: "12px",
   padding: "var(--space-8)",
+};
+const detailStyle: React.CSSProperties = {
+  position: "sticky",
+  top: 0,
+  maxHeight: "calc(100vh - 160px)",
+  overflow: "auto",
+  background: "var(--bg-card)",
+  border: "1px solid var(--border)",
+  borderRadius: "var(--radius-lg)",
+  padding: "var(--space-5)",
+  boxShadow: "0 18px 48px rgba(0,0,0,0.28)",
+};
+const detailHeaderStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "var(--space-2)",
+  marginBottom: "var(--space-3)",
+};
+const detailTitleStyle: React.CSSProperties = {
+  minWidth: 0,
+  color: "var(--text)",
+  fontSize: "16px",
+  fontWeight: 700,
+  fontFamily: "var(--font-mono)",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+};
+const detailDescStyle: React.CSSProperties = {
+  color: "var(--text-muted)",
+  fontSize: "12px",
+  lineHeight: 1.55,
+  marginBottom: "var(--space-3)",
+};
+const detailPathStyle: React.CSSProperties = {
+  color: "var(--text-dim)",
+  background: "var(--bg)",
+  border: "1px solid var(--border)",
+  borderRadius: "var(--radius-sm)",
+  padding: "6px 8px",
+  fontSize: "10px",
+  fontFamily: "var(--font-mono)",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+  whiteSpace: "nowrap",
+  marginBottom: "var(--space-4)",
+};
+const detailSectionTitleStyle: React.CSSProperties = {
+  marginTop: "var(--space-4)",
+  marginBottom: "var(--space-2)",
+  color: "var(--text-dim)",
+  fontSize: "10px",
+  fontWeight: 800,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+};
+const linkedListStyle: React.CSSProperties = {
+  display: "grid",
+  gap: "6px",
+};
+const linkedSkillStyle: React.CSSProperties = {
+  display: "flex",
+  alignItems: "center",
+  gap: "8px",
+  width: "100%",
+  color: "var(--text)",
+  background: "var(--bg)",
+  border: "1px solid var(--border)",
+  borderRadius: "var(--radius-sm)",
+  padding: "7px 9px",
+  fontSize: "11.5px",
+  fontFamily: "var(--font-mono)",
+  textAlign: "left",
+  cursor: "pointer",
+};
+const mutedTinyStyle: React.CSSProperties = {
+  color: "var(--text-dim)",
+  fontSize: "11px",
+};
+const excerptStyle: React.CSSProperties = {
+  maxHeight: "260px",
+  overflow: "auto",
+  whiteSpace: "pre-wrap",
+  color: "var(--text-muted)",
+  background: "var(--bg)",
+  border: "1px solid var(--border)",
+  borderRadius: "var(--radius-md)",
+  padding: "var(--space-3)",
+  fontSize: "10.5px",
+  lineHeight: 1.5,
+  fontFamily: "var(--font-mono)",
 };

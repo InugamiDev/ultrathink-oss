@@ -5,7 +5,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { MemoryGraph3D, type GraphData } from "./MemoryGraph3D.js";
+import { usePersistedState } from "../lib/persistedState.js";
 
 interface MemoryDetail {
   id: string;
@@ -30,19 +32,30 @@ interface MemoryGraphPanelProps {
   projectName?: string;
   /** Active project's absolute dir — only used as a fallback scope token. */
   projectDir?: string;
+  onNewMemory?: () => void;
 }
 
-export function MemoryGraphPanel({ projectName, projectDir }: MemoryGraphPanelProps = {}) {
-  const [data, setData] = useState<GraphData | null>(null);
-  const [loading, setLoading] = useState(true);
+type ScopeMode = "project" | "all";
+type WingFilter = "all" | "agent" | "user" | "knowledge" | "experience";
+type GraphMode = "3d" | "2d";
+type MemoryGraphNode = GraphData["nodes"][number];
+
+export function MemoryGraphPanel({ projectName, projectDir, onNewMemory }: MemoryGraphPanelProps = {}) {
+  const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [selected, setSelected] = useState<MemoryDetail | null>(null);
+  const [selectedId, setSelectedId] = usePersistedState<string | null>("studio:memory:selected-node-id", null);
   const [filter, setFilter] = useState<string>("");
+  const [wingFilter, setWingFilter] = usePersistedState<WingFilter>("studio:memory:hovered-wing-filter", "all");
+  const [graphMode, setGraphMode] = usePersistedState<GraphMode>("studio:memory:graph-mode", "3d");
   // Caps visible nodes — past ~120 even three.js gets cluttered for legibility.
   // The slider on the control bar lets the user crank to 500 if they want.
   const [maxNodes, setMaxNodes] = useState<number>(80);
   // "project" → only memories scoped to this project; "all" → entire graph.
-  const [scopeMode, setScopeMode] = useState<"project" | "all">(projectName ? "project" : "all");
+  const [scopeMode, setScopeMode] = usePersistedState<ScopeMode>(
+    "studio:memory:scope-mode",
+    projectName ? "project" : "all"
+  );
   const [seeding, setSeeding] = useState<boolean>(false);
   // Track wrap dimensions so the canvas resizes with the panel.
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -58,39 +71,52 @@ export function MemoryGraphPanel({ projectName, projectDir }: MemoryGraphPanelPr
     return () => ro.disconnect();
   }, []);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const scope =
-        scopeMode === "project" ? (projectName ?? (projectDir ? projectDir.split("/").pop() : undefined)) : undefined;
+  const effectiveScopeMode: ScopeMode = projectName ? scopeMode : "all";
+  const scope =
+    effectiveScopeMode === "project" ? (projectName ?? (projectDir ? projectDir.split("/").pop() : undefined)) : undefined;
+
+  const graphQuery = useQuery({
+    queryKey: ["memoryGraph", scope ?? "all"],
+    queryFn: async () => {
       const result = await invoke<GraphData | null>("query_memory_graph", { limit: 500, scope });
-      setData(result ?? { nodes: [], edges: [] });
-    } catch (err) {
-      setError(String(err));
-    } finally {
-      setLoading(false);
-    }
-  }, [scopeMode, projectName, projectDir]);
+      return result ?? { nodes: [], edges: [] };
+    },
+    placeholderData: (previous) => previous,
+  });
+
+  const data = graphQuery.data ?? { nodes: [], edges: [] };
+  const loading = graphQuery.isLoading;
+  const queryError = graphQuery.error ? String(graphQuery.error) : null;
+  const displayError = error ?? queryError;
+
+  const load = useCallback(async () => {
+    setError(null);
+    await graphQuery.refetch();
+  }, [graphQuery]);
 
   useEffect(() => {
-    void load();
-  }, [load]);
+    const onCreated = () => {
+      void queryClient.invalidateQueries({ queryKey: ["memoryGraph"] });
+      void load();
+    };
+    window.addEventListener("studio:memory-created", onCreated);
+    return () => window.removeEventListener("studio:memory-created", onCreated);
+  }, [load, queryClient]);
 
   // Search-filter + cap-by-importance-and-recall ranking. The 3D view's
   // force layout handles physical positioning — we just decide who shows.
   const visible = useMemo<GraphData>(() => {
-    if (!data) return { nodes: [], edges: [] };
     const f = filter.toLowerCase();
+    const wingNodes = wingFilter === "all" ? data.nodes : data.nodes.filter((n) => n.wing === wingFilter);
     const baseFiltered = f
-      ? data.nodes.filter(
+      ? wingNodes.filter(
           (n) =>
             n.title.toLowerCase().includes(f) ||
             n.category.toLowerCase().includes(f) ||
             (n.wing ?? "").toLowerCase().includes(f) ||
             (n.hall ?? "").toLowerCase().includes(f)
         )
-      : data.nodes;
+      : wingNodes;
     const ranked = [...baseFiltered].sort((a, b) => {
       const aS = (a.importance ?? 5) * 10 + (a.accessCount ?? 0);
       const bS = (b.importance ?? 5) * 10 + (b.accessCount ?? 0);
@@ -100,39 +126,73 @@ export function MemoryGraphPanel({ projectName, projectDir }: MemoryGraphPanelPr
     const idSet = new Set(filteredNodes.map((n) => n.id));
     const filteredEdges = data.edges.filter((e) => idSet.has(e.source) && idSet.has(e.target));
     return { nodes: filteredNodes, edges: filteredEdges };
-  }, [data, filter, maxNodes]);
+  }, [data, filter, maxNodes, wingFilter]);
 
-  const onSelectNode = useCallback(async (node: { id: string }) => {
-    try {
-      const detail = await invoke<MemoryDetail | null>("query_memory_node", { id: node.id });
-      setSelected(detail ?? null);
-    } catch (err) {
-      setError(String(err));
+  const onSelectNode = useCallback((node: { id: string }) => {
+    setSelectedId(node.id);
+  }, [setSelectedId]);
+
+  useEffect(() => {
+    if (!selectedId) {
+      setSelected(null);
+      return;
     }
-  }, []);
+    let cancelled = false;
+    void (async () => {
+    try {
+        const detail = await invoke<MemoryDetail | null>("query_memory_node", { id: selectedId });
+        if (!cancelled) setSelected(detail ?? null);
+    } catch (err) {
+        if (!cancelled) setError(String(err));
+    }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedId]);
 
-  const showProjectEmpty = !loading && !error && data && data.nodes.length === 0 && scopeMode === "project";
+  const showProjectEmpty = !loading && !displayError && data.nodes.length === 0 && effectiveScopeMode === "project";
 
   return (
     <div style={containerStyle}>
       <div style={controlBarStyle}>
         <span style={{ fontSize: "10px", color: "var(--text-dim)", letterSpacing: "0.06em" }}>KNOWLEDGE GRAPH</span>
+        <div style={scopeToggleStyle} role="tablist" aria-label="Graph view mode">
+          <button
+            role="tab"
+            aria-selected={graphMode === "3d"}
+            onClick={() => setGraphMode("3d")}
+            style={{ ...scopePillStyle, ...(graphMode === "3d" ? scopePillActiveStyle : null) }}
+            title="Spatial 3D memory graph"
+          >
+            3D
+          </button>
+          <button
+            role="tab"
+            aria-selected={graphMode === "2d"}
+            onClick={() => setGraphMode("2d")}
+            style={{ ...scopePillStyle, ...(graphMode === "2d" ? scopePillActiveStyle : null) }}
+            title="Flat 2D memory graph"
+          >
+            2D
+          </button>
+        </div>
         {projectName && (
           <div style={scopeToggleStyle} role="tablist" aria-label="Memory scope">
             <button
               role="tab"
-              aria-selected={scopeMode === "project"}
+              aria-selected={effectiveScopeMode === "project"}
               onClick={() => setScopeMode("project")}
-              style={{ ...scopePillStyle, ...(scopeMode === "project" ? scopePillActiveStyle : null) }}
+              style={{ ...scopePillStyle, ...(effectiveScopeMode === "project" ? scopePillActiveStyle : null) }}
               title={`Only show memories scoped to "${projectName}"`}
             >
               📁 {projectName}
             </button>
             <button
               role="tab"
-              aria-selected={scopeMode === "all"}
+              aria-selected={effectiveScopeMode === "all"}
               onClick={() => setScopeMode("all")}
-              style={{ ...scopePillStyle, ...(scopeMode === "all" ? scopePillActiveStyle : null) }}
+              style={{ ...scopePillStyle, ...(effectiveScopeMode === "all" ? scopePillActiveStyle : null) }}
               title="Show every memory in the graph"
             >
               All
@@ -145,12 +205,27 @@ export function MemoryGraphPanel({ projectName, projectDir }: MemoryGraphPanelPr
           onChange={(e) => setFilter(e.target.value)}
           style={filterInputStyle}
         />
+        <select
+          value={wingFilter}
+          onChange={(e) => setWingFilter(e.target.value as WingFilter)}
+          style={{ ...filterInputStyle, width: "132px" }}
+          title="Filter graph by memory wing"
+        >
+          {(["all", "agent", "user", "knowledge", "experience"] as WingFilter[]).map((wing) => (
+            <option key={wing} value={wing}>
+              {wing === "all" ? "all wings" : wing}
+            </option>
+          ))}
+        </select>
         {data && (
           <span style={{ fontSize: "11px", color: "var(--text-muted)" }}>
             {visible.nodes.length}/{data.nodes.length} nodes · {visible.edges.length} edges
           </span>
         )}
         <div style={{ display: "flex", alignItems: "center", gap: "6px", marginLeft: "auto" }}>
+          <button type="button" onClick={onNewMemory} style={primaryButtonStyle}>
+            + New memory
+          </button>
           <label style={{ fontSize: "10.5px", color: "var(--text-dim)" }}>show top</label>
           <input
             type="range"
@@ -210,6 +285,7 @@ export function MemoryGraphPanel({ projectName, projectDir }: MemoryGraphPanelPr
                         "seed_demo_memories",
                         { scope: projectName }
                       );
+                      await queryClient.invalidateQueries({ queryKey: ["memoryGraph"] });
                       await load();
                       // Brief toast in the error slot — yes, semantically wrong, but it's the
                       // existing dismissible banner and the demo flow benefits from feedback.
@@ -242,10 +318,26 @@ export function MemoryGraphPanel({ projectName, projectDir }: MemoryGraphPanelPr
             </div>
           </div>
         )}
-        {error && <div style={overlayErrorStyle}>{error}</div>}
-        {!loading && !error && !showProjectEmpty && data && (
-          <MemoryGraph3D data={visible} width={size.w} height={size.h} onNodeClick={onSelectNode} />
-        )}
+        {displayError && <div style={overlayErrorStyle}>{displayError}</div>}
+        {!loading && !displayError && !showProjectEmpty && data &&
+          (graphMode === "3d" ? (
+            <MemoryGraph3D
+              data={visible}
+              width={size.w}
+              height={size.h}
+              onNodeClick={onSelectNode}
+              selectedNodeId={selectedId}
+              cameraStateKey="studio:memory:camera"
+            />
+          ) : (
+            <MemoryGraph2D
+              data={visible}
+              width={size.w}
+              height={size.h}
+              onNodeClick={onSelectNode}
+              selectedNodeId={selectedId}
+            />
+          ))}
       </div>
 
       {selected && (
@@ -253,7 +345,13 @@ export function MemoryGraphPanel({ projectName, projectDir }: MemoryGraphPanelPr
           <div style={detailHeaderStyle}>
             <span style={{ fontWeight: 600 }}>{selected.title ?? selected.content.slice(0, 80)}</span>
             <span style={categoryPillStyle}>{selected.category}</span>
-            <button onClick={() => setSelected(null)} style={detailCloseStyle}>
+            <button
+              onClick={() => {
+                setSelectedId(null);
+                setSelected(null);
+              }}
+              style={detailCloseStyle}
+            >
               ✕
             </button>
           </div>
@@ -272,11 +370,133 @@ export function MemoryGraphPanel({ projectName, projectDir }: MemoryGraphPanelPr
   );
 }
 
+const WING_COLORS_2D: Record<string, string> = {
+  agent: "#a78bfa",
+  user: "#22C55E",
+  knowledge: "#60a5fa",
+  experience: "#fb923c",
+};
+
+function MemoryGraph2D({
+  data,
+  width,
+  height,
+  onNodeClick,
+  selectedNodeId,
+}: {
+  data: GraphData;
+  width: number;
+  height: number;
+  onNodeClick: (node: { id: string }) => void;
+  selectedNodeId: string | null;
+}) {
+  const layout = useMemo(() => {
+    const safeW = Math.max(width, 320);
+    const safeH = Math.max(height, 260);
+    const centers: Record<string, { x: number; y: number }> = {
+      agent: { x: safeW * 0.28, y: safeH * 0.28 },
+      user: { x: safeW * 0.72, y: safeH * 0.28 },
+      knowledge: { x: safeW * 0.34, y: safeH * 0.7 },
+      experience: { x: safeW * 0.72, y: safeH * 0.68 },
+    };
+    const grouped = data.nodes.reduce<Record<string, MemoryGraphNode[]>>((acc, node) => {
+      const wing = node.wing ?? "knowledge";
+      acc[wing] = [...(acc[wing] ?? []), node];
+      return acc;
+    }, {});
+    const positions = new Map<string, { node: MemoryGraphNode; x: number; y: number; r: number; color: string }>();
+    for (const [wing, nodes] of Object.entries(grouped)) {
+      const center = centers[wing] ?? { x: safeW / 2, y: safeH / 2 };
+      const radius = Math.min(safeW, safeH) * (nodes.length > 12 ? 0.22 : 0.16);
+      nodes.forEach((node, index) => {
+        const angle = nodes.length === 1 ? 0 : (Math.PI * 2 * index) / nodes.length - Math.PI / 2;
+        const importance = Math.max(1, Math.min(node.importance ?? 5, 10));
+        positions.set(node.id, {
+          node,
+          x: center.x + Math.cos(angle) * radius,
+          y: center.y + Math.sin(angle) * radius,
+          r: 5 + importance * 0.9 + (node.id === selectedNodeId ? 4 : 0),
+          color: WING_COLORS_2D[wing] ?? "var(--text-muted)",
+        });
+      });
+    }
+    return { positions, centers };
+  }, [data.nodes, height, selectedNodeId, width]);
+
+  return (
+    <div style={graph2dWrapStyle}>
+      <svg width={width} height={height} role="img" aria-label="2D memory graph" style={graph2dSvgStyle}>
+        <defs>
+          <filter id="nodeGlow" x="-60%" y="-60%" width="220%" height="220%">
+            <feGaussianBlur stdDeviation="4" result="blur" />
+            <feMerge>
+              <feMergeNode in="blur" />
+              <feMergeNode in="SourceGraphic" />
+            </feMerge>
+          </filter>
+        </defs>
+        {Object.entries(layout.centers).map(([wing, center]) => (
+          <g key={wing}>
+            <circle cx={center.x} cy={center.y} r={Math.min(width, height) * 0.21} fill="transparent" stroke="rgba(255,255,255,0.05)" />
+            <text x={center.x} y={center.y} textAnchor="middle" fill="rgba(255,255,255,0.16)" fontSize="18" fontWeight="700">
+              {wing}
+            </text>
+          </g>
+        ))}
+        {data.edges.map((edge, index) => {
+          const rawSource = edge.source as unknown;
+          const rawTarget = edge.target as unknown;
+          const sourceId = typeof rawSource === "string" ? rawSource : (rawSource as { id?: string }).id;
+          const targetId = typeof rawTarget === "string" ? rawTarget : (rawTarget as { id?: string }).id;
+          const source = sourceId ? layout.positions.get(sourceId) : undefined;
+          const target = targetId ? layout.positions.get(targetId) : undefined;
+          if (!source || !target) return null;
+          return (
+            <line
+              key={`${edge.source}-${edge.target}-${index}`}
+              x1={source.x}
+              y1={source.y}
+              x2={target.x}
+              y2={target.y}
+              stroke="rgba(148,163,184,0.34)"
+              strokeWidth={Math.max(1, edge.strength * 2)}
+            />
+          );
+        })}
+        {[...layout.positions.values()].map(({ node, x, y, r, color }) => (
+          <g
+            key={node.id}
+            role="button"
+            tabIndex={0}
+            aria-label={`Open memory ${node.title}`}
+            onClick={() => onNodeClick(node)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onNodeClick(node);
+              }
+            }}
+            style={{ cursor: "pointer", outline: "none" }}
+          >
+            <circle cx={x} cy={y} r={r + 6} fill={color} opacity={node.id === selectedNodeId ? 0.2 : 0.08} filter="url(#nodeGlow)" />
+            <circle cx={x} cy={y} r={r} fill={color} stroke={node.id === selectedNodeId ? "var(--text)" : "rgba(255,255,255,0.42)"} strokeWidth={node.id === selectedNodeId ? 2 : 1} />
+            <text x={x} y={y + r + 13} textAnchor="middle" fill="rgba(226,232,240,0.9)" fontSize="10.5" fontFamily="var(--font-mono)">
+              {node.title.length > 22 ? `${node.title.slice(0, 22)}...` : node.title}
+            </text>
+          </g>
+        ))}
+      </svg>
+      <div style={graph2dHintStyle}>2D mode uses a stable wing layout; click any node to open the memory card.</div>
+    </div>
+  );
+}
+
 const containerStyle: React.CSSProperties = {
   display: "flex",
   flexDirection: "column",
   height: "100%",
   background: "var(--bg)",
+  position: "relative",
 };
 const controlBarStyle: React.CSSProperties = {
   display: "flex",
@@ -302,13 +522,23 @@ const ghostButtonStyle: React.CSSProperties = {
   borderRadius: "6px",
   padding: "5px 10px",
 };
+const primaryButtonStyle: React.CSSProperties = {
+  fontSize: "11px",
+  fontWeight: 600,
+  color: "var(--bg)",
+  background: "var(--accent)",
+  border: "none",
+  borderRadius: "6px",
+  padding: "5px 10px",
+  cursor: "pointer",
+};
 const seedBtnStyle: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
   gap: "6px",
   fontSize: "12px",
   fontWeight: 600,
-  color: "#0c0d10",
+  color: "var(--bg)",
   background: "var(--accent)",
   border: "none",
   borderRadius: "var(--radius-md)",
@@ -335,7 +565,7 @@ const scopePillStyle: React.CSSProperties = {
 };
 const scopePillActiveStyle: React.CSSProperties = {
   background: "var(--accent)",
-  color: "#0c0d10",
+  color: "var(--bg)",
 };
 const graphWrapStyle: React.CSSProperties = {
   flex: 1,
@@ -423,4 +653,25 @@ const detailContentStyle: React.CSSProperties = {
   color: "var(--text)",
   lineHeight: 1.6,
   whiteSpace: "pre-wrap",
+};
+const graph2dWrapStyle: React.CSSProperties = {
+  position: "relative",
+  width: "100%",
+  height: "100%",
+  background: "radial-gradient(circle at top, rgba(96,165,250,0.11), transparent 35%), var(--bg)",
+};
+const graph2dSvgStyle: React.CSSProperties = {
+  display: "block",
+};
+const graph2dHintStyle: React.CSSProperties = {
+  position: "absolute",
+  left: "12px",
+  bottom: "12px",
+  color: "var(--text-dim)",
+  background: "rgba(12,13,16,0.72)",
+  border: "1px solid var(--border)",
+  borderRadius: "var(--radius-md)",
+  padding: "7px 10px",
+  fontSize: "11px",
+  pointerEvents: "none",
 };

@@ -25,7 +25,7 @@ When any future Codex, OpenAI-compatible, Claude, or other agent runner starts i
 - For Codex, keep `~/.codex/AGENTS.md`, `~/.codex/config.toml`, and `~/.codex/hooks.json` linked to this repository unless the user explicitly asks otherwise.
 - For Claude Code, keep `~/.claude/CLAUDE.md`, `~/.claude/skills`, `~/.claude/references`, `~/.claude/agents`, and `~/.claude/hooks/ultrathink-*` active.
 - For OpenAI API or other compatible runners, inject the contents of this file or `CLAUDE.md` as the highest-priority developer/system instruction supported by that runner, then expose skills and memory paths as tool/context resources.
-- If UltraThink links are missing, run `./scripts/install.sh --tier=core --no-pull --yes` from the repo root, then verify `~/.ultrathink/config.json` reports `tier=core`.
+- If UltraThink links are missing, run `./scripts/install.sh --no-pull --yes` from the repo root, then verify `~/.ultrathink/config.json` was created.
 - Preserve user and developer instructions above UltraThink when there is a conflict, but use UltraThink for workflow, memory, privacy, quality, and skill routing whenever compatible.
 
 ## Tech Stack

@@ -1,5 +1,5 @@
-// intent: developer debug console — slide-up panel, topic chips, pause/resume, resize, copy
-// status: done — grouped by topic with live counts; click chip to filter; ⏸ to freeze stream
+// intent: developer debug console — slide-up panel, topic chips, pause/resume, visible resize, copy
+// status: done — grouped by topic with live counts, obvious resize/minimize/close controls
 // next: persist column widths between sessions; export as JSONL file
 // confidence: high
 
@@ -8,6 +8,9 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 
 const SUBSCRIBE_TOPICS = ["engine:event", "engine:status", "studio:quota", "studio:summon"];
+const DEFAULT_DEBUG_HEIGHT = 240;
+const MIN_DEBUG_HEIGHT = 140;
+const MAX_DEBUG_HEIGHT = 360;
 
 interface LogRow {
   at: number;
@@ -59,9 +62,14 @@ export function DebugTerminal({ onClose }: { onClose: () => void }) {
   const [filter, setFilter] = useState("");
   const [excludedTopics, setExcludedTopics] = useState<Set<string>>(new Set());
   const [paused, setPaused] = useState(false);
+  const [minimized, setMinimized] = useState(false);
   const [height, setHeight] = useState(() => {
-    const saved = Number(localStorage.getItem("studio:debug:height"));
-    return Number.isFinite(saved) && saved > 100 ? saved : 320;
+    try {
+      const saved = Number(localStorage.getItem("studio:debug:height"));
+      return clampDebugHeight(saved);
+    } catch {
+      return clampDebugHeight(DEFAULT_DEBUG_HEIGHT);
+    }
   });
   const [carRunIds, setCarRunIds] = useState<string[]>([]);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -170,15 +178,18 @@ export function DebugTerminal({ onClose }: { onClose: () => void }) {
   // Drag-to-resize from top edge
   const dragRef = useRef<{ startY: number; startHeight: number } | null>(null);
   function startResize(e: React.MouseEvent) {
+    e.preventDefault();
     dragRef.current = { startY: e.clientY, startHeight: height };
+    let nextHeight = height;
     const onMove = (mv: MouseEvent) => {
       if (!dragRef.current) return;
       const dy = dragRef.current.startY - mv.clientY;
-      const next = Math.max(160, Math.min(window.innerHeight - 100, dragRef.current.startHeight + dy));
+      const next = clampDebugHeight(dragRef.current.startHeight + dy);
+      nextHeight = next;
       setHeight(next);
     };
     const onUp = () => {
-      if (dragRef.current) localStorage.setItem("studio:debug:height", String(height));
+      if (dragRef.current) localStorage.setItem("studio:debug:height", String(Math.round(nextHeight)));
       dragRef.current = null;
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
@@ -273,58 +284,80 @@ export function DebugTerminal({ onClose }: { onClose: () => void }) {
     }
   }
 
+  const panelHeight = minimized ? 44 : height;
+
   return (
-    <div style={{ ...rootStyle, height: `${height}px` }}>
+    <div style={{ ...rootStyle, height: `${panelHeight}px` }}>
       {/* Resize handle */}
-      <div style={resizeHandleStyle} onMouseDown={startResize} title="Drag to resize" />
+      {!minimized && (
+        <div style={resizeHandleStyle} onMouseDown={startResize} title="Drag to resize console">
+          <span style={resizeGripStyle}>Drag to resize</span>
+        </div>
+      )}
 
       {/* Toolbar */}
       <div style={headerStyle}>
-        <span style={titleStyle}>Debug</span>
+        <span style={titleStyle}>Debug console</span>
         <span style={mutedStyle}>
           {filtered.length}
           {filtered.length !== rows.length && <> / {rows.length}</>} events
         </span>
-        <input
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          placeholder="filter — supports topic:engine level:error kind:usage session:abc"
-          title="Free text matches anywhere. Use key:value tokens — keys: topic, level, kind, session."
-          style={filterInputStyle}
-        />
-        <input
-          placeholder="watch run id"
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              const v = (e.target as HTMLInputElement).value.trim();
-              if (v && !carRunIds.includes(v)) setCarRunIds((prev) => [...prev, v]);
-              (e.target as HTMLInputElement).value = "";
-            }
-          }}
-          style={{ ...filterInputStyle, width: "150px" }}
-          title="Press Enter to subscribe to car:event:<id>"
-        />
+        <span style={shortcutStyle}>Cmd+` toggles</span>
+        {!minimized && (
+          <>
+            <input
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder="filter - supports topic:engine level:error kind:usage session:abc"
+              title="Free text matches anywhere. Use key:value tokens - keys: topic, level, kind, session."
+              style={filterInputStyle}
+            />
+            <input
+              placeholder="watch run id"
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  const v = (e.target as HTMLInputElement).value.trim();
+                  if (v && !carRunIds.includes(v)) setCarRunIds((prev) => [...prev, v]);
+                  (e.target as HTMLInputElement).value = "";
+                }
+              }}
+              style={{ ...filterInputStyle, width: "150px" }}
+              title="Press Enter to subscribe to car:event:<id>"
+            />
+          </>
+        )}
         <div style={{ flex: 1 }} />
+        {!minimized && (
+          <>
+            <button
+              style={{ ...iconBtnStyle, color: paused ? "var(--amber)" : "var(--text-muted)" }}
+              onClick={() => setPaused((p) => !p)}
+              title={paused ? "Resume stream (buffered events drain on resume)" : "Pause stream"}
+            >
+              {paused ? `Resume (${bufferRef.current.length})` : "Pause"}
+            </button>
+            <button style={iconBtnStyle} onClick={runDiagnose} title="Run diagnose_spawn">
+              Diagnose
+            </button>
+            <button style={iconBtnStyle} onClick={() => setRows([])} title="Clear all events">
+              Clear
+            </button>
+          </>
+        )}
         <button
-          style={{ ...iconBtnStyle, color: paused ? "var(--amber)" : "var(--text-muted)" }}
-          onClick={() => setPaused((p) => !p)}
-          title={paused ? "Resume stream (buffered events drain on resume)" : "Pause stream"}
+          style={iconBtnStyle}
+          onClick={() => setMinimized((s) => !s)}
+          title={minimized ? "Restore console" : "Minimize console to a compact strip"}
         >
-          {paused ? `▶ Resume (${bufferRef.current.length})` : "⏸ Pause"}
-        </button>
-        <button style={iconBtnStyle} onClick={runDiagnose} title="Run diagnose_spawn">
-          🔍 Diagnose
-        </button>
-        <button style={iconBtnStyle} onClick={() => setRows([])} title="Clear all events">
-          Clear
+          {minimized ? "Restore" : "Minimize"}
         </button>
         <button style={iconBtnStyle} onClick={onClose} title="Close (Cmd+`)">
-          ✕
+          Close
         </button>
       </div>
 
       {/* Topic chip rail */}
-      {topics.length > 0 && (
+      {!minimized && topics.length > 0 && (
         <div style={chipRailStyle}>
           {excludedTopics.size > 0 && (
             <button style={{ ...chipBaseStyle, color: "var(--text-dim)" }} onClick={clearExcludes}>
@@ -342,7 +375,10 @@ export function DebugTerminal({ onClose }: { onClose: () => void }) {
                 title={muted ? "Click to show" : "Click to hide · double-click to solo"}
                 style={{
                   ...chipBaseStyle,
-                  borderColor: muted ? "var(--border)" : tone,
+                  // Use the full shorthand here too — React warns when a
+                  // child style mixes shorthand `border` (from chipBaseStyle)
+                  // with the non-shorthand `borderColor`.
+                  border: `1px solid ${muted ? "var(--border)" : tone}`,
                   background: muted ? "transparent" : "var(--bg)",
                   color: muted ? "var(--text-dim)" : tone,
                   textDecoration: muted ? "line-through" : "none",
@@ -358,7 +394,7 @@ export function DebugTerminal({ onClose }: { onClose: () => void }) {
       )}
 
       {/* Sticky error banner — most recent error pinned above the list */}
-      {stickyError && (
+      {!minimized && stickyError && (
         <div style={stickyErrorStyle}>
           <span style={{ color: "var(--red)", fontWeight: 700 }}>!</span>
           <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -378,17 +414,19 @@ export function DebugTerminal({ onClose }: { onClose: () => void }) {
       )}
 
       {/* Event list */}
-      <div style={listStyle} ref={scrollRef} onScroll={onScroll}>
-        {filtered.length === 0 ? (
-          <div style={emptyStyle}>
-            {rows.length === 0
-              ? "No events yet. Send a prompt or hit ▶ Run on a CAR lane to start streaming."
-              : "All events filtered out. Click a topic chip above to re-enable."}
-          </div>
-        ) : (
-          filtered.map((r, i) => <Row key={`${r.at}-${i}`} row={r} />)
-        )}
-      </div>
+      {!minimized && (
+        <div style={listStyle} ref={scrollRef} onScroll={onScroll}>
+          {filtered.length === 0 ? (
+            <div style={emptyStyle}>
+              {rows.length === 0
+                ? "No events yet. Send a prompt or run a CAR lane to start streaming."
+                : "All events filtered out. Click a topic chip above to re-enable."}
+            </div>
+          ) : (
+            filtered.map((r, i) => <Row key={`${r.at}-${i}`} row={r} />)
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -433,13 +471,12 @@ function Row({ row }: { row: LogRow }) {
         borderLeft: `2px solid ${tone}`,
         background: expanded ? "var(--bg)" : "transparent",
       }}
-      onClick={() => setExpanded((s) => !s)}
     >
-      <div style={rowHeadStyle}>
+      <button type="button" style={rowHeadStyle} onClick={() => setExpanded((s) => !s)} aria-expanded={expanded}>
         <span style={tsStyle}>{ts}</span>
-        <span style={{ ...topicChipStyle, color: tone, borderColor: tone }}>{shortTopic(row.topic)}</span>
+        <span style={{ ...topicChipStyle, color: tone, border: `1px solid ${tone}` }}>{shortTopic(row.topic)}</span>
         <span style={previewStyle}>{preview}</span>
-      </div>
+      </button>
       {expanded && (
         <div style={expandedStyle}>
           <pre style={preStyle}>{fullJson}</pre>
@@ -470,27 +507,48 @@ function append(prev: LogRow[], next: LogRow): LogRow[] {
   return arr.length > 1000 ? arr.slice(arr.length - 1000) : arr;
 }
 
+function clampDebugHeight(value: number): number {
+  const viewportCap = typeof window === "undefined" ? MAX_DEBUG_HEIGHT : Math.floor(window.innerHeight * 0.45);
+  const max = Math.max(MIN_DEBUG_HEIGHT, Math.min(MAX_DEBUG_HEIGHT, viewportCap));
+  if (!Number.isFinite(value)) return Math.min(DEFAULT_DEBUG_HEIGHT, max);
+  return Math.max(MIN_DEBUG_HEIGHT, Math.min(max, value));
+}
+
 const rootStyle: React.CSSProperties = {
-  position: "fixed",
-  left: 0,
-  right: 0,
-  bottom: "32px",
+  position: "relative",
+  width: "100%",
   background: "var(--bg-elevated)",
   borderTop: "1px solid var(--border)",
   display: "flex",
   flexDirection: "column",
-  zIndex: 60,
   fontFamily: "var(--font-mono)",
-  boxShadow: "0 -8px 24px rgba(0,0,0,0.3)",
+  boxShadow: "0 -6px 18px rgba(0,0,0,0.22)",
+  flexShrink: 0,
 };
 const resizeHandleStyle: React.CSSProperties = {
   position: "absolute",
-  top: -3,
-  left: 0,
-  right: 0,
-  height: 6,
+  top: -14,
+  left: "12px",
+  right: "12px",
+  height: 20,
   cursor: "ns-resize",
-  zIndex: 1,
+  zIndex: 2,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+};
+const resizeGripStyle: React.CSSProperties = {
+  padding: "2px 11px",
+  background: "var(--bg-elevated)",
+  border: "1px solid var(--border)",
+  borderRadius: "999px",
+  color: "var(--text-dim)",
+  fontFamily: "var(--font-sans)",
+  fontSize: "10px",
+  fontWeight: 700,
+  letterSpacing: "0.04em",
+  textTransform: "uppercase",
+  boxShadow: "0 6px 18px rgba(0,0,0,0.28)",
 };
 const headerStyle: React.CSSProperties = {
   display: "flex",
@@ -499,6 +557,8 @@ const headerStyle: React.CSSProperties = {
   padding: "var(--space-2) var(--space-3)",
   borderBottom: "1px solid var(--border)",
   flexShrink: 0,
+  height: "43px",
+  boxSizing: "border-box",
 };
 const titleStyle: React.CSSProperties = {
   fontSize: "11px",
@@ -512,6 +572,15 @@ const mutedStyle: React.CSSProperties = {
   fontSize: "10px",
   color: "var(--text-dim)",
   fontFamily: "var(--font-sans)",
+};
+const shortcutStyle: React.CSSProperties = {
+  fontSize: "10px",
+  color: "var(--text-dim)",
+  border: "1px solid var(--border)",
+  borderRadius: "999px",
+  padding: "2px 8px",
+  fontFamily: "var(--font-sans)",
+  whiteSpace: "nowrap",
 };
 const filterInputStyle: React.CSSProperties = {
   flex: "0 1 200px",
@@ -582,12 +651,17 @@ const listStyle: React.CSSProperties = {
 const rowStyle: React.CSSProperties = {
   padding: "3px var(--space-3) 3px 8px",
   borderBottom: "1px solid rgba(255,255,255,0.03)",
-  cursor: "pointer",
 };
 const rowHeadStyle: React.CSSProperties = {
+  width: "100%",
   display: "flex",
   alignItems: "flex-start",
   gap: "var(--space-2)",
+  textAlign: "left",
+  background: "transparent",
+  border: "none",
+  padding: 0,
+  cursor: "pointer",
 };
 const tsStyle: React.CSSProperties = {
   color: "var(--text-dim)",

@@ -358,7 +358,7 @@ async function ensureIdentityNode(scope: string, name?: string): Promise<string>
   }
 
   const rows = await sql`
-    INSERT INTO memories (content, category, importance, confidence, scope, source)
+    INSERT INTO memories (content, category, importance, confidence, scope, source, wing, hall, layer)
     VALUES (${displayName}, 'identity', 10, 1.0, ${scope}, 'identity-graph', 'user', 'profile', 0)
     ON CONFLICT DO NOTHING
     RETURNING id

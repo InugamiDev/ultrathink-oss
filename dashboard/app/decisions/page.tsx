@@ -13,7 +13,6 @@ import {
   ChevronRight,
   Zap,
   Tag,
-  X,
   ArrowLeft,
   ShieldOff,
   ShieldCheck,

@@ -12,15 +12,5 @@ packages:
   # Dev tooling (test harness)
   - "tools/harness"
 
-  # Vendored Paperclip (paused — see docs/CODEBASE-LAYOUT.md, project_company-paused memory)
-  - "paperclip/server"
-  - "paperclip/db"
-  - "paperclip/shared"
-  - "paperclip/plugin-sdk"
-  - "paperclip/adapter-utils"
-  - "paperclip/adapters/*"
-  - "paperclip/plugins/*"
-  - "paperclip/ui"
-
   # Remotion video project (kept as-is)
   - "videos"

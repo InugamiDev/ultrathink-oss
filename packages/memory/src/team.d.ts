@@ -22,31 +22,31 @@
  */
 import type { Memory } from "./memory.js";
 export interface ShareMemoryInput {
-  title?: string;
-  content: string;
-  category?: string;
-  importance?: number;
-  confidence?: number;
-  tags?: string[];
-  scope?: string;
-  agentId?: string | null;
-  paperclipRunId?: string | null;
+    title?: string;
+    content: string;
+    category?: string;
+    importance?: number;
+    confidence?: number;
+    tags?: string[];
+    scope?: string;
+    agentId?: string | null;
+    paperclipRunId?: string | null;
 }
 export interface HandoffMemoryInput {
-  fromAgentId?: string | null;
-  toAgentId: string;
-  context: string;
-  issueId?: string | null;
-  importance?: number;
-  scope?: string;
-  paperclipRunId?: string | null;
+    fromAgentId?: string | null;
+    toAgentId: string;
+    context: string;
+    issueId?: string | null;
+    importance?: number;
+    scope?: string;
+    paperclipRunId?: string | null;
 }
 export interface TeamRecallOptions {
-  query?: string;
-  agentId?: string;
-  limit?: number;
-  scope?: string;
-  hall?: "shared" | "handoff" | "all";
+    query?: string;
+    agentId?: string;
+    limit?: number;
+    scope?: string;
+    hall?: "shared" | "handoff" | "all";
 }
 /**
  * Save a memory tagged with agent_id and visible to the rest of the team.

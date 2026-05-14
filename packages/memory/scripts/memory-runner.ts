@@ -27,12 +27,10 @@ import { config } from "dotenv";
 import { getClient } from "../src/client.js";
 import {
   createMemory,
-  searchMemories,
   semanticSearch,
   findSimilar,
   createRelation,
   getMemoryGraph,
-  passesQualityGate,
   type CreateMemoryInput,
 } from "../src/memory.js";
 import { logHookEvent } from "../src/hooks.js";
@@ -41,7 +39,6 @@ import {
   linkToIdentity,
   setPreference,
   getIdentity,
-  getAgentIdentity,
   introspectRules,
   syncInferredIdentity,
   formatIdentityContext,
@@ -61,7 +58,6 @@ import {
   wheelTurn,
   wheelLearn,
   getActiveAdaptations,
-  formatAdaptations,
   adaptFromCorrection,
   getWheelStats,
   recordPrevention,
@@ -437,21 +433,31 @@ async function save() {
     process.exit(1);
   }
   const sessionId = getSessionId();
+  const links = Array.isArray(data.links) ? data.links.filter((id): id is string => typeof id === "string") : [];
 
   const input: CreateMemoryInput = {
     title: (data as Record<string, unknown>).title as string | undefined,
     content: data.content as string,
-    category: (data.category as string) || "insight",
+    category: (data.category as string) || (data.hall as string) || "insight",
     importance: (data.importance as number) ?? 5,
     confidence: (data.confidence as number) ?? 0.8,
     scope: data.scope as string,
     source: (data.source as string) || "auto-memory",
     session_id: sessionId || undefined,
+    wing: data.wing as CreateMemoryInput["wing"],
+    hall: data.hall as string,
     tags: data.tags as string[],
   };
 
   const memory = await createMemory(input);
-  process.stdout.write(JSON.stringify({ id: memory.id, status: "saved" }));
+  // intent: connect UI-created memories to selected existing memories
+  // status: done
+  // next: expose relation type selection if users need more than related_to
+  // confidence: high
+  for (const targetId of links) {
+    if (targetId !== memory.id) await createRelation(memory.id, targetId, "related_to", 0.65);
+  }
+  process.stdout.write(JSON.stringify({ id: memory.id, status: "saved", linked: links.length }));
 }
 
 async function flush() {

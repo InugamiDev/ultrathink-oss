@@ -16,21 +16,6 @@ const sql = getClient();
 console.log("Memory Quality Pass — Archive Noise");
 console.log("====================================\n");
 
-// Count noise patterns
-const patterns = [
-  "Modified %",
-  "Edited %",
-  "Updated %",
-  "Changed %",
-  "Created %",
-  "Added %",
-  "Removed %",
-  "Deleted %",
-  "Fixed %",
-  "Moved %",
-  "Renamed %",
-];
-
 // Find memories that are just "Modified Button.tsx" style — short, no useful context
 const [totalCount] = (await sql`
   SELECT COUNT(*) as c FROM memories

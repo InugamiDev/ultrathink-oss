@@ -3,7 +3,6 @@ import { neon } from "@neondatabase/serverless";
 import * as dotenv from "dotenv";
 import { resolve, join } from "path";
 import { writeFileSync, mkdirSync } from "fs";
-import { createHash } from "crypto";
 
 dotenv.config({ path: resolve(import.meta.dirname!, "../../.env") });
 const sql = neon(process.env.DATABASE_URL!);

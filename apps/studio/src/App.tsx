@@ -3,27 +3,39 @@
 // next: persist active mode in localStorage; wire mode-specific keyboard shortcuts
 // confidence: high
 
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { open as openInShell } from "@tauri-apps/plugin-shell";
+import { Group, Panel, Separator, type Layout } from "react-resizable-panels";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ChatPanel } from "./components/ChatPanel.js";
 import { FileTreePanel } from "./components/FileTreePanel.js";
 import { PreviewPanel } from "./components/PreviewPanel.js";
-import { MemoryGraphPanel } from "./components/MemoryGraphPanel.js";
 import { Onboarding, shouldShowOnboarding } from "./components/Onboarding.js";
 import { Settings } from "./components/Settings.js";
 import { StatusLine } from "./components/StatusLine.js";
-import { InsightsPanel } from "./components/InsightsPanel.js";
 import { ProjectsPanel } from "./components/ProjectsPanel.js";
-import { SkillsLibraryPanel } from "./components/SkillsLibraryPanel.js";
-import { CarPanel } from "./components/CarPanel.js";
 import { DebugTerminal, isDebugEnabled } from "./components/DebugTerminal.js";
 import { ShortcutLegend } from "./components/ShortcutLegend.js";
 import { CheckpointsPanel } from "./components/CheckpointsPanel.js";
+import { BUILDER_STATUS_QUERY_KEY, fetchBuilderStatus } from "./components/BuilderCampaignSection.js";
 import { ProjectPicker } from "./components/ProjectPicker.js";
 import { NewProjectModal, type Project } from "./components/NewProjectModal.js";
+import { NewMemoryModal } from "./components/NewMemoryModal.js";
 import { IconWand, IconLayers, IconFolder, IconBarChart, IconBookOpen, IconSettings } from "./components/icons.js";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
+
+const CarPanel = lazy(() => import("./components/CarPanel.js").then((m) => ({ default: m.CarPanel })));
+const FoundationsPanel = lazy(() =>
+  import("./components/FoundationsPanel.js").then((m) => ({ default: m.FoundationsPanel }))
+);
+const InsightsPanel = lazy(() => import("./components/InsightsPanel.js").then((m) => ({ default: m.InsightsPanel })));
+const MemoryGraphPanel = lazy(() =>
+  import("./components/MemoryGraphPanel.js").then((m) => ({ default: m.MemoryGraphPanel }))
+);
+const SkillsLibraryPanel = lazy(() =>
+  import("./components/SkillsLibraryPanel.js").then((m) => ({ default: m.SkillsLibraryPanel }))
+);
 
 function useTitleBarDrag() {
   return {
@@ -58,7 +70,7 @@ function useTitleBarDrag() {
 
 type IconCmp = (p: { size?: number; strokeWidth?: number; style?: React.CSSProperties }) => React.ReactElement;
 
-type Tab = "preview" | "files" | "memory";
+type Tab = "preview" | "files" | "memory" | "foundations";
 type Mode = "build" | "car" | "projects" | "insights" | "skills";
 
 const ACTIVE_PROJECT_KEY = "studio:active-project";
@@ -68,7 +80,64 @@ interface ActiveProject {
   name: string;
 }
 
+type BuildPanelLayout = Layout & {
+  chat: number;
+  workspace: number;
+};
+
+function readPanelLayout(key: string, fallback: BuildPanelLayout): BuildPanelLayout {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(key) ?? "null");
+    if (
+      parsed &&
+      typeof parsed === "object" &&
+      typeof parsed.chat === "number" &&
+      typeof parsed.workspace === "number" &&
+      Number.isFinite(parsed.chat) &&
+      Number.isFinite(parsed.workspace) &&
+      parsed.chat > 0 &&
+      parsed.workspace > 0
+    ) {
+      return { chat: parsed.chat, workspace: parsed.workspace };
+    }
+  } catch {
+    /* ignore malformed layout state */
+  }
+  return fallback;
+}
+
+function savePanelLayout(key: string, layout: Layout): void {
+  const chat = layout.chat;
+  const workspace = layout.workspace;
+  if (typeof chat !== "number" || typeof workspace !== "number") return;
+  try {
+    localStorage.setItem(
+      key,
+      JSON.stringify({
+        chat: Number(chat.toFixed(2)),
+        workspace: Number(workspace.toFixed(2)),
+      })
+    );
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
+// intent: keep every debug-console entry point aligned with the persisted Studio preference
+// status: done
+// next: none
+// blockers: none
+// confidence: high
+function writeDebugPreference(enabled: boolean): void {
+  try {
+    localStorage.setItem("studio:debug", enabled ? "1" : "0");
+  } catch {
+    /* ignore quota / private mode */
+  }
+}
+
 export function App() {
+  const queryClient = useQueryClient();
   const [tab, setTab] = useState<Tab>("preview");
   const [mode, setMode] = useState<Mode>("build");
   // Active project is the source of truth. ChatPanel + CarPanel + Insights
@@ -82,13 +151,21 @@ export function App() {
     }
   });
   const projectDir = activeProject?.dir ?? null;
+  const builderStatus = useQuery({
+    queryKey: BUILDER_STATUS_QUERY_KEY,
+    queryFn: fetchBuilderStatus,
+  });
+  const builderActive = builderStatus.data?.tier === "builder" && builderStatus.data.valid === true;
   const [showOnboarding, setShowOnboarding] = useState<boolean>(shouldShowOnboarding());
   const [showSettings, setShowSettings] = useState<boolean>(false);
+  const [settingsInitialSection, setSettingsInitialSection] = useState<"builder" | undefined>(undefined);
   const [showDebug, setShowDebug] = useState<boolean>(() => isDebugEnabled());
   const [showShortcuts, setShowShortcuts] = useState<boolean>(false);
   const [showCheckpoints, setShowCheckpoints] = useState<boolean>(false);
   const [showProjectPicker, setShowProjectPicker] = useState<boolean>(false);
   const [showNewProject, setShowNewProject] = useState<boolean>(false);
+  const [showNewMemory, setShowNewMemory] = useState<boolean>(false);
+  const [memoryToast, setMemoryToast] = useState<string | null>(null);
   const [branch, setBranch] = useState<string | undefined>(undefined);
 
   // Persist the active project so reopening the app restores context.
@@ -112,7 +189,6 @@ export function App() {
       .catch(() => {
         /* ignore */
       });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function pickProject(p: { dir: string; name: string }): void {
@@ -122,6 +198,26 @@ export function App() {
   }
   function closeActiveProject(): void {
     setActiveProject(null);
+  }
+
+  function closeDebug(): void {
+    writeDebugPreference(false);
+    setShowDebug(false);
+  }
+
+  function toggleDebug(): void {
+    setShowDebug((open) => {
+      const next = !open;
+      writeDebugPreference(next);
+      return next;
+    });
+  }
+
+  function confirmMemoryCreated(): void {
+    setShowNewMemory(false);
+    setMemoryToast("Memory created");
+    void queryClient.invalidateQueries({ queryKey: ["memoryGraph"] });
+    window.dispatchEvent(new CustomEvent("studio:memory-created"));
   }
 
   // Read the current git branch whenever the active project changes.
@@ -152,6 +248,11 @@ export function App() {
     };
     const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
+      if (mod && e.shiftKey && e.key.toLowerCase() === "m") {
+        e.preventDefault();
+        setShowNewMemory(true);
+        return;
+      }
       // Cheat sheet — Cmd/Ctrl+/ always; bare ? when no input is focused
       if ((mod && e.key === "/") || (e.key === "?" && !isInputTarget(e.target))) {
         e.preventDefault();
@@ -162,6 +263,7 @@ export function App() {
       if (e.key === "Escape") {
         setShowShortcuts(false);
         setShowProjectPicker(false);
+        setShowNewMemory(false);
         return;
       }
       if (!mod) return;
@@ -186,11 +288,7 @@ export function App() {
         e.preventDefault();
         setShowDebug((s) => {
           const next = !s;
-          try {
-            localStorage.setItem("studio:debug", next ? "1" : "0");
-          } catch {
-            /* ignore */
-          }
+          writeDebugPreference(next);
           return next;
         });
       }
@@ -199,16 +297,32 @@ export function App() {
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
+  useEffect(() => {
+    if (!memoryToast) return;
+    const timer = window.setTimeout(() => setMemoryToast(null), 2800);
+    return () => window.clearTimeout(timer);
+  }, [memoryToast]);
+
   // Programmatic drag — bulletproof on Tauri 2 macOS. We bypass the
   // `data-tauri-drag-region` attribute system (which is finicky with overlay
   // title bars + nested spans) and call window.startDragging() on mousedown.
   // Double-click maximizes (matches native macOS title bar behaviour).
   const startDragRegion = useTitleBarDrag();
+  const buildLayoutKey = "studio:layout:build";
+  const buildLayout = readPanelLayout(buildLayoutKey, { chat: 34, workspace: 66 });
 
   return (
     <div style={layoutStyle}>
       {showOnboarding && <Onboarding onDone={() => setShowOnboarding(false)} />}
-      {showSettings && <Settings onClose={() => setShowSettings(false)} />}
+      {showSettings && (
+        <Settings
+          initialSection={settingsInitialSection}
+          onClose={() => {
+            setShowSettings(false);
+            setSettingsInitialSection(undefined);
+          }}
+        />
+      )}
       {showShortcuts && <ShortcutLegend onClose={() => setShowShortcuts(false)} />}
       {showCheckpoints && projectDir && (
         <CheckpointsPanel projectDir={projectDir} onClose={() => setShowCheckpoints(false)} />
@@ -222,6 +336,8 @@ export function App() {
           }}
         />
       )}
+      {showNewMemory && <NewMemoryModal onClose={() => setShowNewMemory(false)} onCreated={confirmMemoryCreated} />}
+      {memoryToast && <div style={toastStyle}>{memoryToast}</div>}
 
       <div
         style={titleBarStyle}
@@ -233,21 +349,39 @@ export function App() {
           <span style={{ color: "var(--text-dim)", fontWeight: 400 }}> studio</span>
         </div>
         <div style={{ flex: 1 }} />
+        {builderActive && (
+          <button
+            style={builderPillStyle}
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={() => {
+              setSettingsInitialSection("builder");
+              setShowSettings(true);
+            }}
+            title="Open Builder Campaign settings"
+            aria-label="Builder active"
+          >
+            BUILDER
+          </button>
+        )}
         {projectDir && (
           <button
-            style={gearButtonStyle}
+            style={checkpointButtonStyle}
             onMouseDown={(e) => e.stopPropagation()}
             onClick={() => setShowCheckpoints(true)}
             title="Checkpoints — auto-snapshots after each turn"
             aria-label="Checkpoints"
           >
-            <span style={{ fontSize: "11px", fontWeight: 600, fontFamily: "var(--font-mono)" }}>⎌</span>
+            <span style={{ fontSize: "13px", fontWeight: 700, fontFamily: "var(--font-mono)" }}>⎌</span>
+            Checkpoints
           </button>
         )}
         <button
           style={gearButtonStyle}
           onMouseDown={(e) => e.stopPropagation()}
-          onClick={() => setShowSettings(true)}
+          onClick={() => {
+            setSettingsInitialSection(undefined);
+            setShowSettings(true);
+          }}
           title="Settings"
           aria-label="Settings"
         >
@@ -258,59 +392,102 @@ export function App() {
       <div style={mainRowStyle}>
         <ModeSidebar mode={mode} setMode={setMode} />
         <div style={contentColumnStyle}>
-          {mode === "build" && (
-            <div style={buildGridStyle}>
-              <div style={{ position: "relative", display: "flex", flexDirection: "column", minHeight: 0 }}>
-                <ChatPanel
-                  activeProjectDir={projectDir}
-                  activeProjectName={activeProject?.name}
-                  onPickProject={() => setShowProjectPicker(true)}
-                  onCreateProject={() => setShowNewProject(true)}
-                  onCloseProject={closeActiveProject}
-                />
-                {showProjectPicker && (
-                  <ProjectPicker
-                    activeDir={projectDir}
-                    onPick={(p) => pickProject(p)}
-                    onCreateRequest={() => {
-                      setShowProjectPicker(false);
-                      setShowNewProject(true);
-                    }}
-                    onShowAll={() => {
-                      setShowProjectPicker(false);
-                      setMode("projects");
-                    }}
-                    onClose={() => setShowProjectPicker(false)}
-                    anchorTop={44}
-                    anchorLeft={12}
+          <div style={modePaneStyle(mode === "build")} aria-hidden={mode !== "build"}>
+            <Group
+              id={buildLayoutKey}
+              orientation="horizontal"
+              defaultLayout={buildLayout}
+              style={buildSplitStyle}
+              onLayoutChanged={(layout) => savePanelLayout(buildLayoutKey, layout)}
+            >
+              <Panel id="chat" defaultSize={`${buildLayout.chat}%`} minSize="24%" maxSize="58%" style={panelStyle}>
+                <div style={chatPanelShellStyle}>
+                  <ChatPanel
+                    activeProjectDir={projectDir}
+                    activeProjectName={activeProject?.name}
+                    onPickProject={() => setShowProjectPicker(true)}
+                    onCreateProject={() => setShowNewProject(true)}
+                    onCloseProject={closeActiveProject}
                   />
-                )}
-              </div>
-              <WorkspacePane tab={tab} setTab={setTab} projectDir={projectDir} projectName={activeProject?.name} />
+                  {showProjectPicker && (
+                    <ProjectPicker
+                      activeDir={projectDir}
+                      onPick={(p) => pickProject(p)}
+                      onCreateRequest={() => {
+                        setShowProjectPicker(false);
+                        setShowNewProject(true);
+                      }}
+                      onShowAll={() => {
+                        setShowProjectPicker(false);
+                        setMode("projects");
+                      }}
+                      onClose={() => setShowProjectPicker(false)}
+                      anchorTop={44}
+                      anchorLeft={12}
+                    />
+                  )}
+                </div>
+              </Panel>
+              <Separator className="studio-resize-handle" />
+              <Panel id="workspace" defaultSize={`${buildLayout.workspace}%`} minSize="36%" style={panelStyle}>
+                <WorkspacePane
+                  tab={tab}
+                  setTab={setTab}
+                  projectDir={projectDir}
+                  projectName={activeProject?.name}
+                  onNewMemory={() => setShowNewMemory(true)}
+                />
+              </Panel>
+            </Group>
+          </div>
+          {mode === "projects" && (
+            <div style={modePaneStyle(true)}>
+              <ProjectsPanel
+                onOpen={(dir) => {
+                  // ProjectsPanel returns just the dir; refetch the row to grab the
+                  // user-facing name for the active-project chip.
+                  void invoke<{ dir: string; name: string }[]>("list_projects").then((rows) => {
+                    const found = rows.find((r) => r.dir === dir);
+                    if (found) pickProject(found);
+                    else setActiveProject({ dir, name: dir.split("/").pop() ?? "project" });
+                  });
+                  setMode("build");
+                }}
+              />
             </div>
           )}
-          {mode === "projects" && (
-            <ProjectsPanel
-              onOpen={(dir) => {
-                // ProjectsPanel returns just the dir; refetch the row to grab the
-                // user-facing name for the active-project chip.
-                void invoke<{ dir: string; name: string }[]>("list_projects").then((rows) => {
-                  const found = rows.find((r) => r.dir === dir);
-                  if (found) pickProject(found);
-                  else setActiveProject({ dir, name: dir.split("/").pop() ?? "project" });
-                });
-                setMode("build");
-              }}
-            />
+          {mode === "car" && (
+            <div style={modePaneStyle(true)}>
+              <Suspense fallback={<PanelFallback label="Loading CAR" />}>
+                <CarPanel activeProjectDir={projectDir} />
+              </Suspense>
+            </div>
           )}
-          {mode === "car" && <CarPanel activeProjectDir={projectDir} />}
-          {mode === "insights" && <InsightsPanel />}
-          {mode === "skills" && <SkillsLibraryPanel />}
+          {mode === "insights" && (
+            <div style={modePaneStyle(true)}>
+              <Suspense fallback={<PanelFallback label="Loading insights" />}>
+                <InsightsPanel />
+              </Suspense>
+            </div>
+          )}
+          {mode === "skills" && (
+            <div style={modePaneStyle(true)}>
+              <Suspense fallback={<PanelFallback label="Loading skills" />}>
+                <SkillsLibraryPanel />
+              </Suspense>
+            </div>
+          )}
         </div>
       </div>
 
-      {showDebug && <DebugTerminal onClose={() => setShowDebug(false)} />}
-      <StatusLine cwd={projectDir ?? undefined} branch={branch} version="0.1.0" />
+      {showDebug && <DebugTerminal onClose={closeDebug} />}
+      <StatusLine
+        cwd={projectDir ?? undefined}
+        branch={branch}
+        version="0.1.0"
+        debugOpen={showDebug}
+        onToggleDebug={toggleDebug}
+      />
     </div>
   );
 }
@@ -354,16 +531,31 @@ interface WorkspaceProps {
   setTab: (t: Tab) => void;
   projectDir: string | null;
   projectName?: string;
+  onNewMemory: () => void;
 }
 
-function WorkspacePane({ tab, setTab, projectDir, projectName }: WorkspaceProps) {
+function WorkspacePane({ tab, setTab, projectDir, projectName, onNewMemory }: WorkspaceProps) {
+  const tabLabels: Record<Tab, string> = {
+    preview: "Preview",
+    files: "Files",
+    memory: "Memory",
+    foundations: "Foundations",
+  };
+
   return (
     <div style={workspaceStyle}>
       <div style={tabsStyle}>
-        {(["preview", "files", "memory"] as const).map((t) => (
-          <div key={t} onClick={() => setTab(t)} style={{ ...tabStyle, ...(tab === t ? tabActiveStyle : null) }}>
-            {t === "preview" ? "Preview" : t === "files" ? "Files" : "Memory"}
-          </div>
+        {(["preview", "files", "memory", "foundations"] as const).map((t) => (
+          <button
+            key={t}
+            type="button"
+            role="tab"
+            aria-selected={tab === t}
+            onClick={() => setTab(t)}
+            style={{ ...tabStyle, ...(tab === t ? tabActiveStyle : null) }}
+          >
+            {tabLabels[t]}
+          </button>
         ))}
         <div style={{ marginLeft: "auto", display: "flex", gap: "8px" }}>
           <button
@@ -384,12 +576,29 @@ function WorkspacePane({ tab, setTab, projectDir, projectName }: WorkspaceProps)
       </div>
 
       <div style={contentStyle}>
-        {tab === "preview" && <PreviewPanel projectDir={projectDir} />}
-        {tab === "files" && <FileTreePanel projectDir={projectDir} />}
-        {tab === "memory" && <MemoryGraphPanel projectName={projectName} projectDir={projectDir ?? undefined} />}
+        <div style={tabPaneStyle(tab === "preview")} aria-hidden={tab !== "preview"}>
+          <PreviewPanel projectDir={projectDir} />
+        </div>
+        <div style={tabPaneStyle(tab === "files")} aria-hidden={tab !== "files"}>
+          <FileTreePanel projectDir={projectDir} />
+        </div>
+        <div style={tabPaneStyle(tab === "memory")} aria-hidden={tab !== "memory"}>
+          <Suspense fallback={<PanelFallback label="Loading memory graph" />}>
+            <MemoryGraphPanel projectName={projectName} projectDir={projectDir ?? undefined} onNewMemory={onNewMemory} />
+          </Suspense>
+        </div>
+        <div style={tabPaneStyle(tab === "foundations")} aria-hidden={tab !== "foundations"}>
+          <Suspense fallback={<PanelFallback label="Loading foundations" />}>
+            <FoundationsPanel projectDir={projectDir} />
+          </Suspense>
+        </div>
       </div>
     </div>
   );
+}
+
+function PanelFallback({ label }: { label: string }) {
+  return <div style={loadingPanelStyle}>{label}...</div>;
 }
 
 const layoutStyle: React.CSSProperties = {
@@ -398,6 +607,29 @@ const layoutStyle: React.CSSProperties = {
   height: "100vh",
   width: "100vw",
   paddingBottom: "32px",
+};
+const toastStyle: React.CSSProperties = {
+  position: "fixed",
+  top: "64px",
+  right: "16px",
+  zIndex: 180,
+  background: "var(--bg-card)",
+  border: "1px solid var(--accent)",
+  borderRadius: "var(--radius-md)",
+  color: "var(--text)",
+  fontSize: "12px",
+  fontWeight: 600,
+  padding: "9px 12px",
+  boxShadow: "0 12px 36px rgba(0,0,0,0.45)",
+};
+const loadingPanelStyle: React.CSSProperties = {
+  flex: 1,
+  minHeight: 0,
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  color: "var(--text-dim)",
+  fontSize: "12px",
 };
 // macOS Tauri 2 + `titleBarStyle: "Overlay"`: rely on `data-tauri-drag-region`
 // (set on the JSX). `-webkit-app-region` is Electron-only and a no-op in WKWebView,
@@ -415,7 +647,6 @@ const titleBarStyle: React.CSSProperties = {
   userSelect: "none",
 };
 const gearButtonStyle: React.CSSProperties = {
-  marginLeft: "auto",
   background: "transparent",
   border: "none",
   color: "var(--text-muted)",
@@ -434,13 +665,37 @@ const brandStyle: React.CSSProperties = {
   letterSpacing: "0.02em",
   userSelect: "none",
 };
+const builderPillStyle: React.CSSProperties = {
+  background: "rgba(52,211,153,0.13)",
+  border: "1px solid rgba(52,211,153,0.35)",
+  color: "var(--green)",
+  borderRadius: "999px",
+  padding: "4px 9px",
+  fontSize: "10px",
+  fontWeight: 800,
+  letterSpacing: "0.04em",
+  cursor: "pointer",
+};
+const checkpointButtonStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "6px",
+  background: "var(--bg-card)",
+  border: "1px solid var(--border)",
+  color: "var(--text)",
+  borderRadius: "999px",
+  padding: "7px 12px",
+  fontSize: "11px",
+  fontWeight: 700,
+  cursor: "pointer",
+};
 const mainRowStyle: React.CSSProperties = {
   display: "flex",
   flex: 1,
   minHeight: 0,
 };
 const sidebarStyle: React.CSSProperties = {
-  width: "56px",
+  width: "80px",
   flexShrink: 0,
   background: "var(--bg-elevated)",
   borderRight: "1px solid var(--border)",
@@ -451,8 +706,8 @@ const sidebarStyle: React.CSSProperties = {
   gap: "var(--space-1)",
 };
 const sidebarBtnStyle: React.CSSProperties = {
-  width: "44px",
-  height: "52px",
+  width: "68px",
+  height: "54px",
   display: "flex",
   flexDirection: "column",
   alignItems: "center",
@@ -471,9 +726,10 @@ const sidebarBtnActiveStyle: React.CSSProperties = {
   color: "var(--accent)",
 };
 const sidebarBtnLabelStyle: React.CSSProperties = {
-  fontSize: "9px",
+  fontSize: "8.5px",
   fontWeight: 600,
   letterSpacing: "0.02em",
+  lineHeight: 1.1,
 };
 const contentColumnStyle: React.CSSProperties = {
   flex: 1,
@@ -481,18 +737,48 @@ const contentColumnStyle: React.CSSProperties = {
   minHeight: 0,
   display: "flex",
   flexDirection: "column",
+  position: "relative",
+  overflow: "hidden",
 };
-const buildGridStyle: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "380px 1fr",
+function modePaneStyle(active: boolean): React.CSSProperties {
+  return {
+    position: "absolute",
+    inset: 0,
+    display: "flex",
+    flexDirection: "column",
+    minHeight: 0,
+    minWidth: 0,
+    visibility: active ? "visible" : "hidden",
+    pointerEvents: active ? "auto" : "none",
+    zIndex: active ? 2 : 1,
+  };
+}
+const buildSplitStyle: React.CSSProperties = {
   flex: 1,
   minHeight: 0,
 };
+const panelStyle: React.CSSProperties = {
+  minHeight: 0,
+  minWidth: 0,
+  display: "flex",
+  flexDirection: "column",
+};
+const chatPanelShellStyle: React.CSSProperties = {
+  position: "relative",
+  display: "flex",
+  flexDirection: "column",
+  minHeight: 0,
+  minWidth: 0,
+  height: "100%",
+};
 const workspaceStyle: React.CSSProperties = {
+  flex: 1,
   display: "flex",
   flexDirection: "column",
   background: "var(--bg-elevated)",
+  height: "100%",
   minHeight: 0,
+  minWidth: 0,
 };
 const tabsStyle: React.CSSProperties = {
   display: "flex",
@@ -508,6 +794,8 @@ const tabStyle: React.CSSProperties = {
   padding: "6px 12px",
   borderRadius: "6px",
   cursor: "pointer",
+  background: "transparent",
+  border: "none",
 };
 const tabActiveStyle: React.CSSProperties = {
   background: "var(--bg-card)",
@@ -523,5 +811,19 @@ const ghostButtonStyle: React.CSSProperties = {
 };
 const contentStyle: React.CSSProperties = {
   flex: 1,
+  display: "flex",
+  flexDirection: "column",
   minHeight: 0,
+  minWidth: 0,
+  position: "relative",
 };
+function tabPaneStyle(active: boolean): React.CSSProperties {
+  return {
+    position: "absolute",
+    inset: 0,
+    display: active ? "flex" : "none",
+    flexDirection: "column",
+    minHeight: 0,
+    minWidth: 0,
+  };
+}

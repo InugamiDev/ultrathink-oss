@@ -1,4 +1,4 @@
-// intent: frontend mirror of @inuverse/studio-engine event types
+// intent: frontend mirror of @ultrathink/studio-engine event types
 // status: done (kept manually in sync; could codegen from engine .d.ts)
 // next: codegen these from the engine's types.ts via tsc --emitDeclarationOnly
 // confidence: high

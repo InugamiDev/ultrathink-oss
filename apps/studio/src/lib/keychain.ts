@@ -5,13 +5,20 @@
 
 import { invoke } from "@tauri-apps/api/core";
 
-export type KeyAccount = "anthropic-api-key" | "openai-api-key" | "openai-base-url" | "ollama-base-url";
+export type KeyAccount =
+  | "anthropic-api-key"
+  | "openai-api-key"
+  | "openai-base-url"
+  | "ollama-base-url"
+  | "database-url";
 
 const LEGACY_KEY: Record<KeyAccount, string> = {
   "anthropic-api-key": "studio:anthropic-api-key",
   "openai-api-key": "studio:openai-api-key",
   "openai-base-url": "studio:openai-base-url",
   "ollama-base-url": "studio:ollama-base-url",
+  // No legacy localStorage entry for this — Studio never wrote DB URL to LS.
+  "database-url": "studio:database-url",
 };
 
 const MIGRATION_FLAG = "studio:keychain:migrated:v1";

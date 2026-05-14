@@ -1,7 +1,6 @@
-// intent: bottom-of-window status bar — identity, branch, version, context budget, quotas
-// status: honest — shows "—" for any signal not yet emitted by the engine
-// next: subscribe to "engine:status" events from sidecar for live context %, tokens, cost,
-//       and to "studio:quota" event from a periodic poller (Claude Code session quota)
+// intent: bottom-of-window status bar — identity, branch, model, token/credit usage, quotas
+// status: done — usage and quota segments stay visible, then hydrate from live events
+// next: replace placeholder quotas once a periodic Claude Code quota poller emits studio:quota
 // confidence: high
 
 import { useEffect, useRef, useState } from "react";
@@ -12,6 +11,8 @@ interface StatusLineProps {
   cwd?: string;
   branch?: string;
   version?: string;
+  debugOpen?: boolean;
+  onToggleDebug?: () => void;
 }
 
 interface QuotaState {
@@ -30,6 +31,14 @@ interface BudgetState {
   compactRecommended: boolean;
 }
 
+interface ModelState {
+  adapter: AdapterId;
+  model: string;
+  activeModel: string | null;
+}
+
+type AdapterId = "claude" | "codex" | "anthropic-direct" | "openai-compat" | "ollama";
+
 const EMPTY_QUOTA: QuotaState = {
   fiveHrPercent: null,
   fiveHrResetIn: null,
@@ -46,6 +55,13 @@ const EMPTY_BUDGET: BudgetState = {
   compactRecommended: false,
 };
 
+interface QuotaPayload {
+  fiveHrPercent?: number;
+  fiveHrResetIn?: string;
+  weekPercent?: number;
+  weekResetIn?: string;
+}
+
 interface EngineStatusPayload {
   contextPercent?: number;
   tokens?: number;
@@ -55,16 +71,36 @@ interface EngineStatusPayload {
   compactRecommended?: boolean;
 }
 
-interface QuotaPayload {
-  fiveHrPercent?: number;
-  fiveHrResetIn?: string;
-  weekPercent?: number;
-  weekResetIn?: string;
+const ADAPTER_LABELS: Record<AdapterId, string> = {
+  claude: "Claude",
+  codex: "Codex",
+  "anthropic-direct": "Anthropic",
+  "openai-compat": "OpenAI",
+  ollama: "Ollama",
+};
+
+const ADAPTER_DEFAULTS: Record<AdapterId, string> = {
+  claude: "claude-sonnet-4-6",
+  codex: "default",
+  "anthropic-direct": "claude-sonnet-4-6",
+  "openai-compat": "gpt-5",
+  ollama: "llama3.2",
+};
+
+function readModelState(): ModelState {
+  const adapter = ((localStorage.getItem("studio:adapter") as AdapterId | null) ?? "claude") as AdapterId;
+  const fallback = ADAPTER_DEFAULTS[adapter] ?? "default";
+  return {
+    adapter,
+    model: localStorage.getItem("studio:default-model") || fallback,
+    activeModel: null,
+  };
 }
 
-export function StatusLine({ cwd, branch, version }: StatusLineProps) {
+export function StatusLine({ cwd, branch, version, debugOpen, onToggleDebug }: StatusLineProps) {
   const [quota, setQuota] = useState<QuotaState>(EMPTY_QUOTA);
   const [budget, setBudget] = useState<BudgetState>(EMPTY_BUDGET);
+  const [modelState, setModelState] = useState<ModelState>(() => readModelState());
   const mountedAt = useRef<number>(Date.now());
   const [, forceTick] = useState(0);
 
@@ -74,7 +110,26 @@ export function StatusLine({ cwd, branch, version }: StatusLineProps) {
     return () => clearInterval(t);
   }, []);
 
-  // Poll local telemetry for cost / event count. Real source — empty file = 0.
+  useEffect(() => {
+    const refresh = () => setModelState((prev) => ({ ...readModelState(), activeModel: prev.activeModel }));
+    const onModelConfig = (ev: Event) => {
+      const detail = (ev as CustomEvent<Partial<ModelState>>).detail;
+      setModelState((prev) => ({
+        adapter: detail?.adapter ?? prev.adapter,
+        model: detail?.model ?? prev.model,
+        activeModel: detail?.activeModel ?? prev.activeModel,
+      }));
+    };
+    window.addEventListener("storage", refresh);
+    window.addEventListener("studio:model-config", onModelConfig);
+    return () => {
+      window.removeEventListener("storage", refresh);
+      window.removeEventListener("studio:model-config", onModelConfig);
+    };
+  }, []);
+
+  // Poll local telemetry for historical spend. Token usage comes from live
+  // engine usage events; event count is not token count.
   useEffect(() => {
     let cancelled = false;
     const refresh = () => {
@@ -87,8 +142,7 @@ export function StatusLine({ cwd, branch, version }: StatusLineProps) {
           if (cancelled) return;
           setBudget((prev) => ({
             ...prev,
-            tokens: s.eventCount > 0 ? formatTokens(s.eventCount) : prev.tokens,
-            cost: s.hasData ? `$${s.spendUsd.toFixed(2)}` : prev.cost,
+            cost: s.hasData ? formatCost(s.spendUsd) : prev.cost,
           }));
         })
         .catch(() => undefined);
@@ -115,6 +169,8 @@ export function StatusLine({ cwd, branch, version }: StatusLineProps) {
       if (ev.kind === "usage") {
         const i = Number((ev as { inputTokens?: number }).inputTokens ?? 0);
         const o = Number((ev as { outputTokens?: number }).outputTokens ?? 0);
+        const model = (ev as { model?: string }).model;
+        if (model) setModelState((prev) => ({ ...prev, activeModel: model }));
         acc.input += i;
         acc.output += o;
         acc.marks.push(Date.now());
@@ -131,17 +187,29 @@ export function StatusLine({ cwd, branch, version }: StatusLineProps) {
         const c = Number(usage?.costUsd ?? 0);
         if (c > 0) acc.cost += c;
       }
-      const totalTokens = acc.input + acc.output;
-      const ratePerMin = Math.round(acc.marks.length); // events/min ~= calls/min
-      setBudget((prev) => ({
-        ...prev,
-        tokens: totalTokens > 0 ? formatTokens(totalTokens) : prev.tokens,
-        cost: acc.cost > 0 ? `$${acc.cost.toFixed(2)}` : prev.cost,
-        rate: ratePerMin > 0 ? `${ratePerMin}/m` : prev.rate,
-      }));
+        const totalTokens = acc.input + acc.output;
+        const ratePerMin = Math.round(acc.marks.length); // events/min ~= calls/min
+        setBudget((prev) => ({
+          ...prev,
+          tokens: totalTokens > 0 ? `${formatTokens(totalTokens)} tok` : prev.tokens,
+          cost: acc.cost > 0 ? formatCost(acc.cost) : prev.cost,
+          rate: ratePerMin > 0 ? `${ratePerMin}/m` : prev.rate,
+        }));
     }).then((u) => {
       if (cancelled) u();
       else unlisten = u;
+    });
+
+    const unStatus = listen<EngineStatusPayload>("engine:status", (ev) => {
+      const p = ev.payload;
+      setBudget((prev) => ({
+        contextPercent: p.contextPercent ?? prev.contextPercent,
+        tokens: p.tokens !== undefined ? `${formatTokens(p.tokens)} tok` : prev.tokens,
+        cost: p.costUsd !== undefined ? formatCost(p.costUsd) : prev.cost,
+        uptime: p.uptimeMs !== undefined ? formatUptime(p.uptimeMs) : prev.uptime,
+        rate: p.rate !== undefined ? `${p.rate}/m` : prev.rate,
+        compactRecommended: p.compactRecommended ?? prev.compactRecommended,
+      }));
     });
 
     const unQuota = listen<QuotaPayload>("studio:quota", (ev) => {
@@ -156,6 +224,7 @@ export function StatusLine({ cwd, branch, version }: StatusLineProps) {
     return () => {
       cancelled = true;
       unlisten?.();
+      void unStatus.then((u) => u());
       void unQuota.then((u) => u());
     };
   }, []);
@@ -165,16 +234,10 @@ export function StatusLine({ cwd, branch, version }: StatusLineProps) {
   const ctxColor =
     ctxPct === null ? "var(--text-dim)" : ctxPct >= 90 ? "var(--amber)" : ctxPct >= 70 ? "var(--cyan)" : "var(--green)";
 
-  // Lualine zones — left/center/right. Contextual hiding (Starship-style):
-  // segments with no real data don't render at all. The status bar is
-  // information-density-driven, not always-the-same-set.
-  const hasTokens = budget.tokens !== null;
-  const hasCost = budget.cost !== null;
-  const hasRate = budget.rate !== null;
-  const hasCtx = ctxPct !== null;
-  const hasFiveHr = quota.fiveHrPercent !== null;
-  const hasWeek = quota.weekPercent !== null;
-  const anyLiveUsage = hasTokens || hasCost || hasRate;
+  const tokenLabel = budget.tokens ?? "0 tok";
+  const costLabel = budget.cost ?? "$0.0000";
+  const rateLabel = budget.rate ?? "0/m";
+  const modelLabel = modelState.activeModel || modelState.model || ADAPTER_DEFAULTS[modelState.adapter] || "default";
 
   return (
     <div style={barStyle}>
@@ -211,53 +274,58 @@ export function StatusLine({ cwd, branch, version }: StatusLineProps) {
       <div style={{ flex: 1 }} />
 
       {/* Right zone: live usage (only when something to show) */}
-      {anyLiveUsage && (
-        <>
-          {hasCtx && <ContextMeter percent={ctxPct} color={ctxColor} />}
-          {hasTokens && (
-            <>
-              {hasCtx && <Sep />}
-              <span style={mutedMonoStyle} title="Tokens this session">
-                {budget.tokens}
-              </span>
-            </>
-          )}
-          {hasCost && (
-            <>
-              <Sep />
-              <span style={textMonoStyle} title="Cost this session">
-                {budget.cost}
-              </span>
-            </>
-          )}
-          {hasRate && (
-            <>
-              <Sep />
-              <span style={mutedMonoStyle} title="Events / minute">
-                {budget.rate}
-              </span>
-            </>
-          )}
-        </>
-      )}
+      <ModelChip adapter={modelState.adapter} model={modelLabel} />
+      <Sep />
+      <ContextMeter percent={ctxPct} color={ctxColor} />
+      <UsageChip label="tok" value={tokenLabel} active={budget.tokens !== null} title="Live token usage this session" />
+      <UsageChip label="credit" value={costLabel} active={budget.cost !== null} title="Recorded spend / live cost" />
+      <UsageChip label="rate" value={rateLabel} active={budget.rate !== null} title="Engine usage events per minute" />
       <Sep />
       <span style={mutedMonoStyle} title="Studio uptime">
         {budget.uptime ?? liveUptime}
       </span>
-      {(hasFiveHr || hasWeek) && (
+      {onToggleDebug && (
         <>
-          {hasFiveHr && <QuotaChip label="5hr" percent={quota.fiveHrPercent} resetIn={quota.fiveHrResetIn} />}
-          {hasWeek && <QuotaChip label="7d" percent={quota.weekPercent} resetIn={quota.weekResetIn} />}
+          <Sep />
+          <button
+            type="button"
+            style={{ ...statusButtonStyle, ...(debugOpen ? statusButtonActiveStyle : null) }}
+            onClick={onToggleDebug}
+            aria-pressed={debugOpen ?? false}
+            title="Toggle console (Cmd+`)"
+          >
+            {debugOpen ? "Hide console" : "Show console"}
+          </button>
         </>
       )}
+      <QuotaChip label="5hr" percent={quota.fiveHrPercent} resetIn={quota.fiveHrResetIn} />
+      <QuotaChip label="7d" percent={quota.weekPercent} resetIn={quota.weekResetIn} />
     </div>
   );
+}
+
+function ModelChip({ adapter, model }: { adapter: AdapterId; model: string }) {
+  const label = ADAPTER_LABELS[adapter] ?? adapter;
+  return (
+    <span style={modelChipStyle} title={`Selected LLM: ${label} · ${model}`}>
+      <span style={modelAdapterStyle}>{label}</span>
+      <span style={modelNameStyle}>{shortModel(model)}</span>
+    </span>
+  );
+}
+
+function shortModel(model: string): string {
+  return model.replace(/^claude-/, "").replace(/^gpt-/, "gpt-").replace(/-20\d{6}$/, "");
 }
 
 function formatTokens(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(0)}K`;
   return String(n);
+}
+
+function formatCost(n: number): string {
+  return n >= 1 ? `$${n.toFixed(2)}` : `$${n.toFixed(4)}`;
 }
 
 function formatUptime(ms: number): string {
@@ -298,6 +366,15 @@ function ContextMeter({ percent, color }: { percent: number | null; color: strin
         <span style={{ ...ctxBarFillStyle, width: `${Math.min(fill, 100)}%`, background: color }} />
       </span>
       <span style={{ ...ctxPercentStyle, color }}>{percent === null ? "—" : `${percent}%`}</span>
+    </span>
+  );
+}
+
+function UsageChip({ label, value, active, title }: { label: string; value: string; active: boolean; title: string }) {
+  return (
+      <span style={usageChipStyle} title={active ? title : `${title} - waiting for data`}>
+      <span style={usageLabelStyle}>{label}</span>
+      <span style={{ ...usageValueStyle, color: active ? "var(--text)" : "var(--text-dim)" }}>{value}</span>
     </span>
   );
 }
@@ -373,11 +450,6 @@ const mutedMonoStyle: React.CSSProperties = {
   fontFamily: "var(--font-mono)",
   color: "var(--text-muted)",
 };
-const textMonoStyle: React.CSSProperties = {
-  fontFamily: "var(--font-mono)",
-  color: "var(--text)",
-  fontWeight: 500,
-};
 const compactPillStyle: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
@@ -414,6 +486,26 @@ const ctxPercentStyle: React.CSSProperties = {
   fontWeight: 700,
   minWidth: "30px",
 };
+const usageChipStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "5px",
+  padding: "2px 7px",
+  fontSize: "9.5px",
+  background: "var(--bg)",
+  border: "1px solid var(--border)",
+  borderRadius: "var(--radius-sm)",
+  fontFamily: "var(--font-mono)",
+};
+const usageLabelStyle: React.CSSProperties = {
+  color: "var(--text-dim)",
+  fontFamily: "var(--font-sans)",
+  fontWeight: 700,
+  textTransform: "uppercase",
+};
+const usageValueStyle: React.CSSProperties = {
+  fontWeight: 600,
+};
 const quotaChipStyle: React.CSSProperties = {
   display: "inline-flex",
   alignItems: "center",
@@ -437,4 +529,41 @@ const quotaPctStyle: React.CSSProperties = {
 const quotaResetStyle: React.CSSProperties = {
   fontFamily: "var(--font-mono)",
   color: "var(--text-dim)",
+};
+const modelChipStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  gap: "6px",
+  maxWidth: "260px",
+  padding: "2px 8px",
+  background: "rgba(167,139,250,0.10)",
+  border: "1px solid rgba(167,139,250,0.28)",
+  borderRadius: "var(--radius-sm)",
+  fontFamily: "var(--font-mono)",
+};
+const modelAdapterStyle: React.CSSProperties = {
+  color: "var(--accent)",
+  fontWeight: 700,
+};
+const modelNameStyle: React.CSSProperties = {
+  color: "var(--text-muted)",
+  overflow: "hidden",
+  textOverflow: "ellipsis",
+};
+const statusButtonStyle: React.CSSProperties = {
+  display: "inline-flex",
+  alignItems: "center",
+  height: "22px",
+  padding: "0 9px",
+  border: "1px solid var(--border)",
+  borderRadius: "var(--radius-sm)",
+  color: "var(--text-muted)",
+  background: "var(--bg)",
+  fontSize: "10px",
+  fontWeight: 600,
+};
+const statusButtonActiveStyle: React.CSSProperties = {
+  color: "var(--accent)",
+  borderColor: "rgba(167,139,250,0.35)",
+  background: "rgba(167,139,250,0.10)",
 };

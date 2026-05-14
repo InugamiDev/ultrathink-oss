@@ -181,6 +181,7 @@ async function handle(msg: IncomingMessage): Promise<void> {
       activeSpawn?.abort();
       if (activeSpawnDone) await activeSpawnDone;
       process.exit(0);
+      return;
     }
     default: {
       send({ type: "error", message: `unknown op: ${(msg as { op: string }).op}` });

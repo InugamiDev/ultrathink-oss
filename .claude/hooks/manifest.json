@@ -4,6 +4,7 @@
     "claude": {
       "supportedEvents": [
         "SessionStart",
+        "UserPromptSubmit",
         "PreToolUse",
         "PostToolUse",
         "PreCompact",
@@ -31,6 +32,14 @@
       "command": "npx tsx packages/memory/scripts/memory-runner.ts session-start",
       "timeoutSec": 60,
       "runtimes": ["codex"]
+    },
+    {
+      "id": "ut:prompt:submit",
+      "description": "UltraThink: score user prompts and inject matching skill context",
+      "event": "UserPromptSubmit",
+      "command": ".claude/hooks/prompt-submit.sh",
+      "timeoutSec": 15,
+      "runtimes": ["claude"]
     },
     {
       "id": "ut:session:codeintel",

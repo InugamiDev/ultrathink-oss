@@ -30,34 +30,7 @@ async function main() {
   console.log("1. Exact duplicates deleted:", (dupeResult as any).count);
   totalDeleted += (dupeResult as any).count;
 
-  // 2. Delete garbage "Avoids" preferences (code fragments, not user preferences)
-  // These have pipe chars, markdown bold, backticks, or look like code
-  const garbagePatterns = [
-    "content LIKE 'Avoids %' AND content LIKE '%|%'",
-    "content LIKE 'Avoids %' AND content LIKE '%**%'",
-    "content LIKE 'Avoids %' AND content LIKE '%`%'",
-    "content LIKE 'Avoids %' AND content LIKE '%(Confidence:%'",
-    "content LIKE 'Avoids %' AND content LIKE '%tokenService%'",
-    "content LIKE 'Avoids %' AND content LIKE '%initializes%'",
-    "content LIKE 'Avoids %' AND content LIKE '%forwarded%'",
-    "content LIKE 'Avoids %' AND content LIKE '%triggered by%'",
-    "content LIKE 'Avoids %' AND content LIKE '%detected as%'",
-    "content LIKE 'Avoids %' AND content LIKE '%existed in%'",
-    "content LIKE 'Avoids %' AND content LIKE '%JwtGuard%'",
-    "content LIKE 'Avoids %' AND content LIKE '%GalaxyCanvas%'",
-    "content LIKE 'Avoids %' AND content LIKE '%viewportRef%'",
-    "content LIKE 'Avoids %' AND content LIKE '%connects and never%'",
-    "content LIKE 'Avoids %' AND content LIKE '%x-vorld%'",
-    "content LIKE 'Avoids %' AND content LIKE '%HTTP call%'",
-    "content LIKE 'Avoids %' AND content LIKE '%RSA keys%'",
-    "content LIKE 'Avoids %' AND content LIKE '%issuance time%'",
-    "content LIKE 'Avoids %' AND content LIKE '%CORS%'",
-    "content LIKE 'Avoids %' AND content LIKE '%device ID%'",
-    "content LIKE 'Avoids %' AND content LIKE '%the approach that%'",
-    "content LIKE 'Avoids %' AND content LIKE '%repeat the same%'",
-  ];
-
-  // Kill ALL garbage preferences in one pass
+  // 2. Kill ALL garbage preferences in one pass
   // Real preferences have clear structure: "Prefers X over Y", "Avoids doing X"
   // Garbage ones have: pipe chars, backticks, code keywords, sentence fragments
   const garbResult = await sql`

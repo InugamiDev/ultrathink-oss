@@ -24,7 +24,6 @@
       "allow": [
         { "path": "$HOME/Studio/**" },
         { "path": "$HOME/.ultrathink-studio/**" },
-        { "path": "$HOME/.ultrathink-core/**" },
         { "path": "$HOME/.claude/skills/**" }
       ]
     },

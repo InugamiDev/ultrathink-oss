@@ -123,7 +123,7 @@ describe("sidecar.js integration", () => {
   }, 10_000);
 
   // Live-key smoke. Skipped unless ANTHROPIC_API_KEY is set in env.
-  // Run via `ANTHROPIC_API_KEY=sk-ant-… pnpm --filter @inuverse/studio-engine test`.
+  // Run via `ANTHROPIC_API_KEY=sk-ant-... pnpm --filter @ultrathink/studio-engine test`.
   const liveKey = process.env.ANTHROPIC_API_KEY;
   it.skipIf(!liveKey)(
     "real Anthropic API streams text-delta + completion (live key required)",

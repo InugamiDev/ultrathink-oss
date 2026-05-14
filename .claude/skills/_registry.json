@@ -1,11 +1,11 @@
 {
   "version": "1.0.0",
-  "lastUpdated": "2026-04-13",
-  "skillCount": 235,
+  "lastUpdated": "2026-05-14",
+  "skillCount": 238,
   "layers": {
-    "domain": 137,
-    "utility": 62,
-    "orchestrator": 16,
+    "domain": 140,
+    "utility": 63,
+    "orchestrator": 15,
     "hub": 20
   },
   "skills": [
@@ -25,7 +25,8 @@
         "seo"
       ],
       "linkedFrom": [],
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/ab-test-generator/SKILL.md"
     },
     {
       "name": "accessibility",
@@ -56,6 +57,8 @@
         "ui-ux-pro-max",
         "app-audit"
       ],
+      "websearch": false,
+      "path": ".claude/skills/accessibility/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -78,6 +81,8 @@
         "web-vitals"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/accessibility-testing/SKILL.md",
       "preferredNextSkills": [
         "accessibility",
         "testing-library"
@@ -104,7 +109,8 @@
         "research"
       ],
       "linkedFrom": [],
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/affiliate-program-search/SKILL.md"
     },
     {
       "name": "ai-agents",
@@ -136,8 +142,9 @@
         "openviking",
         "mirofish"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/ai-agents/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "ai-function-calling",
@@ -158,6 +165,8 @@
         "ai-sdk"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/ai-function-calling/SKILL.md",
       "riskLevel": "medium"
     },
     {
@@ -185,8 +194,9 @@
         "mermaid",
         "ui-ux-pro-max"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/ai-multimodal/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "ai-prompts",
@@ -206,6 +216,8 @@
         "ai-sdk"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/ai-prompts/SKILL.md",
       "preferredNextSkills": [
         "prompt-engineering",
         "ai-sdk"
@@ -243,8 +255,9 @@
         "ai-prompts",
         "ai-function-calling"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/ai-sdk/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "analytics",
@@ -266,6 +279,8 @@
         "seo"
       ],
       "linkedFrom": [],
+      "websearch": true,
+      "path": ".claude/skills/analytics/SKILL.md",
       "preferredNextSkills": [
         "seo",
         "nextjs"
@@ -273,8 +288,7 @@
       "fallbackSkills": [
         "react"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "riskLevel": "low"
     },
     {
       "name": "api-toolkit",
@@ -314,7 +328,6 @@
         "stale while revalidate",
         "v1 v2"
       ],
-      "actions": [],
       "linksTo": [
         "data-modeling",
         "error-handling",
@@ -351,7 +364,10 @@
         "http-client",
         "cache-invalidation",
         "circuit-breaker"
-      ]
+      ],
+      "websearch": false,
+      "path": ".claude/skills/api-toolkit/SKILL.md",
+      "actions": []
     },
     {
       "name": "app-audit",
@@ -377,8 +393,9 @@
         "web-vitals"
       ],
       "linkedFrom": [],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/app-audit/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "astro",
@@ -404,8 +421,9 @@
         "cloudflare"
       ],
       "linkedFrom": [],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/astro/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "audit",
@@ -435,8 +453,9 @@
         "plan"
       ],
       "linkedFrom": [],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/audit/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "authentication",
@@ -476,6 +495,8 @@
         "oauth",
         "rbac"
       ],
+      "websearch": false,
+      "path": ".claude/skills/authentication/SKILL.md",
       "riskLevel": "medium"
     },
     {
@@ -501,6 +522,8 @@
         "cost-aware-pipeline",
         "ai-agents"
       ],
+      "websearch": false,
+      "path": ".claude/skills/autonomous-loops/SKILL.md",
       "riskLevel": "medium",
       "hasSkillMd": true
     },
@@ -532,8 +555,9 @@
         "devops-kit",
         "object-storage"
       ],
-      "riskLevel": "medium",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/aws/SKILL.md",
+      "riskLevel": "medium"
     },
     {
       "name": "better-auth",
@@ -556,8 +580,9 @@
         "oauth",
         "saas-bootstrap"
       ],
-      "riskLevel": "medium",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/better-auth/SKILL.md",
+      "riskLevel": "medium"
     },
     {
       "name": "bio-link-deployer",
@@ -575,7 +600,8 @@
         "seo"
       ],
       "linkedFrom": [],
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/bio-link-deployer/SKILL.md"
     },
     {
       "name": "bootstrap",
@@ -604,8 +630,9 @@
       "linkedFrom": [
         "saas-bootstrap"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/bootstrap/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "brainstorm",
@@ -633,8 +660,9 @@
         "team",
         "reasoning-frameworks"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/brainstorm/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "brand-studio",
@@ -664,7 +692,6 @@
         "style guide",
         "visual identity"
       ],
-      "actions": [],
       "linksTo": [
         "ui-ux-pro-max",
         "design-kit",
@@ -679,7 +706,10 @@
         "email-kit",
         "landing-gen",
         "saas-bootstrap"
-      ]
+      ],
+      "websearch": false,
+      "path": ".claude/skills/brand-studio/SKILL.md",
+      "actions": []
     },
     {
       "name": "build-resolver",
@@ -706,6 +736,8 @@
         "ship",
         "verify"
       ],
+      "websearch": false,
+      "path": ".claude/skills/build-resolver/SKILL.md",
       "riskLevel": "low",
       "agentCapable": true
     },
@@ -732,8 +764,9 @@
         "dev-workflow"
       ],
       "linkedFrom": [],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/bun/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "cache-invalidation",
@@ -753,7 +786,9 @@
         "redis",
         "api-toolkit"
       ],
-      "linkedFrom": []
+      "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/cache-invalidation/SKILL.md"
     },
     {
       "name": "caching",
@@ -785,8 +820,9 @@
         "prompt-caching",
         "cache-invalidation"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/caching/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "chrome-devtools",
@@ -813,6 +849,8 @@
         "ui-ux-pro-max",
         "playwright"
       ],
+      "websearch": false,
+      "path": ".claude/skills/chrome-devtools/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -833,7 +871,9 @@
         "microservices",
         "api-toolkit"
       ],
-      "linkedFrom": []
+      "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/circuit-breaker/SKILL.md"
     },
     {
       "name": "clerk",
@@ -857,8 +897,9 @@
         "security-toolkit"
       ],
       "linkedFrom": [],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/clerk/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "cloudflare",
@@ -890,8 +931,9 @@
         "object-storage",
         "api-toolkit"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/cloudflare/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "cms-kit",
@@ -934,7 +976,6 @@
         "tiptap",
         "useEditor"
       ],
-      "actions": [],
       "linksTo": [
         "nextjs",
         "react",
@@ -946,7 +987,10 @@
       ],
       "linkedFrom": [
         "realtime-kit"
-      ]
+      ],
+      "websearch": false,
+      "path": ".claude/skills/cms-kit/SKILL.md",
+      "actions": []
     },
     {
       "name": "code-review",
@@ -986,8 +1030,9 @@
         "dev-workflow",
         "ut-review"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/code-review/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "code-splitting",
@@ -1012,6 +1057,8 @@
         "performance-budget",
         "vite"
       ],
+      "websearch": false,
+      "path": ".claude/skills/code-splitting/SKILL.md",
       "preferredNextSkills": [
         "web-vitals",
         "suspense"
@@ -1062,7 +1109,6 @@
         "subscription",
         "usage metering"
       ],
-      "actions": [],
       "linksTo": [
         "authentication",
         "security-toolkit",
@@ -1075,7 +1121,10 @@
       "linkedFrom": [
         "webhooks",
         "saas-bootstrap"
-      ]
+      ],
+      "websearch": false,
+      "path": ".claude/skills/commerce-kit/SKILL.md",
+      "actions": []
     },
     {
       "name": "commit-crafter",
@@ -1102,6 +1151,8 @@
         "pr-writer",
         "ship"
       ],
+      "websearch": false,
+      "path": ".claude/skills/commit-crafter/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -1121,7 +1172,8 @@
         "research"
       ],
       "linkedFrom": [],
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/competitor-spy/SKILL.md"
     },
     {
       "name": "compliance-checker",
@@ -1137,7 +1189,8 @@
         "audit"
       ],
       "linkedFrom": [],
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/compliance-checker/SKILL.md"
     },
     {
       "name": "content-writer",
@@ -1166,14 +1219,16 @@
         "viral post",
         "viral post writer"
       ],
-      "actions": [],
       "linksTo": [
         "seo",
         "nextjs",
         "brand-studio",
         "email-kit"
       ],
-      "linkedFrom": []
+      "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/content-writer/SKILL.md",
+      "actions": []
     },
     {
       "name": "context-budget",
@@ -1197,6 +1252,8 @@
         "strategic-compact",
         "cost-aware-pipeline"
       ],
+      "websearch": false,
+      "path": ".claude/skills/context-budget/SKILL.md",
       "riskLevel": "low",
       "hasSkillMd": true
     },
@@ -1226,6 +1283,8 @@
         "lint-format",
         "openviking"
       ],
+      "websearch": false,
+      "path": ".claude/skills/context-engineering/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -1246,6 +1305,8 @@
         "microservices"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/contract-testing/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -1264,7 +1325,8 @@
         "seo"
       ],
       "linkedFrom": [],
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/conversion-tracker/SKILL.md"
     },
     {
       "name": "convex",
@@ -1288,8 +1350,9 @@
         "authentication"
       ],
       "linkedFrom": [],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/convex/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "cook",
@@ -1322,8 +1385,9 @@
       "linkedFrom": [
         "team"
       ],
-      "riskLevel": "medium",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/cook/SKILL.md",
+      "riskLevel": "medium"
     },
     {
       "name": "cost-aware-pipeline",
@@ -1349,6 +1413,8 @@
         "context-budget",
         "autonomous-loops"
       ],
+      "websearch": false,
+      "path": ".claude/skills/cost-aware-pipeline/SKILL.md",
       "riskLevel": "low",
       "hasSkillMd": true
     },
@@ -1371,6 +1437,8 @@
         "database-ops"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/cqrs/SKILL.md",
       "riskLevel": "medium"
     },
     {
@@ -1394,6 +1462,8 @@
         "nodejs"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/cron-jobs/SKILL.md",
       "riskLevel": "medium"
     },
     {
@@ -1467,7 +1537,6 @@
         "whileHover",
         "whileTap"
       ],
-      "actions": [],
       "linksTo": [
         "tailwind",
         "design-kit",
@@ -1490,7 +1559,10 @@
         "react",
         "threejs",
         "landing-gen"
-      ]
+      ],
+      "websearch": false,
+      "path": ".claude/skills/css-foundations/SKILL.md",
+      "actions": []
     },
     {
       "name": "cypress",
@@ -1512,8 +1584,9 @@
         "react"
       ],
       "linkedFrom": [],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/cypress/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "d3",
@@ -1534,8 +1607,9 @@
         "react"
       ],
       "linkedFrom": [],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/d3/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "dashboard",
@@ -1552,6 +1626,8 @@
       "linkedFrom": [
         "ut"
       ],
+      "websearch": false,
+      "path": ".claude/skills/dashboard/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -1589,6 +1665,8 @@
         "drizzle-kit",
         "database-ops"
       ],
+      "websearch": false,
+      "path": ".claude/skills/data-modeling/SKILL.md",
       "riskLevel": "medium"
     },
     {
@@ -1609,6 +1687,8 @@
         "api-toolkit"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/data-validation/SKILL.md",
       "preferredNextSkills": [
         "zod",
         "forms"
@@ -1665,7 +1745,6 @@
         "wal archiving",
         "zero downtime migration"
       ],
-      "actions": [],
       "linksTo": [
         "postgresql",
         "mongodb",
@@ -1680,7 +1759,10 @@
       "linkedFrom": [
         "testing-toolkit",
         "cqrs"
-      ]
+      ],
+      "websearch": false,
+      "path": ".claude/skills/database-ops/SKILL.md",
+      "actions": []
     },
     {
       "name": "date-fns",
@@ -1701,6 +1783,8 @@
         "nodejs"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/date-fns/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -1735,8 +1819,9 @@
         "learn-from-mistakes",
         "reasoning-frameworks"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/debug/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "deck-studio",
@@ -1770,7 +1855,6 @@
         "slide design",
         "slides"
       ],
-      "actions": [],
       "linksTo": [
         "design-kit",
         "brand-studio",
@@ -1781,7 +1865,10 @@
       ],
       "linkedFrom": [
         "brand-studio"
-      ]
+      ],
+      "websearch": false,
+      "path": ".claude/skills/deck-studio/SKILL.md",
+      "actions": []
     },
     {
       "name": "deno",
@@ -1804,8 +1891,9 @@
         "nextjs"
       ],
       "linkedFrom": [],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/deno/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "dependency-analyzer",
@@ -1829,6 +1917,8 @@
         "migration-planner"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/dependency-analyzer/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -1849,6 +1939,8 @@
         "testing-toolkit"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/dependency-injection/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -1958,7 +2050,6 @@
         "reference design",
         "style of"
       ],
-      "actions": [],
       "linksTo": [
         "brand-studio",
         "image-studio",
@@ -1987,7 +2078,10 @@
         "recharts",
         "storybook",
         "web-components"
-      ]
+      ],
+      "websearch": false,
+      "path": ".claude/skills/design-kit/SKILL.md",
+      "actions": []
     },
     {
       "name": "dev-workflow",
@@ -2024,6 +2118,8 @@
         "git-hooks",
         "lint-format"
       ],
+      "websearch": false,
+      "path": ".claude/skills/dev-workflow/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -2115,7 +2211,6 @@
         "write a script",
         "zsh script"
       ],
-      "actions": [],
       "linksTo": [
         "observability-kit",
         "microservices",
@@ -2146,7 +2241,10 @@
         "git-hooks",
         "saas-bootstrap",
         "migration-planner"
-      ]
+      ],
+      "websearch": false,
+      "path": ".claude/skills/devops-kit/SKILL.md",
+      "actions": []
     },
     {
       "name": "django",
@@ -2173,8 +2271,9 @@
         "postgresql",
         "python"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/django/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "docs-kit",
@@ -2221,7 +2320,6 @@
         "write changelog",
         "write docs"
       ],
-      "actions": [],
       "linksTo": [
         "api-toolkit",
         "mermaid",
@@ -2254,7 +2352,10 @@
         "testing-toolkit",
         "vfs",
         "contract-testing"
-      ]
+      ],
+      "websearch": false,
+      "path": ".claude/skills/docs-kit/SKILL.md",
+      "actions": []
     },
     {
       "name": "drizzle",
@@ -2286,8 +2387,9 @@
         "database-ops",
         "saas-bootstrap"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/drizzle/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "drizzle-kit",
@@ -2308,6 +2410,8 @@
         "data-modeling"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/drizzle-kit/SKILL.md",
       "riskLevel": "medium"
     },
     {
@@ -2330,8 +2434,9 @@
         "pwa"
       ],
       "linkedFrom": [],
-      "riskLevel": "medium",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/electron/SKILL.md",
+      "riskLevel": "medium"
     },
     {
       "name": "email-kit",
@@ -2364,7 +2469,6 @@
         "transactional emails",
         "welcome email"
       ],
-      "actions": [],
       "linksTo": [
         "react",
         "tailwind",
@@ -2377,7 +2481,10 @@
       ],
       "linkedFrom": [
         "saas-bootstrap"
-      ]
+      ],
+      "websearch": false,
+      "path": ".claude/skills/email-kit/SKILL.md",
+      "actions": []
     },
     {
       "name": "env-vars",
@@ -2402,6 +2509,8 @@
       "linkedFrom": [
         "devops-kit"
       ],
+      "websearch": false,
+      "path": ".claude/skills/env-vars/SKILL.md",
       "riskLevel": "medium"
     },
     {
@@ -2438,6 +2547,8 @@
         "http-client",
         "circuit-breaker"
       ],
+      "websearch": false,
+      "path": ".claude/skills/error-handling/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -2461,6 +2572,8 @@
       "linkedFrom": [
         "cqrs"
       ],
+      "websearch": false,
+      "path": ".claude/skills/event-sourcing/SKILL.md",
       "preferredNextSkills": [
         "message-queues",
         "microservices"
@@ -2490,8 +2603,9 @@
         "nextjs"
       ],
       "linkedFrom": [],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/expo/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "fastapi",
@@ -2521,8 +2635,9 @@
         "security-toolkit",
         "docs-kit"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/fastapi/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "feature-flags",
@@ -2544,8 +2659,9 @@
         "observability-kit"
       ],
       "linkedFrom": [],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/feature-flags/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "file-upload",
@@ -2568,6 +2684,8 @@
         "media-processing"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/file-upload/SKILL.md",
       "riskLevel": "medium"
     },
     {
@@ -2599,6 +2717,8 @@
         "test-ui",
         "learn-from-mistakes"
       ],
+      "websearch": false,
+      "path": ".claude/skills/fix/SKILL.md",
       "riskLevel": "medium"
     },
     {
@@ -2619,42 +2739,9 @@
         "redis"
       ],
       "linkedFrom": [],
-      "riskLevel": "low",
-      "websearch": true
-    },
-    {
-      "name": "forge",
-      "description": "Product builder pipeline — orchestrates idea to ship lifecycle with phase gates",
-      "layer": "orchestrator",
-      "category": "orchestration",
-      "triggers": [
-        "forge",
-        "build product",
-        "build app",
-        "create app",
-        "ship",
-        "from idea",
-        "product pipeline",
-        "idea to ship"
-      ],
-      "linksTo": [
-        "plan",
-        "scout",
-        "cook",
-        "react",
-        "nextjs",
-        "tailwind",
-        "drizzle",
-        "api-toolkit",
-        "test",
-        "ship",
-        "gsd"
-      ],
-      "linkedFrom": [
-        "gsd",
-        "cook"
-      ],
-      "riskLevel": "high"
+      "websearch": true,
+      "path": ".claude/skills/flask/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "forge",
@@ -2678,6 +2765,8 @@
         "ship"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/forge/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -2715,6 +2804,8 @@
         "data-validation",
         "state-machines"
       ],
+      "websearch": false,
+      "path": ".claude/skills/forms/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -2731,7 +2822,8 @@
         "audit"
       ],
       "linkedFrom": [],
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/funnel-planner/SKILL.md"
     },
     {
       "name": "git-hooks",
@@ -2756,6 +2848,8 @@
       "linkedFrom": [
         "lint-format"
       ],
+      "websearch": false,
+      "path": ".claude/skills/git-hooks/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -2788,6 +2882,8 @@
         "dev-workflow",
         "git-hooks"
       ],
+      "websearch": false,
+      "path": ".claude/skills/git-workflow/SKILL.md",
       "riskLevel": "medium"
     },
     {
@@ -2805,7 +2901,9 @@
         "devops-kit",
         "seo"
       ],
-      "linkedFrom": []
+      "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/github-pages-deployer/SKILL.md"
     },
     {
       "name": "golang",
@@ -2835,8 +2933,9 @@
         "redis",
         "grpc"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/golang/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "graphql",
@@ -2872,8 +2971,9 @@
         "nestjs",
         "graphql-codegen"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/graphql/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "graphql-codegen",
@@ -2892,6 +2992,8 @@
         "react"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/graphql-codegen/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -2914,6 +3016,8 @@
         "api-toolkit"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/grpc/SKILL.md",
       "preferredNextSkills": [
         "microservices",
         "api-designer"
@@ -2972,6 +3076,8 @@
         "cook",
         "ship"
       ],
+      "websearch": false,
+      "path": ".claude/skills/gsd/SKILL.md",
       "riskLevel": "high",
       "actions": []
     },
@@ -2996,7 +3102,9 @@
       ],
       "linkedFrom": [
         "promptfoo"
-      ]
+      ],
+      "websearch": false,
+      "path": ".claude/skills/heretic/SKILL.md"
     },
     {
       "name": "hono",
@@ -3025,8 +3133,9 @@
         "deno",
         "security-toolkit"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/hono/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "htmx",
@@ -3048,6 +3157,8 @@
         "tailwind"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/htmx/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -3069,6 +3180,8 @@
         "api-toolkit"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/http-client/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -3092,6 +3205,8 @@
         "react"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/i18n/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -3112,7 +3227,9 @@
         "message-queues",
         "webhooks"
       ],
-      "linkedFrom": []
+      "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/idempotency/SKILL.md"
     },
     {
       "name": "image-optimization",
@@ -3137,6 +3254,8 @@
       "linkedFrom": [
         "performance-budget"
       ],
+      "websearch": false,
+      "path": ".claude/skills/image-optimization/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -3191,7 +3310,6 @@
         "tinyfish",
         "website hero banner"
       ],
-      "actions": [],
       "linksTo": [
         "ui-ux-pro-max",
         "design-kit",
@@ -3209,7 +3327,10 @@
         "brand-studio",
         "design-kit",
         "landing-gen"
-      ]
+      ],
+      "websearch": false,
+      "path": ".claude/skills/image-studio/SKILL.md",
+      "actions": []
     },
     {
       "name": "inngest",
@@ -3234,8 +3355,9 @@
       "linkedFrom": [
         "cron-jobs"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/inngest/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "json-transformer",
@@ -3263,6 +3385,8 @@
         "regex-builder",
         "devops-kit"
       ],
+      "websearch": false,
+      "path": ".claude/skills/json-transformer/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -3287,6 +3411,8 @@
         "plan-archive",
         "team"
       ],
+      "websearch": false,
+      "path": ".claude/skills/kanban/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -3315,8 +3441,9 @@
         "ui-ux-pro-max",
         "design-kit"
       ],
-      "riskLevel": "low",
       "websearch": true,
+      "path": ".claude/skills/landing-gen/SKILL.md",
+      "riskLevel": "low",
       "hasSkillMd": true
     },
     {
@@ -3337,8 +3464,9 @@
         "devops-kit"
       ],
       "linkedFrom": [],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/laravel/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "learn-from-mistakes",
@@ -3364,6 +3492,8 @@
         "reasoning-frameworks"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/learn-from-mistakes/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -3390,6 +3520,8 @@
         "team",
         "learn-from-mistakes"
       ],
+      "websearch": false,
+      "path": ".claude/skills/learn-pattern/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -3417,7 +3549,6 @@
         "prettier config",
         "prettier plugin"
       ],
-      "actions": [],
       "linksTo": [
         "dev-workflow",
         "git-hooks",
@@ -3425,7 +3556,10 @@
         "context-engineering",
         "prompt-engineering"
       ],
-      "linkedFrom": []
+      "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/lint-format/SKILL.md",
+      "actions": []
     },
     {
       "name": "load-testing",
@@ -3447,6 +3581,8 @@
         "observability-kit"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/load-testing/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -3471,6 +3607,8 @@
         "svelte"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/lucia/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -3500,6 +3638,8 @@
         "image-optimization",
         "file-upload"
       ],
+      "websearch": false,
+      "path": ".claude/skills/media-processing/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -3533,6 +3673,8 @@
         "team",
         "deck-studio"
       ],
+      "websearch": false,
+      "path": ".claude/skills/mermaid/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -3576,6 +3718,8 @@
         "cqrs",
         "idempotency"
       ],
+      "websearch": false,
+      "path": ".claude/skills/message-queues/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -3626,8 +3770,9 @@
         "devops-kit",
         "circuit-breaker"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/microservices/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "migrate",
@@ -3661,6 +3806,8 @@
         "mermaid"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/migrate/SKILL.md",
       "riskLevel": "high"
     },
     {
@@ -3689,6 +3836,8 @@
         "api-toolkit",
         "database-ops"
       ],
+      "websearch": false,
+      "path": ".claude/skills/migration-planner/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -3720,7 +3869,8 @@
         "reasoning-frameworks"
       ],
       "linkedFrom": [],
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/mirofish/SKILL.md"
     },
     {
       "name": "ml-ops",
@@ -3750,6 +3900,8 @@
         "rag",
         "heretic"
       ],
+      "websearch": false,
+      "path": ".claude/skills/ml-ops/SKILL.md",
       "riskLevel": "medium"
     },
     {
@@ -3778,8 +3930,9 @@
         "search",
         "database-ops"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/mongodb/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "monorepo-config",
@@ -3800,6 +3953,8 @@
         "nx"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/monorepo-config/SKILL.md",
       "preferredNextSkills": [
         "turborepo",
         "pnpm"
@@ -3822,7 +3977,8 @@
         "email-kit"
       ],
       "linkedFrom": [],
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/multi-program-manager/SKILL.md"
     },
     {
       "name": "neon",
@@ -3847,8 +4003,9 @@
       "linkedFrom": [
         "database-ops"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/neon/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "nestjs",
@@ -3871,8 +4028,9 @@
       "linkedFrom": [
         "dependency-injection"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/nestjs/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "next-auth",
@@ -3897,8 +4055,9 @@
       "linkedFrom": [
         "oauth"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/next-auth/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "nextjs",
@@ -4043,8 +4202,9 @@
         "tailwind",
         "saas-bootstrap"
       ],
-      "riskLevel": "low",
       "websearch": true,
+      "path": ".claude/skills/nextjs/SKILL.md",
+      "riskLevel": "low",
       "actions": []
     },
     {
@@ -4064,7 +4224,8 @@
         "research"
       ],
       "linkedFrom": [],
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/niche-opportunity-finder/SKILL.md"
     },
     {
       "name": "nodejs",
@@ -4117,8 +4278,9 @@
         "web-workers",
         "grpc"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/nodejs/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "nx",
@@ -4142,8 +4304,9 @@
       "linkedFrom": [
         "monorepo-config"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/nx/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "oauth",
@@ -4166,6 +4329,8 @@
         "security-toolkit"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/oauth/SKILL.md",
       "riskLevel": "medium"
     },
     {
@@ -4192,6 +4357,8 @@
       "linkedFrom": [
         "file-upload"
       ],
+      "websearch": false,
+      "path": ".claude/skills/object-storage/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -4230,7 +4397,6 @@
         "telemetry",
         "tracing"
       ],
-      "actions": [],
       "linksTo": [
         "devops-kit",
         "aws",
@@ -4250,7 +4416,10 @@
         "load-testing",
         "error-handling",
         "git-workflow"
-      ]
+      ],
+      "websearch": false,
+      "path": ".claude/skills/observability-kit/SKILL.md",
+      "actions": []
     },
     {
       "name": "onboard",
@@ -4275,8 +4444,9 @@
         "brainstorm"
       ],
       "linkedFrom": [],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/onboard/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "openai",
@@ -4304,8 +4474,9 @@
         "ai-function-calling",
         "prompt-caching"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/openai/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "openclaw",
@@ -4325,6 +4496,8 @@
         "ai-agents"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/openclaw/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -4345,7 +4518,9 @@
         "ai-agents",
         "context-engineering"
       ],
-      "linkedFrom": []
+      "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/openviking/SKILL.md"
     },
     {
       "name": "optimize",
@@ -4375,6 +4550,8 @@
         "ship",
         "team"
       ],
+      "websearch": false,
+      "path": ".claude/skills/optimize/SKILL.md",
       "riskLevel": "medium"
     },
     {
@@ -4395,6 +4572,8 @@
         "nextjs"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/pagination/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -4416,6 +4595,8 @@
         "react"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/pdf-generation/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -4441,6 +4622,8 @@
         "load-testing",
         "ui-polish"
       ],
+      "websearch": false,
+      "path": ".claude/skills/performance-budget/SKILL.md",
       "preferredNextSkills": [
         "web-vitals",
         "code-splitting"
@@ -4481,6 +4664,8 @@
         "web-workers",
         "app-audit"
       ],
+      "websearch": false,
+      "path": ".claude/skills/performance-profiler/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -4499,7 +4684,8 @@
         "seo"
       ],
       "linkedFrom": [],
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/performance-report/SKILL.md"
     },
     {
       "name": "plan",
@@ -4532,6 +4718,8 @@
         "team",
         "reasoning-frameworks"
       ],
+      "websearch": false,
+      "path": ".claude/skills/plan/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -4554,6 +4742,8 @@
         "kanban",
         "migrate"
       ],
+      "websearch": false,
+      "path": ".claude/skills/plan-archive/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -4578,6 +4768,8 @@
         "plan",
         "reasoning-frameworks"
       ],
+      "websearch": false,
+      "path": ".claude/skills/plan-validate/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -4605,8 +4797,9 @@
         "testing-toolkit",
         "accessibility-testing"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/playwright/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "plugins",
@@ -4623,6 +4816,8 @@
       ],
       "linksTo": [],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/plugins/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -4646,8 +4841,9 @@
       "linkedFrom": [
         "monorepo-config"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/pnpm/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "postgresql",
@@ -4695,8 +4891,9 @@
         "laravel",
         "ruby-rails"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/postgresql/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "pr-writer",
@@ -4722,6 +4919,8 @@
         "cook",
         "ship"
       ],
+      "websearch": false,
+      "path": ".claude/skills/pr-writer/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -4744,6 +4943,8 @@
       "linkedFrom": [
         "ship"
       ],
+      "websearch": false,
+      "path": ".claude/skills/preview/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -4774,8 +4975,9 @@
         "sqlite",
         "database-ops"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/prisma/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "product-showcase-page",
@@ -4793,7 +4995,8 @@
         "tailwind"
       ],
       "linkedFrom": [],
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/product-showcase-page/SKILL.md"
     },
     {
       "name": "prompt-caching",
@@ -4812,6 +5015,8 @@
         "caching"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/prompt-caching/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -4841,8 +5046,9 @@
         "ai-prompts",
         "lint-format"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/prompt-engineering/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "promptfoo",
@@ -4869,7 +5075,8 @@
       "linkedFrom": [
         "heretic"
       ],
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/promptfoo/SKILL.md"
     },
     {
       "name": "pwa",
@@ -4889,8 +5096,9 @@
         "realtime-kit",
         "service-worker"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/pwa/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "python",
@@ -4925,8 +5133,9 @@
         "flask",
         "heretic"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/python/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "quality-gate",
@@ -4952,6 +5161,8 @@
         "ship",
         "verify"
       ],
+      "websearch": false,
+      "path": ".claude/skills/quality-gate/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -4975,8 +5186,9 @@
         "tailwind"
       ],
       "linkedFrom": [],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/radix-ui/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "rag",
@@ -5007,8 +5219,9 @@
         "openviking",
         "mirofish"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/rag/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "rate-limiting",
@@ -5035,8 +5248,9 @@
         "upstash",
         "api-toolkit"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/rate-limiting/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "rbac",
@@ -5058,6 +5272,8 @@
         "nextjs"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/rbac/SKILL.md",
       "riskLevel": "medium"
     },
     {
@@ -5193,8 +5409,9 @@
         "code-splitting",
         "analytics"
       ],
-      "riskLevel": "low",
       "websearch": true,
+      "path": ".claude/skills/react/SKILL.md",
+      "riskLevel": "low",
       "actions": []
     },
     {
@@ -5216,8 +5433,9 @@
         "zod"
       ],
       "linkedFrom": [],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/react-hook-form/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "react-native",
@@ -5235,8 +5453,9 @@
         "expo",
         "realtime-kit"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/react-native/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "realtime-kit",
@@ -5271,7 +5490,6 @@
         "websocket",
         "websockets"
       ],
-      "actions": [],
       "linksTo": [
         "nodejs",
         "redis",
@@ -5294,7 +5512,10 @@
         "supabase",
         "nestjs",
         "ruby-rails"
-      ]
+      ],
+      "websearch": false,
+      "path": ".claude/skills/realtime-kit/SKILL.md",
+      "actions": []
     },
     {
       "name": "reasoning-frameworks",
@@ -5352,7 +5573,6 @@
         "which tool",
         "why is this happening"
       ],
-      "actions": [],
       "linksTo": [
         "data-modeling",
         "api-toolkit",
@@ -5371,7 +5591,10 @@
         "onboard",
         "team",
         "learn-from-mistakes"
-      ]
+      ],
+      "websearch": false,
+      "path": ".claude/skills/reasoning-frameworks/SKILL.md",
+      "actions": []
     },
     {
       "name": "recharts",
@@ -5395,8 +5618,9 @@
       "linkedFrom": [
         "d3"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/recharts/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "redis",
@@ -5442,8 +5666,9 @@
         "ruby-rails",
         "cache-invalidation"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/redis/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "refactor",
@@ -5472,6 +5697,8 @@
         "optimize",
         "team"
       ],
+      "websearch": false,
+      "path": ".claude/skills/refactor/SKILL.md",
       "riskLevel": "medium"
     },
     {
@@ -5497,6 +5724,8 @@
         "json-transformer",
         "devops-kit"
       ],
+      "websearch": false,
+      "path": ".claude/skills/regex-builder/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -5522,6 +5751,8 @@
         "docs-kit",
         "vfs"
       ],
+      "websearch": false,
+      "path": ".claude/skills/repomix/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -5559,8 +5790,9 @@
         "mirofish",
         "deck-studio"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/research/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "research-loop",
@@ -5593,6 +5825,8 @@
         "gsd",
         "cook"
       ],
+      "websearch": false,
+      "path": ".claude/skills/research-loop/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -5615,8 +5849,9 @@
         "realtime-kit"
       ],
       "linkedFrom": [],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/ruby-rails/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "rust",
@@ -5644,8 +5879,9 @@
         "microservices",
         "wasm"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/rust/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "saas-bootstrap",
@@ -5674,8 +5910,9 @@
         "brand-studio"
       ],
       "linkedFrom": [],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/saas-bootstrap/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "scout",
@@ -5716,8 +5953,9 @@
         "test-ui",
         "vfs"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/scout/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "search",
@@ -5740,6 +5978,8 @@
         "rag"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/search/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -5792,7 +6032,6 @@
         "xss",
         "xss prevention"
       ],
-      "actions": [],
       "linksTo": [
         "authentication",
         "devops-kit",
@@ -5816,7 +6055,10 @@
         "api-toolkit",
         "commerce-kit",
         "oauth"
-      ]
+      ],
+      "websearch": false,
+      "path": ".claude/skills/security-toolkit/SKILL.md",
+      "actions": []
     },
     {
       "name": "self-improver",
@@ -5832,7 +6074,8 @@
         "audit"
       ],
       "linkedFrom": [],
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/self-improver/SKILL.md"
     },
     {
       "name": "seo",
@@ -5860,8 +6103,9 @@
         "email-kit",
         "landing-gen"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/seo/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "seo-audit",
@@ -5879,7 +6123,8 @@
         "seo"
       ],
       "linkedFrom": [],
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/seo-audit/SKILL.md"
     },
     {
       "name": "service-worker",
@@ -5900,6 +6145,8 @@
         "web-workers"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/service-worker/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -5930,8 +6177,9 @@
         "css-foundations",
         "ui-ux-pro-max"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/shadcn-ui/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "ship",
@@ -5959,8 +6207,9 @@
         "preview"
       ],
       "linkedFrom": [],
-      "riskLevel": "high",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/ship/SKILL.md",
+      "riskLevel": "high"
     },
     {
       "name": "skill-creator",
@@ -5979,6 +6228,8 @@
         "docs-kit"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/skill-creator/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -5994,7 +6245,9 @@
       "linksTo": [
         "audit"
       ],
-      "linkedFrom": []
+      "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/skill-finder/SKILL.md"
     },
     {
       "name": "social-media-scheduler",
@@ -6012,7 +6265,8 @@
         "seo"
       ],
       "linkedFrom": [],
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/social-media-scheduler/SKILL.md"
     },
     {
       "name": "solid",
@@ -6033,6 +6287,8 @@
         "tailwind"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/solid/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -6053,8 +6309,9 @@
         "devops-kit"
       ],
       "linkedFrom": [],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/spring-boot/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "sqlite",
@@ -6075,6 +6332,8 @@
         "nodejs"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/sqlite/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -6093,7 +6352,8 @@
         "tailwind"
       ],
       "linkedFrom": [],
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/squeeze-page-builder/SKILL.md"
     },
     {
       "name": "state-machines",
@@ -6113,6 +6373,8 @@
         "forms"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/state-machines/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -6136,8 +6398,9 @@
         "tailwind"
       ],
       "linkedFrom": [],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/storybook/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "strategic-compact",
@@ -6158,6 +6421,8 @@
       "linkedFrom": [
         "context-budget"
       ],
+      "websearch": false,
+      "path": ".claude/skills/strategic-compact/SKILL.md",
       "riskLevel": "low",
       "hasSkillMd": true
     },
@@ -6185,8 +6450,9 @@
       "linkedFrom": [
         "nextjs"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/streaming/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "supabase",
@@ -6211,8 +6477,9 @@
       "linkedFrom": [
         "postgresql"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/supabase/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "svelte",
@@ -6239,8 +6506,9 @@
       "linkedFrom": [
         "lucia"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/svelte/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "tailwind",
@@ -6264,7 +6532,6 @@
         "tailwindcss",
         "utility class"
       ],
-      "actions": [],
       "linksTo": [
         "design-kit",
         "css-foundations",
@@ -6285,7 +6552,10 @@
         "solid",
         "email-kit",
         "saas-bootstrap"
-      ]
+      ],
+      "websearch": false,
+      "path": ".claude/skills/tailwind/SKILL.md",
+      "actions": []
     },
     {
       "name": "team",
@@ -6317,6 +6587,8 @@
         "docs-kit"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/team/SKILL.md",
       "riskLevel": "high"
     },
     {
@@ -6355,6 +6627,8 @@
         "testing-toolkit",
         "promptfoo"
       ],
+      "websearch": false,
+      "path": ".claude/skills/test/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -6379,6 +6653,8 @@
       "linkedFrom": [
         "playwright"
       ],
+      "websearch": false,
+      "path": ".claude/skills/test-ui/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -6423,7 +6699,6 @@
         "what to test",
         "write tests"
       ],
-      "actions": [],
       "linksTo": [
         "react",
         "vitest",
@@ -6451,7 +6726,10 @@
         "contract-testing",
         "load-testing",
         "docs-kit"
-      ]
+      ],
+      "websearch": false,
+      "path": ".claude/skills/testing-toolkit/SKILL.md",
+      "actions": []
     },
     {
       "name": "threejs",
@@ -6480,8 +6758,9 @@
         "css-foundations",
         "d3"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/threejs/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "trpc",
@@ -6504,8 +6783,9 @@
         "react"
       ],
       "linkedFrom": [],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/trpc/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "turborepo",
@@ -6530,8 +6810,9 @@
         "nx",
         "monorepo-config"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/turborepo/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "turso",
@@ -6557,8 +6838,9 @@
       "linkedFrom": [
         "sqlite"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/turso/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "ui-polish",
@@ -6660,7 +6942,6 @@
         "welcome flow",
         "what's wrong with design"
       ],
-      "actions": [],
       "linksTo": [
         "css-foundations",
         "accessibility",
@@ -6678,7 +6959,10 @@
         "app-audit",
         "brand-studio",
         "landing-gen"
-      ]
+      ],
+      "websearch": false,
+      "path": ".claude/skills/ui-polish/SKILL.md",
+      "actions": []
     },
     {
       "name": "ui-ux-pro-max",
@@ -6797,8 +7081,143 @@
         "brand-studio",
         "deck-studio"
       ],
-      "riskLevel": "low",
       "websearch": true,
+      "path": ".claude/skills/ui-ux-pro-max/SKILL.md",
+      "riskLevel": "low",
+      "hasSkillMd": true,
+      "actions": []
+    },
+    {
+      "id": "ultra-ui",
+      "name": "ultra-ui",
+      "description": "Ultra UI skill - combines Google's DESIGN.md spec with the ui-ux-pro-max knowledge base. Generates lint-clean DESIGN.md files, validates token references and WCAG contrast, exports Tailwind/DTCG tokens, and diffs design systems version-over-version.",
+      "layer": "domain",
+      "category": "design",
+      "triggers": [
+        "/design-pipeline",
+        "/ui-pipeline",
+        "SaaS dashboard",
+        "UI review",
+        "UX improvement",
+        "WCAG compliance",
+        "accessibility audit",
+        "add styles",
+        "admin panel",
+        "ai design",
+        "award-winning",
+        "beautify",
+        "build UI",
+        "build a dashboard",
+        "build a form",
+        "build a landing page",
+        "build component",
+        "color scheme",
+        "complex layout",
+        "component design",
+        "create a website",
+        "create dialog",
+        "create screen",
+        "create table",
+        "create the UI for",
+        "create ui",
+        "css variables",
+        "dark mode",
+        "design a",
+        "design a component",
+        "design a page",
+        "design card",
+        "design from scratch",
+        "design guidelines",
+        "design modal",
+        "design navigation",
+        "design review",
+        "design screen",
+        "design sidebar",
+        "design system",
+        "design this screen",
+        "design to code",
+        "design with stitch",
+        "elevate ui",
+        "fix ui",
+        "generate design",
+        "generate ui",
+        "improve ui",
+        "interface design",
+        "landing page design",
+        "looks bad",
+        "looks ugly",
+        "make a page",
+        "make it look better",
+        "make it look good",
+        "make it pretty",
+        "mockup",
+        "needs polish",
+        "pen file",
+        "pencil design",
+        "pixel perfect",
+        "polish the ui",
+        "premium UI",
+        "professional design",
+        "redesign",
+        "responsive design",
+        "shadcn",
+        "stitch",
+        "style component",
+        "style it",
+        "style this",
+        "tailwind",
+        "theme",
+        "ui",
+        "ui components",
+        "ui design",
+        "ui guidelines",
+        "user interface",
+        "web design",
+        "wireframe to code",
+        "DESIGN.md",
+        "design tokens",
+        "design.md",
+        "design lint",
+        "design diff",
+        "tailwind tokens",
+        "design token export"
+      ],
+      "linksTo": [
+        "ui-polish",
+        "design-kit",
+        "accessibility",
+        "css-foundations",
+        "landing-gen",
+        "shadcn-ui",
+        "tailwind",
+        "ai-multimodal",
+        "chrome-devtools",
+        "media-processing",
+        "nextjs",
+        "react",
+        "brand-studio"
+      ],
+      "linkedFrom": [
+        "landing-gen",
+        "ui-polish",
+        "design-kit",
+        "ai-multimodal",
+        "chrome-devtools",
+        "error-handling",
+        "media-processing",
+        "accessibility",
+        "gsd",
+        "cook",
+        "image-studio",
+        "brand-studio",
+        "deck-studio"
+      ],
+      "absorbs": [
+        "ui-ux-pro-max"
+      ],
+      "websearch": true,
+      "path": ".claude/skills/ultra-ui/SKILL.md",
+      "riskLevel": "low",
       "hasSkillMd": true,
       "actions": []
     },
@@ -6824,6 +7243,8 @@
       "linkedFrom": [
         "file-upload"
       ],
+      "websearch": false,
+      "path": ".claude/skills/uploadthing/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -6849,8 +7270,9 @@
       "linkedFrom": [
         "search"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/upstash/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "ut",
@@ -6871,6 +7293,8 @@
         "ut-init"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/ut/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -6889,6 +7313,8 @@
         "scout"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/ut-chain/SKILL.md",
       "riskLevel": "medium"
     },
     {
@@ -6906,6 +7332,8 @@
       "linkedFrom": [
         "ut"
       ],
+      "websearch": false,
+      "path": ".claude/skills/ut-hooks/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -6923,6 +7351,8 @@
       "linkedFrom": [
         "ut"
       ],
+      "websearch": false,
+      "path": ".claude/skills/ut-init/SKILL.md",
       "riskLevel": "medium"
     },
     {
@@ -6943,6 +7373,8 @@
       "linkedFrom": [
         "ut"
       ],
+      "websearch": false,
+      "path": ".claude/skills/ut-memory/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -6963,6 +7395,8 @@
         "ut-memory",
         "ut-remember"
       ],
+      "websearch": false,
+      "path": ".claude/skills/ut-recall/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -6983,6 +7417,8 @@
         "ut-memory",
         "ut-recall"
       ],
+      "websearch": false,
+      "path": ".claude/skills/ut-remember/SKILL.md",
       "riskLevel": "medium"
     },
     {
@@ -7001,6 +7437,8 @@
         "security-toolkit"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/ut-review/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -7019,6 +7457,8 @@
       "linkedFrom": [
         "ut"
       ],
+      "websearch": false,
+      "path": ".claude/skills/ut-skills/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -7047,6 +7487,8 @@
         "ship",
         "plan-validate"
       ],
+      "websearch": false,
+      "path": ".claude/skills/verify/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -7075,6 +7517,8 @@
       "linkedFrom": [
         "scout"
       ],
+      "websearch": false,
+      "path": ".claude/skills/vfs/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -7160,13 +7604,15 @@
         "video transition effect",
         "webm render"
       ],
-      "actions": [],
       "linksTo": [
         "react",
         "media-processing",
         "css-foundations"
       ],
-      "linkedFrom": []
+      "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/video-studio/SKILL.md",
+      "actions": []
     },
     {
       "name": "vite",
@@ -7186,8 +7632,9 @@
         "react"
       ],
       "linkedFrom": [],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/vite/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "vitest",
@@ -7214,8 +7661,9 @@
       "linkedFrom": [
         "testing-toolkit"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/vitest/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "vue",
@@ -7241,8 +7689,9 @@
         "forms"
       ],
       "linkedFrom": [],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/vue/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "wasm",
@@ -7264,6 +7713,8 @@
       "linkedFrom": [
         "web-workers"
       ],
+      "websearch": false,
+      "path": ".claude/skills/wasm/SKILL.md",
       "riskLevel": "medium"
     },
     {
@@ -7284,6 +7735,8 @@
         "accessibility"
       ],
       "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/web-components/SKILL.md",
       "riskLevel": "low"
     },
     {
@@ -7314,8 +7767,9 @@
         "ui-polish",
         "app-audit"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/web-vitals/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "web-workers",
@@ -7338,6 +7792,8 @@
       "linkedFrom": [
         "service-worker"
       ],
+      "websearch": false,
+      "path": ".claude/skills/web-workers/SKILL.md",
       "preferredNextSkills": [
         "wasm",
         "performance-profiler"
@@ -7370,6 +7826,8 @@
       "linkedFrom": [
         "idempotency"
       ],
+      "websearch": false,
+      "path": ".claude/skills/webhooks/SKILL.md",
       "riskLevel": "medium"
     },
     {
@@ -7388,7 +7846,8 @@
         "tailwind"
       ],
       "linkedFrom": [],
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/webinar-registration-page/SKILL.md"
     },
     {
       "name": "zod",
@@ -7426,8 +7885,9 @@
         "api-toolkit",
         "data-validation"
       ],
-      "riskLevel": "low",
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/zod/SKILL.md",
+      "riskLevel": "low"
     },
     {
       "name": "manimce",
@@ -7452,7 +7912,8 @@
       "linkedFrom": [
         "manim-composer"
       ],
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/manimce/SKILL.md"
     },
     {
       "name": "manimgl",
@@ -7476,7 +7937,8 @@
       "linkedFrom": [
         "manim-composer"
       ],
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/manimgl/SKILL.md"
     },
     {
       "name": "manim-composer",
@@ -7497,7 +7959,85 @@
         "manimgl"
       ],
       "linkedFrom": [],
-      "websearch": true
+      "websearch": true,
+      "path": ".claude/skills/manim-composer/SKILL.md"
+    },
+    {
+      "name": "design-doc",
+      "description": "Org-Bench Google-bipartite winning mechanism — the 4-section design-doc gate that every non-trivial change passes through. Use when the Director defines new work, when an Integrator reviews a lane (code/quality/devops), when the Director approves, or when a Worker is about to start coding and needs the spec. Tools live in the `design-doc` MCP server. Triggers on phrases like \"design doc\", \"design review\", \"approve revision\", \"lane verdict\", \"what does this issue require\", \"is this approved yet\".",
+      "layer": "domain",
+      "category": "domain",
+      "triggers": [
+        "design-doc",
+        "design doc"
+      ],
+      "linksTo": [],
+      "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/design-doc/SKILL.md"
+    },
+    {
+      "name": "scrapling",
+      "description": "Web scraping with anti-bot bypass (Cloudflare Turnstile etc.), stealth headless browsing, adaptive selectors, and concurrent crawls. Use when the user asks to scrape, crawl, or extract data from websites; the built-in WebFetch fails; the target has anti-bot protections; or the work needs JavaScript rendering. Prefers the registered MCP tools (mcp__scrapling__*) over raw Python so token cost stays low.",
+      "layer": "domain",
+      "category": "data",
+      "triggers": [
+        "scrape",
+        "scraping",
+        "crawl",
+        "crawler",
+        "spider",
+        "web data",
+        "extract from website",
+        "extract from url",
+        "anti-bot",
+        "cloudflare",
+        "turnstile",
+        "datadome",
+        "stealth fetch",
+        "headless browser",
+        "playwright scrape",
+        "scrape javascript",
+        "scrape spa",
+        "scrapling"
+      ],
+      "linksTo": [
+        "vfs",
+        "code-intel",
+        "memory"
+      ],
+      "linkedFrom": [],
+      "websearch": false,
+      "path": ".claude/skills/scrapling/SKILL.md"
+    },
+    {
+      "name": "ut-memory-mcp",
+      "description": "MCP tools for UltraThink memory — save, search, recall, link, Tekiō",
+      "layer": "utility",
+      "category": "domain",
+      "triggers": [
+        "remember this",
+        "save memory",
+        "search memory",
+        "recall brain",
+        "memory recall",
+        "tekio status",
+        "wheel stats",
+        "link memories",
+        "what do you remember"
+      ],
+      "linksTo": [
+        "ut-recall",
+        "ut-remember"
+      ],
+      "linkedFrom": [
+        "cook",
+        "plan",
+        "debug",
+        "gsd"
+      ],
+      "websearch": false,
+      "path": ".claude/skills/ut-memory-mcp/SKILL.md"
     }
   ]
 }

@@ -38,10 +38,10 @@ npm install -g @openai/codex
 ### 4. Install UltraThink
 
 ```bash
-git clone https://github.com/InugamiDev/ultrathink-oss.git ~/ultrathink
+git clone https://github.com/InuVerse/ultrathink.git ~/ultrathink
 cd ~/ultrathink
 ./scripts/setup.sh
-./scripts/init-global.sh
+./scripts/install.sh
 ```
 
 ### 5. Configure .env
@@ -72,7 +72,7 @@ claude  # or codex
 
 ```bash
 cd ~/ultrathink
-npm run dashboard:dev
+pnpm run dashboard:dev
 ```
 
 Access from Windows browser at `http://localhost:3333` — WSL2 automatically forwards ports.
@@ -150,19 +150,19 @@ If you can't use WSL2, some features work natively:
 
 ```powershell
 # PowerShell
-git clone https://github.com/InugamiDev/ultrathink-oss.git C:\ultrathink
+git clone https://github.com/InuVerse/ultrathink.git C:\ultrathink
 cd C:\ultrathink
-npm install
+pnpm install
 
 # Copy .env
 copy .env.example .env
 # Edit .env with your DATABASE_URL
 
 # Run migrations
-npx tsx memory/src/migrate.ts
+pnpm run migrate:run
 
 # Dashboard only
-npm run dashboard:dev
+pnpm run dashboard:dev
 ```
 
 For full UltraThink functionality, use WSL2. The native path is only for dashboard access and manual memory queries.
@@ -172,7 +172,7 @@ For full UltraThink functionality, use WSL2. The native path is only for dashboa
 ### "Permission denied" on setup.sh
 
 ```bash
-chmod +x scripts/setup.sh scripts/init-global.sh
+chmod +x scripts/setup.sh scripts/install.sh
 ./scripts/setup.sh
 ```
 

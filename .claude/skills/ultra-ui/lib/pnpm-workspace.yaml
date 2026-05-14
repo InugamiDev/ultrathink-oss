@@ -1,0 +1,6 @@
+# intent: Keep ultra-ui/lib install self-contained without adding it to the repo root workspace.
+# status: authored for skill-local pnpm verification.
+# next: Remove only if root workspace intentionally adopts this package.
+# confidence: high
+packages:
+  - "."

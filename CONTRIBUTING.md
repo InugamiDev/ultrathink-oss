@@ -19,8 +19,8 @@ Thanks for your interest in contributing to UltraThink! This guide covers everyt
 
 ### Prerequisites
 
-- Node.js 18+
-- npm 9+
+- Node.js 22+
+- pnpm 10.28.0+
 - A Neon Postgres database (free tier: [neon.tech](https://neon.tech))
 - Claude Code CLI (`npm install -g @anthropic-ai/claude-code`)
 
@@ -34,20 +34,18 @@ cd ultrathink
 ./scripts/setup.sh
 
 # Or step by step:
-npm install
-cd dashboard && npm install && cd ..
-cd memory && npm install && cd ..
+pnpm install
 cp .env.example .env   # Edit with your DATABASE_URL
-npm run migrate
+pnpm run migrate
 ```
 
 ### Running tests
 
 ```bash
-npm run test          # Vitest suite
-npm run lint          # ESLint
-npm run format:check  # Prettier check
-npm run typecheck     # TypeScript validation
+pnpm run test          # Vitest suite
+pnpm run lint          # ESLint
+pnpm run format:check  # Prettier check
+pnpm run typecheck     # TypeScript validation
 ```
 
 ---
@@ -56,11 +54,11 @@ npm run typecheck     # TypeScript validation
 
 | Directory | What | Language |
 |-----------|------|---------|
-| `memory/src/` | Core memory system (CRUD, search, enrichment) | TypeScript |
-| `memory/scripts/` | CLI tools and migration runner | TypeScript |
-| `memory/migrations/` | Database schema (numbered SQL files) | SQL |
-| `dashboard/` | Next.js 15 observability UI | TypeScript/React |
-| `code-intel/src/` | Cross-file dependency graph engine | TypeScript |
+| `packages/memory/src/` | Core memory system (CRUD, search, enrichment) | TypeScript |
+| `packages/memory/scripts/` | CLI tools and migration runner | TypeScript |
+| `packages/memory/migrations/` | Database schema (numbered SQL files) | SQL |
+| `apps/dashboard/` | Next.js 15 observability UI | TypeScript/React |
+| `packages/code-intel/src/` | Cross-file dependency graph engine | TypeScript |
 | `.claude/hooks/` | Claude Code lifecycle hooks | Bash + TypeScript |
 | `.claude/skills/` | Skill definitions with triggers | Markdown |
 | `.claude/agents/` | Specialized agent definitions | Markdown |

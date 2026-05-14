@@ -49,7 +49,6 @@ export async function POST(req: NextRequest) {
   try {
     const { action } = await req.json();
     const pwRoot = findPlaywrightRoot();
-    const nodeModulesPath = join(pwRoot, "node_modules");
 
     // Launch browser for Gemini login → capture cookies
     if (action === "login-gemini") {

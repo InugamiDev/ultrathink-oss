@@ -1,5 +1,10 @@
 #!/usr/bin/env bash
 # Run UltraThink database migrations
+# intent: run memory migrations through the canonical pnpm workspace package
+# status: done
+# next: keep package name aligned with packages/memory/package.json
+# blockers: none
+# confidence: high
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -21,17 +26,16 @@ fi
 echo "Running UltraThink migrations..."
 echo ""
 
-cd "$PROJECT_ROOT/memory"
+cd "$PROJECT_ROOT"
 
-# Check if tsx is available
-if ! npx tsx --version &>/dev/null; then
-  echo "Installing tsx..."
-  npm install
+if [[ ! -d "node_modules" ]]; then
+  echo "Installing memory workspace dependencies..."
+  pnpm install --filter @ultrathink/memory...
 fi
 
-npx tsx scripts/migrate.ts
+pnpm --filter @ultrathink/memory migrate
 
 echo ""
 echo "Migrations complete."
 echo ""
-echo "Optional: Run 'npm run seed' to add sample data."
+echo "Optional: Run 'pnpm run seed' to add sample data."

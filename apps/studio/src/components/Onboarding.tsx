@@ -1,5 +1,5 @@
-// intent: 3-step first-launch — Welcome → CLI prereqs → OSS skill kit (install/skip/custom)
-// status: done — auto-detects ultrathink-core; offers Recommended (clone+symlink) / Skip / Custom path
+// intent: 3-step first-launch — Welcome → CLI prereqs → UltraThink skill kit (install/skip/custom)
+// status: done — auto-detects ~/.ultrathink-studio/oss-kit; offers Recommended / Skip / Custom path
 // next: detect API key env vars (OPENAI_API_KEY) when codex is on the prereq list
 // confidence: high
 
@@ -8,7 +8,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 const STORAGE_KEY = "studio:onboarded:v5";
 const SKILL_DISABLED_KEY = "studio:skills-disabled";
-const DEFAULT_OSS_REPO = "https://github.com/InugamiDev/ultrathink-core.git";
+const DEFAULT_OSS_REPO = "https://github.com/InuVerse/ultrathink.git";
 
 interface OnboardingProps {
   onDone: () => void;
@@ -226,14 +226,14 @@ export function Onboarding({ onDone }: OnboardingProps) {
 
         {step === "oss" && (
           <>
-            <h1 style={h1Style}>UltraThink Core kit</h1>
+            <h1 style={h1Style}>UltraThink skill kit</h1>
             <p style={pStyle}>
-              The skill kit lives in a separate open-source repo. Studio looks it up at runtime to inject the right
+              The skill kit lives in the canonical open-source repo. Studio looks it up at runtime to inject the right
               skill into each agent turn. Pick how you want it.
             </p>
 
             {/* Already installed pill — detect via 3 paths in priority order:
-                  1. ~/.ultrathink-core/ exists (Recommended install)
+                  1. ~/.ultrathink-studio/oss-kit exists (Recommended install)
                   2. skills already symlinked into ~/.claude/skills/ (origin=claude-config or linked)
                   3. discovered in a parent repo's .claude/skills/ (origin=repo) */}
             {(() => {
@@ -266,7 +266,7 @@ export function Onboarding({ onDone }: OnboardingProps) {
                   </div>
                   {!recommended && (
                     <div style={{ color: "var(--text-dim)", fontSize: "10.5px", marginTop: "6px" }}>
-                      Tip: install the dedicated <code style={codeStyle}>~/.ultrathink-core</code> clone to get
+                      Tip: install the dedicated <code style={codeStyle}>~/.ultrathink-studio/oss-kit</code> clone to get
                       auto-updates and decouple Studio from this repo.{" "}
                       <button
                         onClick={() => void runInstall()}
@@ -281,7 +281,7 @@ export function Onboarding({ onDone }: OnboardingProps) {
                           textDecoration: "underline",
                         }}
                       >
-                        {installing ? "Installing…" : "Install ~/.ultrathink-core"}
+                        {installing ? "Installing…" : "Install Studio kit"}
                       </button>
                     </div>
                   )}
@@ -299,7 +299,7 @@ export function Onboarding({ onDone }: OnboardingProps) {
                   body={
                     <>
                       Clone <code style={codeStyle}>{DEFAULT_OSS_REPO.replace("https://github.com/", "")}</code> to{" "}
-                      <code style={codeStyle}>~/.ultrathink-core</code> and symlink every skill into{" "}
+                      <code style={codeStyle}>~/.ultrathink-studio/oss-kit</code> and symlink every skill into{" "}
                       <code style={codeStyle}>~/.claude/skills/</code>. Idempotent — re-runs just pull & re-sync.
                     </>
                   }
@@ -311,14 +311,14 @@ export function Onboarding({ onDone }: OnboardingProps) {
                   body={
                     <>
                       Already cloned somewhere? Point us at it. Example:{" "}
-                      <code style={codeStyle}>~/code/ultrathink-core</code>.
+                      <code style={codeStyle}>~/code/ultrathink</code>.
                       <input
                         value={customPath}
                         onChange={(e) => {
                           setCustomPath(e.target.value);
                           setOssChoice("custom");
                         }}
-                        placeholder="/absolute/path/to/ultrathink-core"
+                        placeholder="/absolute/path/to/ultrathink"
                         style={inputStyle}
                         onClick={(e) => e.stopPropagation()}
                       />
@@ -357,11 +357,7 @@ export function Onboarding({ onDone }: OnboardingProps) {
                     setInstalling(true);
                     setInstallError(null);
                     try {
-                      // Custom path: just symlink — don't clone
-                      // Pass the path through ULTRATHINK_SKILL_REPO via the engine env later.
-                      // For now, use skill_registry_sync_global which respects ULTRATHINK_SKILL_REPO.
-                      // TODO: pass customPath as an arg once skill-sync supports it.
-                      await invoke("skill_registry_sync_global");
+                      await invoke("skill_registry_sync_global", { source: customPath.trim() });
                       await checkOss();
                       await checkSkills();
                       finish();

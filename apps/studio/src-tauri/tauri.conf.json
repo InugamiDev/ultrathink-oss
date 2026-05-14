@@ -28,14 +28,14 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: http://asset.localhost data:; font-src 'self' data:; connect-src 'self' ipc: http://ipc.localhost http://localhost:1420 ws://localhost:1421"
     }
   },
   "plugins": {
     "updater": {
       "active": false,
       "endpoints": [
-        "https://github.com/InugamiDev/ultrathink-core/releases/latest/download/latest.json"
+        "https://github.com/InuVerse/ultrathink/releases/latest/download/latest.json"
       ],
       "dialog": false,
       "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEJDODZCRjlDMzdBNzYwRUYKUldUdllLYzNuTCtHdkxXS2QvWHRJRjB1bS85VTVoL3FLSGdtd0U0aDZJa2ZjMHcyNnpFeGdjeUwK"
@@ -44,7 +44,7 @@
   "bundle": {
     "active": true,
     "targets": ["dmg", "app", "msi", "nsis", "deb", "appimage"],
-    "createUpdaterArtifacts": true,
+    "createUpdaterArtifacts": false,
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

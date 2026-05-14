@@ -594,75 +594,6 @@ function detectNonTrivialTask(prompt, intent) {
         return true;
     return false;
 }
-/**
- * Auto-initialize .planning/ with skeleton files for a new GSD project.
- * Creates: SPEC.md (skeleton), STATE.md (initial), config.json
- */
-function initializePlanning(planningDir, prompt) {
-    mkdirSync(planningDir, { recursive: true });
-    mkdirSync(resolve(planningDir, "archive"), { recursive: true });
-    mkdirSync(resolve(planningDir, "docs"), { recursive: true });
-    const now = new Date().toISOString().split("T")[0];
-    // Skeleton SPEC.md — Claude fills this in
-    const specContent = `# Spec: [FILL IN — title of the feature/change]
-
-## Problem Statement
-[WHY this change is needed — describe the motivation, not the solution]
-
-> Task context: ${prompt.slice(0, 300)}
-
-## Acceptance Criteria
-- [ ] [Specific, testable criterion — user-visible behavior]
-- [ ] [Another criterion — measurable outcome]
-- [ ] [Edge case handling]
-- [ ] Build passes with no new errors
-- [ ] Existing tests still pass
-
-## Constraints
-- [Technical or business constraints]
-
-## Non-Goals (explicit scope fence)
-- [What this change does NOT include]
-- [Future work explicitly deferred]
-`;
-    const stateContent = `# State
-
-## Current
-Phase: 0, Status: planning
-Started: ${now}
-
-## Completed
-- (none yet)
-
-## Decisions
-- (none yet)
-
-## Blocked
-- None
-
-## Next
-- Fill in SPEC.md with acceptance criteria
-- Research codebase patterns
-- Create PLAN.md files
-`;
-    const configContent = JSON.stringify({
-        mode: "interactive",
-        granularity: "standard",
-        created: now,
-        autoVerify: true,
-        autoArchive: true,
-    }, null, 2);
-    // Only write if files don't exist (don't overwrite)
-    const specPath = resolve(planningDir, "SPEC.md");
-    const statePath = resolve(planningDir, "STATE.md");
-    const configPath = resolve(planningDir, "config.json");
-    if (!existsSync(specPath))
-        writeFileSync(specPath, specContent);
-    if (!existsSync(statePath))
-        writeFileSync(statePath, stateContent);
-    if (!existsSync(configPath))
-        writeFileSync(configPath, configContent);
-}
 // ─── Session-scoped caching ─────────────────────────────────────────
 function getSessionId() {
     return (process.env.CC_SESSION_ID || "").slice(0, 12) || "default";
@@ -732,10 +663,10 @@ function loadRegistryWithCache(registryPath) {
         const allSkills = Array.isArray(raw.skills) ? raw.skills : Object.values(raw);
         const slim = allSkills.map((s) => ({
             name: s.name,
-            description: s.description,
-            layer: s.layer,
-            category: s.category,
-            triggers: s.triggers,
+            description: s.description || "",
+            layer: s.layer || "domain",
+            category: s.category || "domain",
+            triggers: Array.isArray(s.triggers) ? s.triggers : [],
             linksTo: s.linksTo || [],
             websearch: s.websearch || false,
             path: s.path || null,
@@ -827,6 +758,23 @@ function fuzzyTriggerMatch(promptWords, triggerLower) {
     }
     return false;
 }
+const DESCRIPTION_STOP_WORDS = new Set([
+    "about",
+    "across",
+    "after",
+    "before",
+    "build",
+    "create",
+    "covers",
+    "from",
+    "help",
+    "implement",
+    "using",
+    "with",
+    "when",
+    "where",
+    "which",
+]);
 /** Pre-computed lowercased triggers for each skill, built lazily once per registry load. */
 let precomputedTriggers = null;
 let precomputedTriggersForSkills = null;
@@ -876,6 +824,22 @@ function quickTriggerScan(skills, promptLower, promptWordsList) {
             else if (fuzzyTriggerMatch(promptWordsList, tLower)) {
                 triggers.push(skillTriggers[t]);
                 qualities.push("fuzzy");
+            }
+        }
+        const descriptionLower = (skills[i].description || "").toLowerCase();
+        if (descriptionLower) {
+            let descriptionMatches = 0;
+            for (const word of promptWordsList) {
+                if (word.length < 5 || DESCRIPTION_STOP_WORDS.has(word))
+                    continue;
+                if (descriptionLower.includes(word))
+                    descriptionMatches++;
+                if (descriptionMatches >= 2)
+                    break;
+            }
+            if (descriptionMatches >= 2) {
+                triggers.push("description match");
+                qualities.push("boundary");
             }
         }
         if (triggers.length > 0) {
@@ -1274,7 +1238,9 @@ function main() {
             // Only reference SKILL.md if the skill has a file path (workflow-only skills don't)
             const skillRef = (s) => {
                 const reg = skills.find((r) => r.name === s.name);
-                return reg?.path ? `. Read .claude/skills/${s.name}/SKILL.md before proceeding` : "";
+                if (reg?.path === null)
+                    return "";
+                return `. Read ${reg?.path || `.claude/skills/${s.name}/SKILL.md`} before proceeding`;
             };
             if (primary.score > 8.0) {
                 // MANDATORY activation for very high confidence matches
@@ -1428,10 +1394,9 @@ function main() {
     catch {
         // Non-fatal — skill context still fires
     }
-    // Preference extraction DISABLED (2026-04-08)
+    // Preference extraction removed (2026-04-08)
     // Was generating 143+ garbage memories by capturing code fragments and system context.
     // Real preferences come from: (1) identity graph at session-start, (2) explicit user statements via `save` command.
-    // extractAndSavePreferences(prompt);
     // ☸ Tekiō — always-on evaluation: corrections AND successes
     detectAndSaveCorrections(prompt);
     detectAndSaveSuccesses(prompt, intent, top.map((s) => s.name));
@@ -1472,216 +1437,8 @@ function main() {
         context,
     }));
 }
-// ─── Preference extraction ──────────────────────────────────────────
+// ─── Memory extraction paths ────────────────────────────────────────
 const MEMORIES_DIR = "/tmp/ultrathink-memories";
-const PREFER_PATTERNS = [
-    /\bi\s+(?:prefer|like|want|love|enjoy|favor|favour)\s+(.+?)(?:\s+and\s+|\.|,|$|\n)/gi,
-    /\balways\s+use\s+(.+?)(?:\s+and\s+|\.|,|$|\n)/gi,
-    /\buse\s+(\w+)\s+(?:instead\s+of|over|rather\s+than)\s+\w+/gi,
-    /\bswitch(?:ed)?\s+to\s+(\w+)/gi,
-    /\b(?:never|don'?t|do\s+not|avoid)\s+(?:use\s+)?(.+?)(?:\.|,|$|\n)/gi,
-    /\bremember\s+(?:that\s+)?i\s+(.+?)(?:\.|$|\n)/gi,
-];
-const TOOLS = new Set([
-    "bun",
-    "npm",
-    "pnpm",
-    "yarn",
-    "deno",
-    "node",
-    "vim",
-    "neovim",
-    "vscode",
-    "cursor",
-    "zed",
-    "react",
-    "vue",
-    "svelte",
-    "angular",
-    "next",
-    "nextjs",
-    "nuxt",
-    "remix",
-    "astro",
-    "tailwind",
-    "typescript",
-    "python",
-    "rust",
-    "go",
-    "postgres",
-    "mysql",
-    "sqlite",
-    "mongodb",
-    "redis",
-    "neon",
-    "docker",
-    "vercel",
-    "netlify",
-    "cloudflare",
-    "aws",
-    "figma",
-    "vitest",
-    "jest",
-    "playwright",
-    "prisma",
-    "drizzle",
-    "expo",
-    "electron",
-    "cypress",
-    "storybook",
-    "turborepo",
-    "nx",
-    "pnpm",
-    "sanity",
-    "payload",
-    "openai",
-    "supabase",
-    "stripe",
-    "hono",
-    "convex",
-    "clerk",
-    "upstash",
-    "htmx",
-    "inngest",
-    "bullmq",
-    "uploadthing",
-    "testing-library",
-    "opentelemetry",
-    "algolia",
-    "meilisearch",
-    "elasticsearch",
-    "react-email",
-    "mjml",
-    "pdfkit",
-    "wasm",
-    "web-vitals",
-    "sentry",
-    "plausible",
-    "posthog",
-    "grpc",
-    "protobuf",
-    "comlink",
-    "swagger",
-    "biome",
-    "flask",
-    "nestjs",
-    "vite",
-    "eslint",
-    "prettier",
-    "pact",
-    "kong",
-    "envoy",
-    "traefik",
-    "spring",
-    "laravel",
-    "rails",
-    "xstate",
-    "k6",
-    "artillery",
-    "locust",
-    "workbox",
-    "axios",
-    "ky",
-    "vault",
-    "hashicorp",
-    "sentry",
-    "datadog",
-    "flyway",
-    "liquibase",
-    "redoc",
-    "pgbouncer",
-]);
-const STYLES = new Set([
-    "glassmorphism",
-    "neomorphism",
-    "brutalism",
-    "dark mode",
-    "light mode",
-    "minimal",
-    "minimalist",
-    "elegant",
-    "modern",
-    "retro",
-    "gradient",
-    "monochrome",
-]);
-function extractAndSavePreferences(text) {
-    // intent: Extract ONLY genuine user preferences, not code fragments or system context
-    // status: done
-    // confidence: high
-    // STRICT: Only match first-person statements ("I prefer...", "I always use...", "I never...")
-    // Previous version matched any text containing "avoid"/"prefer" — which captured code comments,
-    // CLAUDE.md instructions, and tool output as user preferences. 143+ garbage memories resulted.
-    if (!/\bi\s+(prefer|like|always use|never|don'?t use|avoid|switch|remember that)\b/i.test(text)) {
-        return;
-    }
-    // Reject if text looks like it contains code or system context
-    if (/```|<system|<plan_metadata|## |### /.test(text)) {
-        return;
-    }
-    if (!existsSync(MEMORIES_DIR))
-        mkdirSync(MEMORIES_DIR, { recursive: true });
-    const scope = process.cwd().split("/").slice(-2).join("/");
-    const seen = new Set();
-    // STRICT patterns: require first-person subject "I"
-    const STRICT_PATTERNS = [
-        /\bi\s+(?:prefer|like|want|love|enjoy|favor|favour)\s+(.+?)(?:\s+(?:and|but|because)\s+|\.|,|$|\n)/gi,
-        /\bi\s+always\s+use\s+(.+?)(?:\s+(?:and|but|because)\s+|\.|,|$|\n)/gi,
-        /\bi\s+(?:never|don'?t|do\s+not|avoid)\s+(?:use\s+|using\s+)?(.+?)(?:\.|,|$|\n)/gi,
-        /\bremember\s+that\s+i\s+(.+?)(?:\.|$|\n)/gi,
-    ];
-    for (const pattern of STRICT_PATTERNS) {
-        pattern.lastIndex = 0;
-        let match;
-        while ((match = pattern.exec(text)) !== null) {
-            const raw = match[1]
-                .trim()
-                .replace(/[.!?,;*_]+$/, "")
-                .trim();
-            if (!raw || raw.length < 5 || raw.length > 80)
-                continue;
-            // Reject technical fragments: code keywords, file paths, SQL, camelCase, special chars
-            if (/[{}()=><;|]|::\s|\\n|\.ts\b|\.js\b|\.py\b|[A-Z][a-z]+[A-Z]/.test(raw))
-                continue;
-            // Reject if it starts with a verb that suggests code context
-            if (/^(function|const|let|var|class|import|export|return|async|await|if|for|while)\b/i.test(raw))
-                continue;
-            const key = raw.toLowerCase().replace(/\s+/g, "-");
-            if (seen.has(key))
-                continue;
-            seen.add(key);
-            let category = "preference";
-            const lower = raw.toLowerCase();
-            for (const tool of TOOLS) {
-                if (lower === tool || lower.includes(tool)) {
-                    category = "tool-preference";
-                    break;
-                }
-            }
-            if (category === "preference") {
-                for (const style of STYLES) {
-                    if (lower.includes(style)) {
-                        category = "style-preference";
-                        break;
-                    }
-                }
-            }
-            const isAnti = /never|don'?t|avoid/i.test(match[0]);
-            const content = `User ${isAnti ? "avoids" : "prefers"} ${raw}`;
-            const ts = Date.now();
-            const memory = {
-                content,
-                category,
-                importance: 8,
-                confidence: 0.85,
-                scope,
-                source: "identity-extract",
-                tags: ["#preference", "#identity"],
-            };
-            writeFileSync(join(MEMORIES_DIR, `${ts}-pref-${key.slice(0, 20)}.json`), JSON.stringify(memory));
-        }
-    }
-}
 // ─── ☸ Tekiō — Always-On Evaluation (Cycle of Nova) ─────────────────
 // The wheel evaluates EVERY interaction:
 //   New → turn (learn)    Known → skip    Failure → turn (counter)    Success → turn (reinforce)

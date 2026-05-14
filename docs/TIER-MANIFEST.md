@@ -1,12 +1,14 @@
 # UltraThink Tier Manifest
 
-Canonical boundary between **UltraThink Core** (private) and **UltraThink OSS** (public, MIT).
+> Historical note: the separate OSS/Core split is retired for normal development. This file remains as migration history for parity checks and should not be treated as the current public packaging model.
+
+Historical boundary between the former **UltraThink Core** and **UltraThink OSS** repositories.
 Shared-file parity is enforced by `scripts/parity-check.sh`; export safety is enforced by `tests/oss-boundary.test.ts`.
 
 UltraThink is **one product** shipped in two tiers:
 
-- **Core** — full workflow engine (this repo, private)
-- **OSS** — public subset at `github.com/InuVerse/ultrathink` (sibling repo `../ultrathink-oss`)
+- **Core** — former full workflow engine snapshot
+- **OSS** — former public subset at `github.com/InuVerse/ultrathink` (sibling repo `../ultrathink-oss`)
 
 ---
 
@@ -48,7 +50,7 @@ These subsystems are the strategic moat. They stay in Core.
 
 Files that exist only in the OSS repo and do not need Core parity.
 
-- `scripts/setup.sh`, `scripts/init-global.sh`, `scripts/sync-editors.sh` (public installer)
+- `scripts/setup.sh`, `scripts/install.sh`, `scripts/init-global.sh`, `scripts/sync-editors.sh` (public installer)
 - `README.md` banner, quickstart, badges
 - `LICENSE` (MIT)
 - `CONTRIBUTING.md`, `CHANGELOG.md`

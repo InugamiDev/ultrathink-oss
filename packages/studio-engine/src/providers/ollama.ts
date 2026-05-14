@@ -64,9 +64,6 @@ export function createOllamaSpawn(opts: SpawnOptions, cfg: OllamaConfig = {}): S
     const baseUrl = cfg.baseUrl ?? process.env.OLLAMA_URL ?? DEFAULT_URL;
     const model = opts.model ?? "llama3.2";
 
-    let totalInput = 0;
-    let totalOutput = 0;
-
     try {
       const res = await fetch(`${baseUrl}/api/chat`, {
         method: "POST",
@@ -120,8 +117,8 @@ export function createOllamaSpawn(opts: SpawnOptions, cfg: OllamaConfig = {}): S
             push({ kind: "assistant-text-delta", text: evt.message.content });
           }
           if (evt.done) {
-            totalInput = evt.prompt_eval_count ?? 0;
-            totalOutput = evt.eval_count ?? 0;
+            const totalInput = evt.prompt_eval_count ?? 0;
+            const totalOutput = evt.eval_count ?? 0;
             push({
               kind: "usage",
               inputTokens: totalInput,

@@ -45,13 +45,15 @@ jobs:
             target: x86_64-pc-windows-msvc
 
     runs-on: ${{ matrix.os }}
+    env:
+      HAS_AZURE_SIGNING: ${{ secrets.AZURE_TENANT_ID != '' && secrets.AZURE_CLIENT_ID != '' && secrets.AZURE_CLIENT_SECRET != '' && secrets.AZURE_CODE_SIGNING_ENDPOINT != '' && secrets.AZURE_CODE_SIGNING_NAME != '' && secrets.AZURE_CERT_PROFILE_NAME != '' }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Install pnpm
-        uses: pnpm/action-setup@v3
+        uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: 10.28.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -79,7 +81,13 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build studio engine
-        run: pnpm --filter @inuverse/studio-engine build
+        run: pnpm --filter @ultrathink/studio-engine build
+
+      - name: Bundle studio engine sidecar
+        shell: bash
+        run: |
+          mkdir -p apps/studio/src-tauri/resources
+          cp packages/studio-engine/dist/*.js apps/studio/src-tauri/resources/
 
       - name: Import Apple certificate
         if: startsWith(matrix.os, 'macos')
@@ -123,7 +131,7 @@ jobs:
           args: --target ${{ matrix.target }}
 
       - name: Azure Trusted Signing (Windows)
-        if: matrix.os == 'windows-latest' && env.AZURE_TENANT_ID != ''
+        if: matrix.os == 'windows-latest' && env.HAS_AZURE_SIGNING == 'true'
         uses: azure/trusted-signing-action@v0
         env:
           AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
@@ -139,3 +147,17 @@ jobs:
           file-digest: SHA256
           timestamp-rfc3161: http://timestamp.acs.microsoft.com
           timestamp-digest: SHA256
+
+      - name: Upload signed Windows installers
+        if: matrix.os == 'windows-latest' && env.HAS_AZURE_SIGNING == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          shopt -s globstar nullglob
+          files=(apps/studio/src-tauri/target/${{ matrix.target }}/release/bundle/**/*.{msi,exe})
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "::warning::No signed Windows installers found to upload"
+            exit 0
+          fi
+          gh release upload "${{ github.ref_name }}" "${files[@]}" --clobber

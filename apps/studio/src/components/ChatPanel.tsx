@@ -23,6 +23,22 @@ interface ChatPanelProps {
   onCloseProject: () => void;
 }
 
+function modelForAdapter(adapter: string, model: string | null): string | undefined {
+  if (!model) return undefined;
+  if ((adapter === "claude" || adapter === "anthropic-direct") && !model.startsWith("claude-")) {
+    return undefined;
+  }
+  if (adapter === "codex" && model?.startsWith("gpt-5-codex")) {
+    try {
+      localStorage.removeItem("studio:default-model");
+    } catch {
+      /* ignore quota / private mode */
+    }
+    return undefined;
+  }
+  return model;
+}
+
 export function ChatPanel({
   activeProjectDir,
   activeProjectName,
@@ -177,7 +193,9 @@ export function ChatPanel({
             | "ollama"
             | null) ?? "claude";
         activeAdapterRef.current = adapter;
-        let model = localStorage.getItem("studio:default-model") || undefined;
+        const rawModel = localStorage.getItem("studio:default-model");
+        const ignoredCodexModel = adapter === "codex" && rawModel?.startsWith("gpt-5-codex") === true;
+        let model = modelForAdapter(adapter, rawModel);
         let apiKey: string | undefined;
         let baseUrl: string | undefined;
 
@@ -208,6 +226,17 @@ export function ChatPanel({
           }
         }
         if (adapter === "codex") {
+          if (ignoredCodexModel) {
+            setEvents((prev) => [
+              ...prev,
+              {
+                kind: "error",
+                message:
+                  "Ignoring stale gpt-5-codex default. ChatGPT-account Codex auth cannot use that model; Codex will pick its account-compatible default.",
+                recoverable: true,
+              },
+            ]);
+          }
           try {
             const status = await invoke<{ ok: boolean }>("check_codex_cli");
             if (!status.ok) {
@@ -345,7 +374,7 @@ export function ChatPanel({
           style={{
             ...errorBannerStyle,
             ...((latestError as { recoverable?: boolean }).recoverable
-              ? { borderColor: "var(--amber, #d4a017)", color: "var(--amber, #d4a017)" }
+              ? { borderColor: "var(--amber)", color: "var(--amber)" }
               : null),
           }}
         >
@@ -464,13 +493,6 @@ const containerStyle: React.CSSProperties = {
   borderRight: "1px solid var(--border)",
 };
 
-const headerStyle: React.CSSProperties = {
-  padding: "10px 16px",
-  borderBottom: "1px solid var(--border)",
-  fontSize: "11px",
-  color: "var(--text-muted)",
-};
-
 const streamStyle: React.CSSProperties = {
   flex: 1,
   overflowY: "auto",
@@ -511,7 +533,7 @@ const sendButtonStyle: React.CSSProperties = {
 const stopButtonStyle: React.CSSProperties = {
   ...sendButtonStyle,
   background: "var(--red)",
-  color: "white",
+  color: "var(--bg)",
 };
 
 const retryButtonStyle: React.CSSProperties = {
@@ -527,9 +549,9 @@ const errorBannerStyle: React.CSSProperties = {
   padding: "8px 12px",
   margin: "var(--space-2) var(--space-3) 0",
   fontSize: "12px",
-  color: "var(--red, #e5484d)",
-  background: "rgba(229, 72, 77, 0.08)",
-  border: "1px solid var(--red, #e5484d)",
+  color: "var(--red)",
+  background: "rgba(239, 68, 68, 0.1)",
+  border: "1px solid var(--red)",
   borderRadius: "var(--radius-md)",
   fontFamily: "var(--font-mono)",
   lineHeight: 1.4,
@@ -626,7 +648,7 @@ const contextCloseStyle: React.CSSProperties = {
 const contextNewStyle: React.CSSProperties = {
   fontSize: "11px",
   fontWeight: 600,
-  color: "#0c0d10",
+  color: "var(--bg)",
   background: "var(--accent)",
   border: "none",
   borderRadius: "var(--radius-md)",

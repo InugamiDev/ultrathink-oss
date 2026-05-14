@@ -27,14 +27,18 @@ hook_log() {
     duration_ms=$(( now_ms - HOOK_START_MS ))
   fi
 
-  # Append to daily log file
+  # Append to daily log file — jq builds JSON so detail with newlines/quotes can't corrupt the line
   local log_file="$log_dir/$(date +%Y-%m-%d).jsonl"
   if [[ -n "$duration_ms" ]]; then
-    printf '{"ts":"%s","hook":"%s","status":"%s","detail":"%s","pid":%d,"duration_ms":%d}\n' \
-      "$ts" "$hook_name" "$status" "$detail" "$$" "$duration_ms" >> "$log_file" 2>/dev/null || true
+    jq -nc --arg ts "$ts" --arg hook "$hook_name" --arg status "$status" --arg detail "$detail" \
+           --argjson pid "$$" --argjson duration_ms "$duration_ms" \
+           '{ts:$ts,hook:$hook,status:$status,detail:$detail,pid:$pid,duration_ms:$duration_ms}' \
+      >> "$log_file" 2>/dev/null || true
   else
-    printf '{"ts":"%s","hook":"%s","status":"%s","detail":"%s","pid":%d}\n' \
-      "$ts" "$hook_name" "$status" "$detail" "$$" >> "$log_file" 2>/dev/null || true
+    jq -nc --arg ts "$ts" --arg hook "$hook_name" --arg status "$status" --arg detail "$detail" \
+           --argjson pid "$$" \
+           '{ts:$ts,hook:$hook,status:$status,detail:$detail,pid:$pid}' \
+      >> "$log_file" 2>/dev/null || true
   fi
 
   # Write to statusline activity cache (last 10 hook events, rotating)
@@ -43,7 +47,10 @@ hook_log() {
   mkdir -p "$status_dir" 2>/dev/null || true
   local epoch
   epoch=$(date +%s)
-  local entry="${epoch}|${hook_name}|${status}|${detail}"
+  # Sanitize detail for bar-delimited line format (strip newlines + pipes)
+  local safe_detail="${detail//$'\n'/ }"
+  safe_detail="${safe_detail//|/-}"
+  local entry="${epoch}|${hook_name}|${status}|${safe_detail}"
   if [[ -n "$duration_ms" ]]; then
     entry+="|${duration_ms}"
   fi
@@ -66,7 +73,17 @@ hook_log() {
       privacy:blocked)      msg="🚫 File access blocked${detail:+ — $detail}" ;;
       typecheck:error)      msg="✗ Type errors found${detail:+ — $detail}" ;;
       pre-compact:done)     msg="🗜 Context compacted — conversation compressed to save space" ;;
-      tool-failure:error)   msg="⚠ Tool failed: ${detail:0:120}" ;;
+      tool-failure:error)
+        # Suppress noise: generic/empty errors that Tekiō already filters via SKIP_WHEEL.
+        # Detail arrives as "TOOL: ERROR" — strip the prefix and gate on the error itself.
+        err_text="${detail#*: }"
+        if [[ "$err_text" == "unknown error" \
+              || "$err_text" =~ ^Exit\ code\ [0-9]+$ \
+              || ${#err_text} -lt 15 ]]; then
+          msg=""
+        else
+          msg="⚠ Tool failed: ${detail:0:120}"
+        fi ;;
     esac
     if [[ -n "$msg" ]]; then
       local hook_dir

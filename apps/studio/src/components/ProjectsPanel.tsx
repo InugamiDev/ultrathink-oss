@@ -5,6 +5,7 @@
 
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 interface Project {
   dir: string;
@@ -17,30 +18,25 @@ interface ProjectsPanelProps {
 }
 
 export function ProjectsPanel({ onOpen }: ProjectsPanelProps) {
-  const [projects, setProjects] = useState<Project[]>([]);
+  const queryClient = useQueryClient();
   const [query, setQuery] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [newName, setNewName] = useState("");
   const [createError, setCreateError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const {
+    data: projects = [],
+    isLoading: loading,
+    error,
+  } = useQuery({
+    queryKey: ["projects"],
+    queryFn: () => invoke<Project[]>("list_projects"),
+  });
+  const errorMessage = error ? String(error) : null;
 
   function refresh() {
-    return invoke<Project[]>("list_projects")
-      .then((rows) => {
-        setProjects(rows);
-        setLoading(false);
-      })
-      .catch((e) => {
-        setError(String(e));
-        setLoading(false);
-      });
+    return queryClient.invalidateQueries({ queryKey: ["projects"] });
   }
-
-  useEffect(() => {
-    void refresh();
-  }, []);
 
   async function submitCreate() {
     if (!newName.trim()) return;
@@ -69,8 +65,8 @@ export function ProjectsPanel({ onOpen }: ProjectsPanelProps) {
           <p style={subStyle}>
             {loading
               ? "Scanning ~/Studio/projects/…"
-              : error
-                ? `Couldn't read project dir: ${error}`
+              : errorMessage
+                ? `Couldn't read project dir: ${errorMessage}`
                 : `${projects.length} project${projects.length === 1 ? "" : "s"} in ~/Studio/projects/.`}
           </p>
         </div>
@@ -260,8 +256,21 @@ function ProjectCard({
   }, [menuOpen]);
   return (
     <div
+      role="button"
+      tabIndex={0}
+      aria-label={`Open project ${project.name}`}
       style={cardStyle}
       onClick={onOpen}
+      onKeyDown={(e) => {
+        const target = e.target;
+        if (target instanceof HTMLElement && target !== e.currentTarget && target.closest("button,a,input,select,textarea")) {
+          return;
+        }
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
       onContextMenu={(e) => {
         e.preventDefault();
         setMenuOpen(true);
@@ -421,7 +430,7 @@ const searchInputStyle: React.CSSProperties = {
 const primaryBtnStyle: React.CSSProperties = {
   fontSize: "12px",
   fontWeight: 600,
-  color: "#0c0d10",
+  color: "var(--bg)",
   background: "var(--accent)",
   border: "none",
   borderRadius: "var(--radius-md)",

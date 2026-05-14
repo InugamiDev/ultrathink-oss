@@ -49,13 +49,13 @@ Each chat session = one Node sidecar process owning one Claude Code spawn. Front
 
 ```bash
 # from repo root, ensure deps are in place
-pnpm install --filter @inuverse/studio --filter @inuverse/studio-engine
+pnpm install --filter @ultrathink/studio --filter @ultrathink/studio-engine
 
 # build the engine + sidecar (the Rust shell looks for it at runtime)
-pnpm --filter @inuverse/studio-engine build
+pnpm --filter @ultrathink/studio-engine build
 
 # open the app in dev mode (Vite + Tauri together; HMR enabled)
-pnpm --filter @inuverse/studio tauri:dev
+pnpm --filter @ultrathink/studio tauri:dev
 ```
 
 The Vite dev server runs on `http://localhost:1420`; Tauri loads it in a native window.
@@ -63,7 +63,7 @@ The Vite dev server runs on `http://localhost:1420`; Tauri loads it in a native 
 ## Build distributables
 
 ```bash
-pnpm --filter @inuverse/studio tauri:build
+pnpm --filter @ultrathink/studio tauri:build
 ```
 
 Outputs:
@@ -75,7 +75,7 @@ Outputs:
 
 ## Before distributing
 
-- Replace placeholder icons via `pnpm --filter @inuverse/studio tauri icon path/to/source-1024.png`
+- Replace placeholder icons via `pnpm --filter @ultrathink/studio tauri icon path/to/source-1024.png`
 - Set up code-signing (task #95): Apple Developer cert for macOS notarization, EV cert for Windows
 - Configure auto-update endpoint in `tauri.conf.json` (task #95)
 - Bundle the engine sidecar as a Tauri resource so it ships with the app (currently dev-only, walks up the binary path to find it)

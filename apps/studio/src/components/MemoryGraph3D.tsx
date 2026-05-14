@@ -34,12 +34,14 @@ interface Graph3DProps {
   width?: number;
   height?: number;
   onNodeClick?: (node: RawNode) => void;
+  selectedNodeId?: string | null;
+  cameraStateKey?: string;
 }
 
 // 4-wing palette (also feeds bloom intensity).
 const WING_COLORS: Record<string, string> = {
   agent: "#a78bfa", // violet — identity / rules / skills
-  user: "#34d399", // emerald — preferences / projects
+  user: "#22C55E", // emerald — preferences / projects
   knowledge: "#60a5fa", // sky — decisions / patterns / insights
   experience: "#fb923c", // amber — sessions / outcomes / errors
 };
@@ -49,18 +51,29 @@ const WING_GLOW: Record<string, number> = {
   knowledge: 0.7,
   experience: 0.7,
 };
-const RELATION_COLORS: Record<string, string> = {
-  "learned-from": "#22d3ee",
-  supports: "#34d399",
-  "applies-to": "#a78bfa",
-  contradicts: "#f87171",
-  "caused-by": "#fb923c",
-  supersedes: "#fbbf24",
+const RELATION_COLOR_TOKENS: Record<string, { token: string; fallback: string }> = {
+  "learned-from": { token: "--cyan", fallback: "rgb(34, 211, 238)" },
+  supports: { token: "--green", fallback: "rgb(34, 197, 94)" },
+  "applies-to": { token: "--accent", fallback: "rgb(167, 139, 250)" },
+  contradicts: { token: "--red", fallback: "rgb(239, 68, 68)" },
+  "caused-by": { token: "--amber", fallback: "rgb(251, 191, 36)" },
+  supersedes: { token: "--amber", fallback: "rgb(251, 191, 36)" },
 };
+
+function cssColor(token: string, fallback: string): string {
+  if (typeof document === "undefined") return fallback;
+  return getComputedStyle(document.documentElement).getPropertyValue(token).trim() || fallback;
+}
+
+function relationColor(type: string): string {
+  const color = RELATION_COLOR_TOKENS[type];
+  return color ? cssColor(color.token, color.fallback) : cssColor("--border-strong", "rgb(100, 116, 139)");
+}
 
 interface InternalNode extends RawNode {
   __color: string;
   __radius: number;
+  __selected: boolean;
 }
 interface InternalLink extends Omit<RawEdge, "source" | "target"> {
   source: string | InternalNode;
@@ -68,23 +81,82 @@ interface InternalLink extends Omit<RawEdge, "source" | "target"> {
   __color: string;
 }
 
-export function MemoryGraph3D({ data, width, height, onNodeClick }: Graph3DProps) {
+interface StoredCameraState {
+  position: { x: number; y: number; z: number };
+  lookAt: { x: number; y: number; z: number };
+}
+
+function readCameraState(key?: string): StoredCameraState | null {
+  if (!key) return null;
+  try {
+    const parsed = JSON.parse(localStorage.getItem(key) ?? "null") as StoredCameraState | null;
+    const vectors = [parsed?.position, parsed?.lookAt];
+    if (
+      parsed &&
+      vectors.every(
+        (v) =>
+          v &&
+          typeof v.x === "number" &&
+          typeof v.y === "number" &&
+          typeof v.z === "number" &&
+          Number.isFinite(v.x) &&
+          Number.isFinite(v.y) &&
+          Number.isFinite(v.z)
+      )
+    ) {
+      return parsed;
+    }
+  } catch {
+    /* ignore malformed camera state */
+  }
+  return null;
+}
+
+function saveCameraState(
+  key: string | undefined,
+  fg: ForceGraphMethods<InternalNode, InternalLink> | undefined
+): void {
+  if (!key || !fg) return;
+  try {
+    const position = fg.camera().position;
+    const controls = fg.controls() as { target?: THREE.Vector3 };
+    const lookAt = controls.target ?? new THREE.Vector3(0, 0, 0);
+    localStorage.setItem(
+      key,
+      JSON.stringify({
+        position: { x: position.x, y: position.y, z: position.z },
+        lookAt: { x: lookAt.x, y: lookAt.y, z: lookAt.z },
+      })
+    );
+  } catch {
+    /* ignore camera persistence failures */
+  }
+}
+
+export function MemoryGraph3D({ data, width, height, onNodeClick, selectedNodeId, cameraStateKey }: Graph3DProps) {
   const fgRef = useRef<ForceGraphMethods<InternalNode, InternalLink> | undefined>(undefined);
   const [hovered, setHovered] = useState<RawNode | null>(null);
+  const fallbackNodeColor = cssColor("--text-muted", "rgb(148, 163, 184)");
+  const selectedRingColor = cssColor("--text", "rgb(248, 250, 252)");
 
   // Decorate nodes/links once — color + radius derived from intrinsic fields.
   const graph = useMemo<{ nodes: InternalNode[]; links: InternalLink[] }>(() => {
     const nodes: InternalNode[] = data.nodes.map((n) => ({
       ...n,
-      __color: WING_COLORS[n.wing ?? "knowledge"] ?? "#94a3b8",
-      __radius: 1.6 + Math.min(n.importance, 10) * 0.55 + Math.min(Math.log1p(n.accessCount), 5) * 0.4,
+      __color: WING_COLORS[n.wing ?? "knowledge"] ?? fallbackNodeColor,
+      __selected: n.id === selectedNodeId,
+      __radius:
+        1.6 +
+        Math.min(n.importance, 10) * 0.55 +
+        Math.min(Math.log1p(n.accessCount), 5) * 0.4 +
+        (n.id === selectedNodeId ? 1.2 : 0),
     }));
     const links: InternalLink[] = data.edges.map((e) => ({
       ...e,
-      __color: RELATION_COLORS[e.type] ?? "#64748b",
+      __color: relationColor(e.type),
     }));
     return { nodes, links };
-  }, [data]);
+  }, [data, fallbackNodeColor, selectedNodeId]);
 
   // Wire the bloom postprocessing pass + tune the d3 force layout once on mount.
   useEffect(() => {
@@ -101,9 +173,14 @@ export function MemoryGraph3D({ data, width, height, onNodeClick }: Graph3DProps
     if (charge?.strength) charge.strength(-260);
     const link = fgWithForce.d3Force?.("link");
     if (link?.distance) link.distance(110);
-    // Pull camera back so the wider graph still fits.
-    fg.cameraPosition({ x: 0, y: 0, z: 540 });
-  }, []);
+    const saved = readCameraState(cameraStateKey);
+    // Pull camera back so the wider graph still fits when no persisted camera exists.
+    if (saved) fg.cameraPosition(saved.position, saved.lookAt, 0);
+    else fg.cameraPosition({ x: 0, y: 0, z: 540 });
+
+    const id = window.setInterval(() => saveCameraState(cameraStateKey, fgRef.current), 1000);
+    return () => window.clearInterval(id);
+  }, [cameraStateKey]);
 
   // Custom node geometry: emissive sphere with optional glow halo for the
   // most-important memories. Falls back to a sphere for cheap nodes.
@@ -117,6 +194,18 @@ export function MemoryGraph3D({ data, width, height, onNodeClick }: Graph3DProps
     });
     const sphere = new THREE.Mesh(new THREE.SphereGeometry(node.__radius, 24, 24), mat);
     group.add(sphere);
+    if (node.__selected) {
+      const ring = new THREE.Mesh(
+        new THREE.SphereGeometry(node.__radius * 1.22, 24, 24),
+        new THREE.MeshBasicMaterial({
+          color: selectedRingColor,
+          transparent: true,
+          opacity: 0.18,
+          side: THREE.BackSide,
+        })
+      );
+      group.add(ring);
+    }
     // Halo for L0 / L1 memories (importance ≥ 8) — drives the "flashy" look.
     if (node.importance >= 8) {
       const haloMat = new THREE.MeshBasicMaterial({
@@ -179,12 +268,15 @@ export function MemoryGraph3D({ data, width, height, onNodeClick }: Graph3DProps
           </div>
         ))}
         <div style={{ ...legendTitleStyle, marginTop: "10px" }}>RELATIONS</div>
-        {Object.entries(RELATION_COLORS).map(([type, color]) => (
-          <div key={type} style={legendRowStyle}>
-            <span style={{ width: "14px", height: "1.5px", background: color }} />
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px" }}>{type}</span>
-          </div>
-        ))}
+        {Object.keys(RELATION_COLOR_TOKENS).map((type) => {
+          const color = relationColor(type);
+          return (
+            <div key={type} style={legendRowStyle}>
+              <span style={{ width: "14px", height: "1.5px", background: color }} />
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: "10px" }}>{type}</span>
+            </div>
+          );
+        })}
       </div>
 
       {/* Hovered-node corner readout */}
@@ -208,7 +300,7 @@ const wrapStyle: React.CSSProperties = {
   position: "relative",
   width: "100%",
   height: "100%",
-  background: "linear-gradient(135deg, #08090e 0%, #11141c 100%)",
+  background: "linear-gradient(135deg, var(--bg) 0%, var(--bg-elevated) 100%)",
 };
 const legendStyle: React.CSSProperties = {
   position: "absolute",
